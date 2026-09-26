@@ -44,6 +44,18 @@ test("the first-party host exposes exactly the authenticated import inventory", 
   host.dispose();
 });
 
+test("the first-party host exposes an empty deterministic environment", () => {
+  const { host, wasi, memory, view } = fixture();
+  view.setUint32(64, 17, true);
+  view.setUint32(68, 29, true);
+  assert.equal(wasi.environ_sizes_get(64, 68), WASI_ERRNO.SUCCESS);
+  assert.equal(view.getUint32(64, true), 0);
+  assert.equal(view.getUint32(68, true), 0);
+  assert.equal(wasi.environ_get(0, 0), WASI_ERRNO.SUCCESS);
+  assert.equal(wasi.environ_sizes_get(memory.buffer.byteLength, 68), WASI_ERRNO.FAULT);
+  host.dispose();
+});
+
 test("WASI file calls implement create, write, seek, read, and unlink-open semantics", () => {
   const { host, wasi, bytes, view, write, iovec } = fixture();
   const pathPointer = 128;

@@ -1,0 +1,68 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "pari-getfu-mixed-quartic",
+  "title": "Mixed quartic getfu reconstruction",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Freeze and implement the next source-faithful PARI 2.17.4 mixed-quartic getfu cut: 4x4 RgM_solve_realimag, integer reconstruction, and exact unit inverse/norm authentication for one frozen quartic, preserving PRECI/LARGE and factored-input semantics.",
+  "base_commit": "ff433f35fd07beb99565b6c464f4627340594467",
+  "claims": [
+    "bench/pari-class-group-port/getfu_mixed_quartic.py",
+    "bench/pari-class-group-port/check_getfu_mixed_quartic.cjs"
+  ],
+  "dependencies": [
+    "pari-getfu-mixed-complex"
+  ],
+  "references": [
+    "PARI 2.17.4 src/basemath/buch2.c:getfu",
+    "PARI 2.17.4 src/basemath/alglin1.c:RgM_solve_realimag"
+  ],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "gmp",
+      "tagged",
+      "Pinned pristine PARI 2.17.4 source wrapper"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "fallback",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "node bench/pari-class-group-port/check_getfu_mixed_quartic.cjs /home/user/upstream/pari-2.17.4 /home/user/upstream/pari-2.17.4.tar.gz",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 10.925,
+      "started_at": "2026-09-17T01:23:43.401Z",
+      "commit": "ff433f35fd07beb99565b6c464f4627340594467",
+      "workspace_fingerprint": "74a30bd9b1bbe5edaca53bfc71620e66e1a7291c5ebb868e7dd0a1299b8f6149",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Implemented the connected mixed-signature quartic getfu suffix in ordinary Python. For the frozen field x^4-20*x-20, authentic PARI 2.17.4 factored LLL output now passes through exact complex exponentiation, split 4x4 RgM_solve_realimag elimination, integer reconstruction, quartic multiplication-matrix unit/inverse authentication, T2 normalization, and atomic publication. CPython, JavaScript, GMP, and tagged paths return PARI's exact two units, logs, and normalized factor. All backends also exercise fupb_LARGE and fupb_PRECI without publishing partial outputs.",
+    "risks": [
+      "The cut begins at authentic fixarch/LLL outputs; relation-to-unit lattice construction remains an upstream stage.",
+      "The harder frozen x^4-20018*x-20034 field still returns fupb_PRECI through 384 bits. Its retry exceeds the current mixed transcendental and packed-real precision corridors.",
+      "The exact squared-coordinate T2 comparison matches the frozen integral basis and PARI result; broader rational/nonintegral reconstruction remains outside this cut."
+    ],
+    "next_steps": [
+      "Compose this suffix with the resident rank-two unit-lattice selection driver.",
+      "Extend mixed mpsincos and packed-real solve capacity before attempting the hard quartic precision retry."
+    ]
+  }
+}

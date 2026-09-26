@@ -1,0 +1,4446 @@
+{
+  "schema": "sagejs.rust-class-group/safety-provenance-audit-v1",
+  "auditPolicy": {
+    "sourceRoot": "bench/pari-class-group-rust",
+    "includedSuffixes": [
+      ".c",
+      ".cc",
+      ".cpp",
+      ".h",
+      ".hpp",
+      ".rs"
+    ],
+    "excludedDirectoryNames": [
+      ".git",
+      "node_modules",
+      "target"
+    ],
+    "safetyRationaleLabels": [
+      "SAFETY:",
+      "FFI-SAFETY:"
+    ],
+    "rationaleAssociation": "directly-attached-comment-contract-v1",
+    "generatedSourcePolicy": {
+      "excludedDirectoryNames": [
+        ".git",
+        "node_modules",
+        "target"
+      ],
+      "audited": false,
+      "reason": "ephemeral build outputs are excluded from the reproducible first-party source receipt"
+    },
+    "promotionRequiresNoGaps": true,
+    "limitations": [
+      "lexical inventory; not a Rust/C parser or a proof of soundness",
+      "does not establish sanitizer, Miri, fuzzing, or production qualification coverage",
+      "dependency source is represented by lockfiles elsewhere and is not vendored here",
+      "generated/proc-macro/build-output source is excluded and requires an artifact-specific audit",
+      "copyright/license headers and PARI keyword heuristics do not prove source lineage"
+    ]
+  },
+  "summary": {
+    "sourceFiles": 82,
+    "unsafeItems": 99,
+    "unsafeItemsMissingRationale": 83,
+    "ffiBoundaries": 112,
+    "ffiBoundariesMissingRationale": 108,
+    "unclassifiedSafetyTokens": 0,
+    "unclassifiedFfiTokens": 0,
+    "unclassifiedSourceScopes": 0,
+    "sourceFilesMissingProvenanceHeader": 23,
+    "byScope": {
+      "product-build-support": {
+        "sourceFiles": 1,
+        "unsafeItems": 0,
+        "unsafeItemsMissingRationale": 0,
+        "ffiBoundaries": 0,
+        "ffiBoundariesMissingRationale": 0,
+        "sourceFilesMissingProvenanceHeader": 1
+      },
+      "product-candidate": {
+        "sourceFiles": 31,
+        "unsafeItems": 17,
+        "unsafeItemsMissingRationale": 17,
+        "ffiBoundaries": 33,
+        "ffiBoundariesMissingRationale": 33,
+        "sourceFilesMissingProvenanceHeader": 0
+      },
+      "product-candidate-test": {
+        "sourceFiles": 15,
+        "unsafeItems": 0,
+        "unsafeItemsMissingRationale": 0,
+        "ffiBoundaries": 0,
+        "ffiBoundariesMissingRationale": 0,
+        "sourceFilesMissingProvenanceHeader": 4
+      },
+      "qualification-build-support": {
+        "sourceFiles": 4,
+        "unsafeItems": 0,
+        "unsafeItemsMissingRationale": 0,
+        "ffiBoundaries": 0,
+        "ffiBoundariesMissingRationale": 0,
+        "sourceFilesMissingProvenanceHeader": 4
+      },
+      "qualification-only": {
+        "sourceFiles": 31,
+        "unsafeItems": 82,
+        "unsafeItemsMissingRationale": 66,
+        "ffiBoundaries": 79,
+        "ffiBoundariesMissingRationale": 75,
+        "sourceFilesMissingProvenanceHeader": 14
+      }
+    },
+    "documentationGatePassed": false,
+    "promotionGatePassed": false
+  },
+  "unsafeItems": [
+    {
+      "kind": "unsafe_extern_block",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-arithmetic/src/lib.rs",
+      "line": 17,
+      "column": 1,
+      "snippet": "unsafe extern \"C\" {",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      }
+    },
+    {
+      "kind": "unsafe_block",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-arithmetic/src/lib.rs",
+      "line": 40,
+      "column": 9,
+      "snippet": "unsafe { __gmpz_init(value.as_mut_ptr()) };",
+      "safetyRationale": {
+        "present": true,
+        "classification": "explicit-safety-rationale",
+        "line": 39,
+        "text": "// SAFETY: GMP initializes the complete `Mpz` object before it is read."
+      }
+    },
+    {
+      "kind": "unsafe_block",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-arithmetic/src/lib.rs",
+      "line": 42,
+      "column": 14,
+      "snippet": "Self(unsafe { value.assume_init() })",
+      "safetyRationale": {
+        "present": true,
+        "classification": "explicit-safety-rationale",
+        "line": 41,
+        "text": "// SAFETY: `__gmpz_init` initialized `value` above."
+      }
+    },
+    {
+      "kind": "unsafe_block",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-arithmetic/src/lib.rs",
+      "line": 47,
+      "column": 24,
+      "snippet": "let capacity = unsafe { __gmpz_sizeinbase(&self.0, 10) } + 3;",
+      "safetyRationale": {
+        "present": false,
+        "classification": "adjacent-comment-without-explicit-rationale",
+        "line": 46,
+        "text": "// One byte for the sign and one for NUL is sufficient beyond this bound."
+      }
+    },
+    {
+      "kind": "unsafe_block",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-arithmetic/src/lib.rs",
+      "line": 50,
+      "column": 9,
+      "snippet": "unsafe { __gmpz_get_str(bytes.as_mut_ptr().cast(), 10, &self.0) };",
+      "safetyRationale": {
+        "present": true,
+        "classification": "explicit-safety-rationale",
+        "line": 49,
+        "text": "// SAFETY: the destination is writable and large enough by GMP's API contract."
+      }
+    },
+    {
+      "kind": "unsafe_block",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-arithmetic/src/lib.rs",
+      "line": 59,
+      "column": 9,
+      "snippet": "unsafe { __gmpz_clear(&mut self.0) };",
+      "safetyRationale": {
+        "present": true,
+        "classification": "explicit-safety-rationale",
+        "line": 58,
+        "text": "// SAFETY: `self.0` was initialized once and is cleared exactly once here."
+      }
+    },
+    {
+      "kind": "unsafe_block",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-arithmetic/src/lib.rs",
+      "line": 78,
+      "column": 5,
+      "snippet": "unsafe {",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      }
+    },
+    {
+      "kind": "unsafe_attribute",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-arithmetic/src/lib.rs",
+      "line": 129,
+      "column": 3,
+      "snippet": "#[unsafe(no_mangle)]",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      }
+    },
+    {
+      "kind": "unsafe_attribute",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-arithmetic/src/lib.rs",
+      "line": 134,
+      "column": 3,
+      "snippet": "#[unsafe(no_mangle)]",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      }
+    },
+    {
+      "kind": "unsafe_attribute",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-arithmetic/src/lib.rs",
+      "line": 142,
+      "column": 3,
+      "snippet": "#[unsafe(no_mangle)]",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      }
+    },
+    {
+      "kind": "unsafe_extern_block",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-arithmetic/src/no_std_import_probe.rs",
+      "line": 13,
+      "column": 1,
+      "snippet": "unsafe extern \"C\" {",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      }
+    },
+    {
+      "kind": "unsafe_attribute",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-arithmetic/src/no_std_import_probe.rs",
+      "line": 28,
+      "column": 3,
+      "snippet": "#[unsafe(no_mangle)]",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      }
+    },
+    {
+      "kind": "unsafe_block",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-arithmetic/src/no_std_import_probe.rs",
+      "line": 31,
+      "column": 5,
+      "snippet": "unsafe {",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      }
+    },
+    {
+      "kind": "unsafe_block",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-class-group-candidate/src/lib.rs",
+      "line": 577,
+      "column": 17,
+      "snippet": "let bytes = unsafe { std::slice::from_raw_parts(pointer, length) };",
+      "safetyRationale": {
+        "present": true,
+        "classification": "explicit-safety-rationale",
+        "line": 576,
+        "text": "// SAFETY: the host must validate and initialize this guest-memory range."
+      }
+    },
+    {
+      "kind": "unsafe_attribute",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-class-group-candidate/src/lib.rs",
+      "line": 591,
+      "column": 3,
+      "snippet": "#[unsafe(no_mangle)]",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      }
+    },
+    {
+      "kind": "unsafe_attribute",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-class-group-candidate/src/lib.rs",
+      "line": 596,
+      "column": 3,
+      "snippet": "#[unsafe(no_mangle)]",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      }
+    },
+    {
+      "kind": "unsafe_attribute",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-class-group-candidate/src/lib.rs",
+      "line": 601,
+      "column": 3,
+      "snippet": "#[unsafe(no_mangle)]",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      }
+    },
+    {
+      "kind": "unsafe_block",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-class-group-candidate/src/lib.rs",
+      "line": 610,
+      "column": 5,
+      "snippet": "unsafe { alloc(layout) }",
+      "safetyRationale": {
+        "present": true,
+        "classification": "explicit-safety-rationale",
+        "line": 609,
+        "text": "// SAFETY: the matching ABI deallocator receives the same byte length."
+      }
+    },
+    {
+      "kind": "unsafe_attribute",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-class-group-candidate/src/lib.rs",
+      "line": 613,
+      "column": 3,
+      "snippet": "#[unsafe(no_mangle)]",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      }
+    },
+    {
+      "kind": "unsafe_block",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-class-group-candidate/src/lib.rs",
+      "line": 620,
+      "column": 9,
+      "snippet": "unsafe { dealloc(pointer, layout) };",
+      "safetyRationale": {
+        "present": true,
+        "classification": "explicit-safety-rationale",
+        "line": 619,
+        "text": "// SAFETY: pointers returned by alloc/output use this exact layout."
+      }
+    },
+    {
+      "kind": "unsafe_attribute",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-class-group-candidate/src/lib.rs",
+      "line": 624,
+      "column": 3,
+      "snippet": "#[unsafe(no_mangle)]",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      }
+    },
+    {
+      "kind": "unsafe_block",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-class-group-candidate/src/lib.rs",
+      "line": 630,
+      "column": 17,
+      "snippet": "let bytes = unsafe { std::slice::from_raw_parts(pointer, length) };",
+      "safetyRationale": {
+        "present": true,
+        "classification": "explicit-safety-rationale",
+        "line": 629,
+        "text": "// SAFETY: the browser ABI validates and initializes this guest-memory range."
+      }
+    },
+    {
+      "kind": "unsafe_attribute",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-class-group-candidate/src/lib.rs",
+      "line": 638,
+      "column": 3,
+      "snippet": "#[unsafe(no_mangle)]",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      }
+    },
+    {
+      "kind": "unsafe_attribute",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-class-group-candidate/src/lib.rs",
+      "line": 646,
+      "column": 3,
+      "snippet": "#[unsafe(no_mangle)]",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      }
+    },
+    {
+      "kind": "unsafe_attribute",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-class-group-candidate/src/lib.rs",
+      "line": 659,
+      "column": 3,
+      "snippet": "#[unsafe(no_mangle)]",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      }
+    },
+    {
+      "kind": "unsafe_attribute",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-class-group-candidate/src/lib.rs",
+      "line": 677,
+      "column": 3,
+      "snippet": "#[unsafe(no_mangle)]",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      }
+    },
+    {
+      "kind": "unsafe_attribute",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-class-group-candidate/src/lib.rs",
+      "line": 695,
+      "column": 3,
+      "snippet": "#[unsafe(no_mangle)]",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      }
+    },
+    {
+      "kind": "unsafe_attribute",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-class-group-candidate/src/lib.rs",
+      "line": 707,
+      "column": 3,
+      "snippet": "#[unsafe(no_mangle)]",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      }
+    },
+    {
+      "kind": "unsafe_extern_block",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-enclosure/src/lib.rs",
+      "line": 29,
+      "column": 1,
+      "snippet": "unsafe extern \"C\" {",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      }
+    },
+    {
+      "kind": "unsafe_block",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-enclosure/src/lib.rs",
+      "line": 96,
+      "column": 9,
+      "snippet": "unsafe { mpfr_init2(value.as_mut_ptr(), precision) };",
+      "safetyRationale": {
+        "present": true,
+        "classification": "explicit-safety-rationale",
+        "line": 95,
+        "text": "// SAFETY: MPFR initializes the complete object before it is read."
+      }
+    },
+    {
+      "kind": "unsafe_block",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-enclosure/src/lib.rs",
+      "line": 97,
+      "column": 14,
+      "snippet": "Self(unsafe { value.assume_init() })",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      }
+    },
+    {
+      "kind": "unsafe_block",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-enclosure/src/lib.rs",
+      "line": 103,
+      "column": 9,
+      "snippet": "unsafe {",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      }
+    },
+    {
+      "kind": "unsafe_block",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-enclosure/src/lib.rs",
+      "line": 124,
+      "column": 9,
+      "snippet": "unsafe { mpfr_clear(&mut self.0) };",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      }
+    },
+    {
+      "kind": "unsafe_block",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-enclosure/src/lib.rs",
+      "line": 133,
+      "column": 9,
+      "snippet": "unsafe { mpc_init2(value.as_mut_ptr(), precision) };",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      }
+    },
+    {
+      "kind": "unsafe_block",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-enclosure/src/lib.rs",
+      "line": 134,
+      "column": 14,
+      "snippet": "Self(unsafe { value.assume_init() })",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      }
+    },
+    {
+      "kind": "unsafe_block",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-enclosure/src/lib.rs",
+      "line": 140,
+      "column": 9,
+      "snippet": "unsafe { mpc_clear(&mut self.0) };",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      }
+    },
+    {
+      "kind": "unsafe_block",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-enclosure/src/lib.rs",
+      "line": 147,
+      "column": 5,
+      "snippet": "unsafe {",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      }
+    },
+    {
+      "kind": "unsafe_block",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-enclosure/src/lib.rs",
+      "line": 164,
+      "column": 5,
+      "snippet": "unsafe {",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      }
+    },
+    {
+      "kind": "unsafe_block",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-enclosure/src/lib.rs",
+      "line": 172,
+      "column": 9,
+      "snippet": "unsafe {",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      }
+    },
+    {
+      "kind": "unsafe_block",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-enclosure/src/lib.rs",
+      "line": 178,
+      "column": 12,
+      "snippet": "if unsafe { mpfr_cmp_ui(&upper_value.0, 0) } < 0 {",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      }
+    },
+    {
+      "kind": "unsafe_block",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-enclosure/src/lib.rs",
+      "line": 179,
+      "column": 13,
+      "snippet": "unsafe { mpfr_set(&mut lower.0, &midpoint.0, RNDN) };",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      }
+    },
+    {
+      "kind": "unsafe_block",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-enclosure/src/lib.rs",
+      "line": 180,
+      "column": 19,
+      "snippet": "} else if unsafe { mpfr_cmp_ui(&lower_value.0, 0) } > 0 {",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      }
+    },
+    {
+      "kind": "unsafe_block",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-enclosure/src/lib.rs",
+      "line": 181,
+      "column": 13,
+      "snippet": "unsafe { mpfr_set(&mut upper.0, &midpoint.0, RNDN) };",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      }
+    },
+    {
+      "kind": "unsafe_block",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-enclosure/src/lib.rs",
+      "line": 189,
+      "column": 8,
+      "snippet": "if unsafe { mpfr_cmp_ui(&upper_value.0, 0) } > 0 {",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      }
+    },
+    {
+      "kind": "unsafe_block",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-enclosure/src/lib.rs",
+      "line": 193,
+      "column": 8,
+      "snippet": "if unsafe { mpfr_cmp_ui(&lower_value.0, 0) } < 0 {",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      }
+    },
+    {
+      "kind": "unsafe_block",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-enclosure/src/lib.rs",
+      "line": 203,
+      "column": 5,
+      "snippet": "unsafe {",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      }
+    },
+    {
+      "kind": "unsafe_block",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-enclosure/src/lib.rs",
+      "line": 207,
+      "column": 22,
+      "snippet": "let target_met = unsafe { mpfr_cmp(&width.0, &threshold.0) } < 0;",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      }
+    },
+    {
+      "kind": "unsafe_block",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-enclosure/src/lib.rs",
+      "line": 216,
+      "column": 5,
+      "snippet": "unsafe {",
+      "safetyRationale": {
+        "present": false,
+        "classification": "adjacent-comment-without-explicit-rationale",
+        "line": 215,
+        "text": "// log(alpha + i) = log(alpha^2 + 1)/2 + i atan(1/alpha)."
+      }
+    },
+    {
+      "kind": "unsafe_block",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-enclosure/src/lib.rs",
+      "line": 237,
+      "column": 5,
+      "snippet": "unsafe {",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      }
+    },
+    {
+      "kind": "unsafe_block",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-enclosure/src/lib.rs",
+      "line": 246,
+      "column": 5,
+      "snippet": "unsafe {",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      }
+    },
+    {
+      "kind": "unsafe_block",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-enclosure/src/lib.rs",
+      "line": 252,
+      "column": 8,
+      "snippet": "if unsafe {",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      }
+    },
+    {
+      "kind": "unsafe_attribute",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-enclosure/src/lib.rs",
+      "line": 305,
+      "column": 3,
+      "snippet": "#[unsafe(no_mangle)]",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      }
+    },
+    {
+      "kind": "unsafe_attribute",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-enclosure/src/lib.rs",
+      "line": 310,
+      "column": 3,
+      "snippet": "#[unsafe(no_mangle)]",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      }
+    },
+    {
+      "kind": "unsafe_attribute",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-enclosure/src/lib.rs",
+      "line": 318,
+      "column": 3,
+      "snippet": "#[unsafe(no_mangle)]",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      }
+    },
+    {
+      "kind": "unsafe_attribute",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-factor-pattern-ab/src/lib.rs",
+      "line": 257,
+      "column": 3,
+      "snippet": "#[unsafe(no_mangle)]",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      }
+    },
+    {
+      "kind": "unsafe_attribute",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-factor-pattern-ab/src/lib.rs",
+      "line": 262,
+      "column": 3,
+      "snippet": "#[unsafe(no_mangle)]",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      }
+    },
+    {
+      "kind": "unsafe_block",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-factor-pattern-ab/src/lib.rs",
+      "line": 269,
+      "column": 5,
+      "snippet": "unsafe { alloc(layout) as u32 }",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      }
+    },
+    {
+      "kind": "unsafe_attribute",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-factor-pattern-ab/src/lib.rs",
+      "line": 272,
+      "column": 3,
+      "snippet": "#[unsafe(no_mangle)]",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      }
+    },
+    {
+      "kind": "unsafe_block",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-factor-pattern-ab/src/lib.rs",
+      "line": 278,
+      "column": 9,
+      "snippet": "unsafe { dealloc(pointer as *mut u8, layout) }",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      }
+    },
+    {
+      "kind": "unsafe_attribute",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-factor-pattern-ab/src/lib.rs",
+      "line": 282,
+      "column": 3,
+      "snippet": "#[unsafe(no_mangle)]",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      }
+    },
+    {
+      "kind": "unsafe_block",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-factor-pattern-ab/src/lib.rs",
+      "line": 287,
+      "column": 17,
+      "snippet": "let input = unsafe { std::slice::from_raw_parts(pointer as *const u8, length as usize) };",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      }
+    },
+    {
+      "kind": "unsafe_attribute",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-prepared-factor-base/src/lib.rs",
+      "line": 143,
+      "column": 3,
+      "snippet": "#[unsafe(no_mangle)]",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      }
+    },
+    {
+      "kind": "unsafe_attribute",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-prepared-factor-base/src/lib.rs",
+      "line": 148,
+      "column": 3,
+      "snippet": "#[unsafe(no_mangle)]",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      }
+    },
+    {
+      "kind": "unsafe_block",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-prepared-factor-base/src/lib.rs",
+      "line": 155,
+      "column": 5,
+      "snippet": "unsafe { alloc(layout) as u32 }",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      }
+    },
+    {
+      "kind": "unsafe_attribute",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-prepared-factor-base/src/lib.rs",
+      "line": 158,
+      "column": 3,
+      "snippet": "#[unsafe(no_mangle)]",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      }
+    },
+    {
+      "kind": "unsafe_block",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-prepared-factor-base/src/lib.rs",
+      "line": 164,
+      "column": 9,
+      "snippet": "unsafe {",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      }
+    },
+    {
+      "kind": "unsafe_attribute",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-prepared-factor-base/src/lib.rs",
+      "line": 170,
+      "column": 3,
+      "snippet": "#[unsafe(no_mangle)]",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      }
+    },
+    {
+      "kind": "unsafe_block",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-prepared-factor-base/src/lib.rs",
+      "line": 175,
+      "column": 17,
+      "snippet": "let input = unsafe { std::slice::from_raw_parts(pointer as *const u8, length as usize) };",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      }
+    },
+    {
+      "kind": "unsafe_attribute",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-prepared-relation-prefix/src/lib.rs",
+      "line": 227,
+      "column": 3,
+      "snippet": "#[unsafe(no_mangle)]",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      }
+    },
+    {
+      "kind": "unsafe_attribute",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-prepared-relation-prefix/src/lib.rs",
+      "line": 232,
+      "column": 3,
+      "snippet": "#[unsafe(no_mangle)]",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      }
+    },
+    {
+      "kind": "unsafe_block",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-prepared-relation-prefix/src/lib.rs",
+      "line": 239,
+      "column": 5,
+      "snippet": "unsafe { alloc(layout) as u32 }",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      }
+    },
+    {
+      "kind": "unsafe_attribute",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-prepared-relation-prefix/src/lib.rs",
+      "line": 242,
+      "column": 3,
+      "snippet": "#[unsafe(no_mangle)]",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      }
+    },
+    {
+      "kind": "unsafe_block",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-prepared-relation-prefix/src/lib.rs",
+      "line": 248,
+      "column": 9,
+      "snippet": "unsafe { dealloc(pointer as *mut u8, layout) }",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      }
+    },
+    {
+      "kind": "unsafe_attribute",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-prepared-relation-prefix/src/lib.rs",
+      "line": 252,
+      "column": 3,
+      "snippet": "#[unsafe(no_mangle)]",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      }
+    },
+    {
+      "kind": "unsafe_block",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-prepared-relation-prefix/src/lib.rs",
+      "line": 257,
+      "column": 17,
+      "snippet": "let input = unsafe { std::slice::from_raw_parts(pointer as *const u8, length as usize) };",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      }
+    },
+    {
+      "kind": "unsafe_attribute",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-public-cubic-e2e/src/lib.rs",
+      "line": 296,
+      "column": 3,
+      "snippet": "#[unsafe(no_mangle)]",
+      "safetyRationale": {
+        "present": true,
+        "classification": "explicit-safety-rationale",
+        "line": 294,
+        "text": "// FFI-SAFETY: this version query uses the C ABI and exchanges only an `i32`;"
+      }
+    },
+    {
+      "kind": "unsafe_attribute",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-public-cubic-e2e/src/lib.rs",
+      "line": 304,
+      "column": 3,
+      "snippet": "#[unsafe(no_mangle)]",
+      "safetyRationale": {
+        "present": true,
+        "classification": "explicit-safety-rationale",
+        "line": 301,
+        "text": "// FFI-SAFETY: the exported allocator accepts a Wasm `usize`, rejects zero and"
+      }
+    },
+    {
+      "kind": "unsafe_block",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-public-cubic-e2e/src/lib.rs",
+      "line": 313,
+      "column": 5,
+      "snippet": "unsafe { alloc(layout) }",
+      "safetyRationale": {
+        "present": true,
+        "classification": "explicit-safety-rationale",
+        "line": 312,
+        "text": "// SAFETY: the matching ABI deallocator receives the same byte length."
+      }
+    },
+    {
+      "kind": "unsafe_attribute",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-public-cubic-e2e/src/lib.rs",
+      "line": 319,
+      "column": 3,
+      "snippet": "#[unsafe(no_mangle)]",
+      "safetyRationale": {
+        "present": true,
+        "classification": "explicit-safety-rationale",
+        "line": 316,
+        "text": "// FFI-SAFETY: callers may pass only a non-null pointer returned by this ABI"
+      }
+    },
+    {
+      "kind": "unsafe_block",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-public-cubic-e2e/src/lib.rs",
+      "line": 327,
+      "column": 9,
+      "snippet": "unsafe { dealloc(pointer, layout) };",
+      "safetyRationale": {
+        "present": true,
+        "classification": "explicit-safety-rationale",
+        "line": 325,
+        "text": "// SAFETY: the host returns only pointers allocated by this ABI with the"
+      }
+    },
+    {
+      "kind": "unsafe_attribute",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-public-cubic-e2e/src/lib.rs",
+      "line": 334,
+      "column": 3,
+      "snippet": "#[unsafe(no_mangle)]",
+      "safetyRationale": {
+        "present": true,
+        "classification": "explicit-safety-rationale",
+        "line": 331,
+        "text": "// FFI-SAFETY: callers must pass a readable, initialized guest allocation from"
+      }
+    },
+    {
+      "kind": "unsafe_block",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-public-cubic-e2e/src/lib.rs",
+      "line": 340,
+      "column": 17,
+      "snippet": "let bytes = unsafe { std::slice::from_raw_parts(pointer, length) };",
+      "safetyRationale": {
+        "present": true,
+        "classification": "explicit-safety-rationale",
+        "line": 339,
+        "text": "// SAFETY: the checked host ABI allocates and initializes this guest range."
+      }
+    },
+    {
+      "kind": "unsafe_block",
+      "scope": "product-candidate",
+      "file": "src/flint_normal_form.rs",
+      "line": 103,
+      "column": 13,
+      "snippet": "unsafe { sagejs_rust_flint_small_surplus_workspace_free(self.pointer) };",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      }
+    },
+    {
+      "kind": "unsafe_extern_block",
+      "scope": "product-candidate",
+      "file": "src/flint_normal_form.rs",
+      "line": 307,
+      "column": 1,
+      "snippet": "unsafe extern \"C\" {",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      }
+    },
+    {
+      "kind": "unsafe_block",
+      "scope": "product-candidate",
+      "file": "src/flint_normal_form.rs",
+      "line": 619,
+      "column": 18,
+      "snippet": "let status = unsafe {",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      }
+    },
+    {
+      "kind": "unsafe_block",
+      "scope": "product-candidate",
+      "file": "src/flint_normal_form.rs",
+      "line": 750,
+      "column": 18,
+      "snippet": "let status = unsafe {",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      }
+    },
+    {
+      "kind": "unsafe_block",
+      "scope": "product-candidate",
+      "file": "src/flint_normal_form.rs",
+      "line": 799,
+      "column": 18,
+      "snippet": "let status = unsafe {",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      }
+    },
+    {
+      "kind": "unsafe_block",
+      "scope": "product-candidate",
+      "file": "src/flint_normal_form.rs",
+      "line": 859,
+      "column": 18,
+      "snippet": "let status = unsafe {",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      }
+    },
+    {
+      "kind": "unsafe_block",
+      "scope": "product-candidate",
+      "file": "src/flint_normal_form.rs",
+      "line": 946,
+      "column": 18,
+      "snippet": "let status = unsafe {",
+      "safetyRationale": {
+        "present": false,
+        "classification": "adjacent-comment-without-explicit-rationale",
+        "line": 945,
+        "text": "// integers without retaining any Rust allocation."
+      }
+    },
+    {
+      "kind": "unsafe_block",
+      "scope": "product-candidate",
+      "file": "src/flint_normal_form.rs",
+      "line": 994,
+      "column": 18,
+      "snippet": "let status = unsafe {",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      }
+    },
+    {
+      "kind": "unsafe_block",
+      "scope": "product-candidate",
+      "file": "src/flint_normal_form.rs",
+      "line": 1055,
+      "column": 18,
+      "snippet": "let status = unsafe {",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      }
+    },
+    {
+      "kind": "unsafe_block",
+      "scope": "product-candidate",
+      "file": "src/flint_normal_form.rs",
+      "line": 1120,
+      "column": 18,
+      "snippet": "let status = unsafe {",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      }
+    },
+    {
+      "kind": "unsafe_block",
+      "scope": "product-candidate",
+      "file": "src/flint_normal_form.rs",
+      "line": 1175,
+      "column": 18,
+      "snippet": "let status = unsafe {",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      }
+    },
+    {
+      "kind": "unsafe_block",
+      "scope": "product-candidate",
+      "file": "src/flint_normal_form.rs",
+      "line": 1225,
+      "column": 18,
+      "snippet": "let status = unsafe {",
+      "safetyRationale": {
+        "present": false,
+        "classification": "adjacent-comment-without-explicit-rationale",
+        "line": 1224,
+        "text": "// HNF, avoiding a lossy conversion of the intermediate basis."
+      }
+    },
+    {
+      "kind": "unsafe_block",
+      "scope": "product-candidate",
+      "file": "src/flint_normal_form.rs",
+      "line": 1257,
+      "column": 18,
+      "snippet": "let status = unsafe {",
+      "safetyRationale": {
+        "present": false,
+        "classification": "adjacent-comment-without-explicit-rationale",
+        "line": 1256,
+        "text": "// invariant factors. The bridge writes the actual count before returning."
+      }
+    },
+    {
+      "kind": "unsafe_block",
+      "scope": "product-candidate",
+      "file": "src/flint_normal_form.rs",
+      "line": 1414,
+      "column": 18,
+      "snippet": "let status = unsafe {",
+      "safetyRationale": {
+        "present": false,
+        "classification": "adjacent-comment-without-explicit-rationale",
+        "line": 1413,
+        "text": "// and retains no Rust-owned pointer."
+      }
+    },
+    {
+      "kind": "unsafe_block",
+      "scope": "product-candidate",
+      "file": "src/flint_normal_form.rs",
+      "line": 1444,
+      "column": 18,
+      "snippet": "let status = unsafe {",
+      "safetyRationale": {
+        "present": false,
+        "classification": "adjacent-comment-without-explicit-rationale",
+        "line": 1443,
+        "text": "// pointer. FLINT owns and clears all arbitrary-precision temporaries."
+      }
+    },
+    {
+      "kind": "unsafe_block",
+      "scope": "product-candidate",
+      "file": "src/flint_normal_form.rs",
+      "line": 1481,
+      "column": 18,
+      "snippet": "let status = unsafe {",
+      "safetyRationale": {
+        "present": false,
+        "classification": "adjacent-comment-without-explicit-rationale",
+        "line": 1480,
+        "text": "// computing. All inputs outlive the call and no Rust pointer is retained."
+      }
+    },
+    {
+      "kind": "unsafe_block",
+      "scope": "product-candidate",
+      "file": "src/flint_normal_form.rs",
+      "line": 1513,
+      "column": 18,
+      "snippet": "let status = unsafe {",
+      "safetyRationale": {
+        "present": false,
+        "classification": "adjacent-comment-without-explicit-rationale",
+        "line": 1512,
+        "text": "// buffers, and does not retain either pointer."
+      }
+    }
+  ],
+  "ffiBoundaries": [
+    {
+      "kind": "c_program_entry",
+      "scope": "qualification-only",
+      "file": "qualification/pari-control/pari_control.c",
+      "line": 90,
+      "column": 1,
+      "snippet": "main(int argc, char **argv)",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      },
+      "name": "main"
+    },
+    {
+      "kind": "rust_ffi_import_block",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-arithmetic/src/lib.rs",
+      "line": 17,
+      "column": 1,
+      "snippet": "unsafe extern \"C\" {",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      }
+    },
+    {
+      "kind": "rust_ffi_import",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-arithmetic/src/lib.rs",
+      "line": 18,
+      "column": 5,
+      "snippet": "fn __gmpz_init(value: *mut Mpz);",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      },
+      "name": "__gmpz_init"
+    },
+    {
+      "kind": "rust_ffi_import",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-arithmetic/src/lib.rs",
+      "line": 19,
+      "column": 5,
+      "snippet": "fn __gmpz_clear(value: *mut Mpz);",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      },
+      "name": "__gmpz_clear"
+    },
+    {
+      "kind": "rust_ffi_import",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-arithmetic/src/lib.rs",
+      "line": 20,
+      "column": 5,
+      "snippet": "fn __gmpz_ui_pow_ui(result: *mut Mpz, base: c_ulong, exponent: c_ulong);",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      },
+      "name": "__gmpz_ui_pow_ui"
+    },
+    {
+      "kind": "rust_ffi_import",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-arithmetic/src/lib.rs",
+      "line": 21,
+      "column": 5,
+      "snippet": "fn __gmpz_sub_ui(result: *mut Mpz, value: *const Mpz, amount: c_ulong);",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      },
+      "name": "__gmpz_sub_ui"
+    },
+    {
+      "kind": "rust_ffi_import",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-arithmetic/src/lib.rs",
+      "line": 22,
+      "column": 5,
+      "snippet": "fn __gmpz_add_ui(result: *mut Mpz, value: *const Mpz, amount: c_ulong);",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      },
+      "name": "__gmpz_add_ui"
+    },
+    {
+      "kind": "rust_ffi_import",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-arithmetic/src/lib.rs",
+      "line": 23,
+      "column": 5,
+      "snippet": "fn __gmpz_mul(result: *mut Mpz, left: *const Mpz, right: *const Mpz);",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      },
+      "name": "__gmpz_mul"
+    },
+    {
+      "kind": "rust_ffi_import",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-arithmetic/src/lib.rs",
+      "line": 24,
+      "column": 5,
+      "snippet": "fn __gmpz_add(result: *mut Mpz, left: *const Mpz, right: *const Mpz);",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      },
+      "name": "__gmpz_add"
+    },
+    {
+      "kind": "rust_ffi_import",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-arithmetic/src/lib.rs",
+      "line": 25,
+      "column": 5,
+      "snippet": "fn __gmpz_gcd(result: *mut Mpz, left: *const Mpz, right: *const Mpz);",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      },
+      "name": "__gmpz_gcd"
+    },
+    {
+      "kind": "rust_ffi_import",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-arithmetic/src/lib.rs",
+      "line": 26,
+      "column": 5,
+      "snippet": "fn __gmpz_divexact(result: *mut Mpz, numerator: *const Mpz, denominator: *const Mpz);",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      },
+      "name": "__gmpz_divexact"
+    },
+    {
+      "kind": "rust_ffi_import",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-arithmetic/src/lib.rs",
+      "line": 27,
+      "column": 5,
+      "snippet": "fn __gmpz_powm(result: *mut Mpz, base: *const Mpz, exponent: *const Mpz, modulus: *const Mpz);",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      },
+      "name": "__gmpz_powm"
+    },
+    {
+      "kind": "rust_ffi_import",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-arithmetic/src/lib.rs",
+      "line": 28,
+      "column": 5,
+      "snippet": "fn __gmpz_fac_ui(result: *mut Mpz, value: c_ulong);",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      },
+      "name": "__gmpz_fac_ui"
+    },
+    {
+      "kind": "rust_ffi_import",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-arithmetic/src/lib.rs",
+      "line": 29,
+      "column": 5,
+      "snippet": "fn __gmpz_cmp(left: *const Mpz, right: *const Mpz) -> c_int;",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      },
+      "name": "__gmpz_cmp"
+    },
+    {
+      "kind": "rust_ffi_import",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-arithmetic/src/lib.rs",
+      "line": 30,
+      "column": 5,
+      "snippet": "fn __gmpz_sizeinbase(value: *const Mpz, base: c_int) -> usize;",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      },
+      "name": "__gmpz_sizeinbase"
+    },
+    {
+      "kind": "rust_ffi_import",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-arithmetic/src/lib.rs",
+      "line": 31,
+      "column": 5,
+      "snippet": "fn __gmpz_get_str(output: *mut c_char, base: c_int, value: *const Mpz) -> *mut c_char;",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      },
+      "name": "__gmpz_get_str"
+    },
+    {
+      "kind": "rust_ffi_export",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-arithmetic/src/lib.rs",
+      "line": 130,
+      "column": 1,
+      "snippet": "pub extern \"C\" fn sagejs_probe_status() -> u32 {",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      },
+      "name": "sagejs_probe_status"
+    },
+    {
+      "kind": "rust_ffi_export",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-arithmetic/src/lib.rs",
+      "line": 135,
+      "column": 1,
+      "snippet": "pub extern \"C\" fn sagejs_probe_result_ptr() -> *const u8 {",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      },
+      "name": "sagejs_probe_result_ptr"
+    },
+    {
+      "kind": "rust_ffi_export",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-arithmetic/src/lib.rs",
+      "line": 143,
+      "column": 1,
+      "snippet": "pub extern \"C\" fn sagejs_probe_result_len() -> usize {",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      },
+      "name": "sagejs_probe_result_len"
+    },
+    {
+      "kind": "rust_ffi_import_block",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-arithmetic/src/no_std_import_probe.rs",
+      "line": 13,
+      "column": 1,
+      "snippet": "unsafe extern \"C\" {",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      }
+    },
+    {
+      "kind": "rust_ffi_import",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-arithmetic/src/no_std_import_probe.rs",
+      "line": 14,
+      "column": 5,
+      "snippet": "fn __gmpz_init(value: *mut Mpz);",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      },
+      "name": "__gmpz_init"
+    },
+    {
+      "kind": "rust_ffi_import",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-arithmetic/src/no_std_import_probe.rs",
+      "line": 15,
+      "column": 5,
+      "snippet": "fn __gmpz_clear(value: *mut Mpz);",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      },
+      "name": "__gmpz_clear"
+    },
+    {
+      "kind": "rust_ffi_import",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-arithmetic/src/no_std_import_probe.rs",
+      "line": 16,
+      "column": 5,
+      "snippet": "fn __gmpz_ui_pow_ui(result: *mut Mpz, base: c_ulong, exponent: c_ulong);",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      },
+      "name": "__gmpz_ui_pow_ui"
+    },
+    {
+      "kind": "rust_ffi_import",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-arithmetic/src/no_std_import_probe.rs",
+      "line": 17,
+      "column": 5,
+      "snippet": "fn __gmpz_sub_ui(result: *mut Mpz, value: *const Mpz, amount: c_ulong);",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      },
+      "name": "__gmpz_sub_ui"
+    },
+    {
+      "kind": "rust_ffi_import",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-arithmetic/src/no_std_import_probe.rs",
+      "line": 18,
+      "column": 5,
+      "snippet": "fn __gmpz_fdiv_ui(value: *const Mpz, divisor: c_ulong) -> c_ulong;",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      },
+      "name": "__gmpz_fdiv_ui"
+    },
+    {
+      "kind": "rust_ffi_export",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-arithmetic/src/no_std_import_probe.rs",
+      "line": 29,
+      "column": 1,
+      "snippet": "pub extern \"C\" fn sagejs_no_std_gmp_probe() -> u32 {",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      },
+      "name": "sagejs_no_std_gmp_probe"
+    },
+    {
+      "kind": "rust_ffi_export",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-class-group-candidate/src/lib.rs",
+      "line": 592,
+      "column": 1,
+      "snippet": "pub extern \"C\" fn sagejs_class_group_abi_version() -> i32 {",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      },
+      "name": "sagejs_class_group_abi_version"
+    },
+    {
+      "kind": "rust_ffi_export",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-class-group-candidate/src/lib.rs",
+      "line": 597,
+      "column": 1,
+      "snippet": "pub extern \"C\" fn sagejs_class_group_context_abi_version() -> i32 {",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      },
+      "name": "sagejs_class_group_context_abi_version"
+    },
+    {
+      "kind": "rust_ffi_export",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-class-group-candidate/src/lib.rs",
+      "line": 602,
+      "column": 1,
+      "snippet": "pub extern \"C\" fn sagejs_class_group_alloc(length: usize) -> *mut u8 {",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      },
+      "name": "sagejs_class_group_alloc"
+    },
+    {
+      "kind": "rust_ffi_export",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-class-group-candidate/src/lib.rs",
+      "line": 614,
+      "column": 1,
+      "snippet": "pub extern \"C\" fn sagejs_class_group_dealloc(pointer: *mut u8, length: usize) {",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      },
+      "name": "sagejs_class_group_dealloc"
+    },
+    {
+      "kind": "rust_ffi_export",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-class-group-candidate/src/lib.rs",
+      "line": 625,
+      "column": 1,
+      "snippet": "pub extern \"C\" fn sagejs_class_group_run_json(pointer: *const u8, length: usize) -> u64 {",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      },
+      "name": "sagejs_class_group_run_json"
+    },
+    {
+      "kind": "rust_ffi_export",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-class-group-candidate/src/lib.rs",
+      "line": 639,
+      "column": 1,
+      "snippet": "pub extern \"C\" fn sagejs_class_group_context_create_json(pointer: *const u8, length: usize) -> u64 {",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      },
+      "name": "sagejs_class_group_context_create_json"
+    },
+    {
+      "kind": "rust_ffi_export",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-class-group-candidate/src/lib.rs",
+      "line": 647,
+      "column": 1,
+      "snippet": "pub extern \"C\" fn sagejs_class_group_context_step(handle: u64, point_budget: u32) -> i32 {",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      },
+      "name": "sagejs_class_group_context_step"
+    },
+    {
+      "kind": "rust_ffi_export",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-class-group-candidate/src/lib.rs",
+      "line": 660,
+      "column": 1,
+      "snippet": "pub extern \"C\" fn sagejs_class_group_context_cancel(handle: u64) -> i32 {",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      },
+      "name": "sagejs_class_group_context_cancel"
+    },
+    {
+      "kind": "rust_ffi_export",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-class-group-candidate/src/lib.rs",
+      "line": 678,
+      "column": 1,
+      "snippet": "pub extern \"C\" fn sagejs_class_group_context_result_json(handle: u64) -> u64 {",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      },
+      "name": "sagejs_class_group_context_result_json"
+    },
+    {
+      "kind": "rust_ffi_export",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-class-group-candidate/src/lib.rs",
+      "line": 696,
+      "column": 1,
+      "snippet": "pub extern \"C\" fn sagejs_class_group_context_reset_json(",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      },
+      "name": "sagejs_class_group_context_reset_json"
+    },
+    {
+      "kind": "rust_ffi_export",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-class-group-candidate/src/lib.rs",
+      "line": 708,
+      "column": 1,
+      "snippet": "pub extern \"C\" fn sagejs_class_group_context_close(handle: u64) -> i32 {",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      },
+      "name": "sagejs_class_group_context_close"
+    },
+    {
+      "kind": "rust_ffi_import_block",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-enclosure/src/lib.rs",
+      "line": 29,
+      "column": 1,
+      "snippet": "unsafe extern \"C\" {",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      }
+    },
+    {
+      "kind": "rust_ffi_import",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-enclosure/src/lib.rs",
+      "line": 30,
+      "column": 5,
+      "snippet": "fn mpfr_init2(value: *mut Mpfr, precision: c_long);",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      },
+      "name": "mpfr_init2"
+    },
+    {
+      "kind": "rust_ffi_import",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-enclosure/src/lib.rs",
+      "line": 31,
+      "column": 5,
+      "snippet": "fn mpfr_clear(value: *mut Mpfr);",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      },
+      "name": "mpfr_clear"
+    },
+    {
+      "kind": "rust_ffi_import",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-enclosure/src/lib.rs",
+      "line": 32,
+      "column": 5,
+      "snippet": "fn mpfr_set(result: *mut Mpfr, value: *const Mpfr, rounding: c_int) -> c_int;",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      },
+      "name": "mpfr_set"
+    },
+    {
+      "kind": "rust_ffi_import",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-enclosure/src/lib.rs",
+      "line": 33,
+      "column": 5,
+      "snippet": "fn mpfr_set_ui(result: *mut Mpfr, value: c_ulong, rounding: c_int) -> c_int;",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      },
+      "name": "mpfr_set_ui"
+    },
+    {
+      "kind": "rust_ffi_import",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-enclosure/src/lib.rs",
+      "line": 34,
+      "column": 5,
+      "snippet": "fn mpfr_set_ui_2exp(",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      },
+      "name": "mpfr_set_ui_2exp"
+    },
+    {
+      "kind": "rust_ffi_import",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-enclosure/src/lib.rs",
+      "line": 40,
+      "column": 5,
+      "snippet": "fn mpfr_add(result: *mut Mpfr, left: *const Mpfr, right: *const Mpfr, rounding: c_int)",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      },
+      "name": "mpfr_add"
+    },
+    {
+      "kind": "rust_ffi_import",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-enclosure/src/lib.rs",
+      "line": 42,
+      "column": 5,
+      "snippet": "fn mpfr_sub(result: *mut Mpfr, left: *const Mpfr, right: *const Mpfr, rounding: c_int)",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      },
+      "name": "mpfr_sub"
+    },
+    {
+      "kind": "rust_ffi_import",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-enclosure/src/lib.rs",
+      "line": 44,
+      "column": 5,
+      "snippet": "fn mpfr_mul(result: *mut Mpfr, left: *const Mpfr, right: *const Mpfr, rounding: c_int)",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      },
+      "name": "mpfr_mul"
+    },
+    {
+      "kind": "rust_ffi_import",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-enclosure/src/lib.rs",
+      "line": 46,
+      "column": 5,
+      "snippet": "fn mpfr_mul_ui(",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      },
+      "name": "mpfr_mul_ui"
+    },
+    {
+      "kind": "rust_ffi_import",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-enclosure/src/lib.rs",
+      "line": 52,
+      "column": 5,
+      "snippet": "fn mpfr_div_2ui(",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      },
+      "name": "mpfr_div_2ui"
+    },
+    {
+      "kind": "rust_ffi_import",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-enclosure/src/lib.rs",
+      "line": 58,
+      "column": 5,
+      "snippet": "fn mpfr_ui_div(",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      },
+      "name": "mpfr_ui_div"
+    },
+    {
+      "kind": "rust_ffi_import",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-enclosure/src/lib.rs",
+      "line": 64,
+      "column": 5,
+      "snippet": "fn mpfr_log(result: *mut Mpfr, value: *const Mpfr, rounding: c_int) -> c_int;",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      },
+      "name": "mpfr_log"
+    },
+    {
+      "kind": "rust_ffi_import",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-enclosure/src/lib.rs",
+      "line": 65,
+      "column": 5,
+      "snippet": "fn mpfr_atan(result: *mut Mpfr, value: *const Mpfr, rounding: c_int) -> c_int;",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      },
+      "name": "mpfr_atan"
+    },
+    {
+      "kind": "rust_ffi_import",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-enclosure/src/lib.rs",
+      "line": 66,
+      "column": 5,
+      "snippet": "fn mpfr_cmp(left: *const Mpfr, right: *const Mpfr) -> c_int;",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      },
+      "name": "mpfr_cmp"
+    },
+    {
+      "kind": "rust_ffi_import",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-enclosure/src/lib.rs",
+      "line": 67,
+      "column": 5,
+      "snippet": "fn mpfr_cmp_ui(value: *const Mpfr, integer: c_ulong) -> c_int;",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      },
+      "name": "mpfr_cmp_ui"
+    },
+    {
+      "kind": "rust_ffi_import",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-enclosure/src/lib.rs",
+      "line": 68,
+      "column": 5,
+      "snippet": "fn mpfr_get_str(",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      },
+      "name": "mpfr_get_str"
+    },
+    {
+      "kind": "rust_ffi_import",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-enclosure/src/lib.rs",
+      "line": 77,
+      "column": 5,
+      "snippet": "fn mpc_init2(value: *mut Mpc, precision: c_long);",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      },
+      "name": "mpc_init2"
+    },
+    {
+      "kind": "rust_ffi_import",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-enclosure/src/lib.rs",
+      "line": 78,
+      "column": 5,
+      "snippet": "fn mpc_clear(value: *mut Mpc);",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      },
+      "name": "mpc_clear"
+    },
+    {
+      "kind": "rust_ffi_import",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-enclosure/src/lib.rs",
+      "line": 79,
+      "column": 5,
+      "snippet": "fn mpc_set_fr_fr(",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      },
+      "name": "mpc_set_fr_fr"
+    },
+    {
+      "kind": "rust_ffi_import",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-enclosure/src/lib.rs",
+      "line": 85,
+      "column": 5,
+      "snippet": "fn mpc_log(result: *mut Mpc, value: *const Mpc, rounding: c_int) -> c_int;",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      },
+      "name": "mpc_log"
+    },
+    {
+      "kind": "rust_ffi_import",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-enclosure/src/lib.rs",
+      "line": 86,
+      "column": 5,
+      "snippet": "fn mpc_real(result: *mut Mpfr, value: *const Mpc, rounding: c_int) -> c_int;",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      },
+      "name": "mpc_real"
+    },
+    {
+      "kind": "rust_ffi_import",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-enclosure/src/lib.rs",
+      "line": 87,
+      "column": 5,
+      "snippet": "fn mpc_imag(result: *mut Mpfr, value: *const Mpc, rounding: c_int) -> c_int;",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      },
+      "name": "mpc_imag"
+    },
+    {
+      "kind": "rust_ffi_export",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-enclosure/src/lib.rs",
+      "line": 306,
+      "column": 1,
+      "snippet": "pub extern \"C\" fn sagejs_probe_status() -> u32 {",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      },
+      "name": "sagejs_probe_status"
+    },
+    {
+      "kind": "rust_ffi_export",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-enclosure/src/lib.rs",
+      "line": 311,
+      "column": 1,
+      "snippet": "pub extern \"C\" fn sagejs_probe_result_ptr() -> *const u8 {",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      },
+      "name": "sagejs_probe_result_ptr"
+    },
+    {
+      "kind": "rust_ffi_export",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-enclosure/src/lib.rs",
+      "line": 319,
+      "column": 1,
+      "snippet": "pub extern \"C\" fn sagejs_probe_result_len() -> usize {",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      },
+      "name": "sagejs_probe_result_len"
+    },
+    {
+      "kind": "rust_ffi_export",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-factor-pattern-ab/src/lib.rs",
+      "line": 258,
+      "column": 1,
+      "snippet": "pub extern \"C\" fn sagejs_class_group_abi_version() -> i32 {",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      },
+      "name": "sagejs_class_group_abi_version"
+    },
+    {
+      "kind": "rust_ffi_export",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-factor-pattern-ab/src/lib.rs",
+      "line": 263,
+      "column": 1,
+      "snippet": "pub extern \"C\" fn sagejs_class_group_alloc(length: u32) -> u32 {",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      },
+      "name": "sagejs_class_group_alloc"
+    },
+    {
+      "kind": "rust_ffi_export",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-factor-pattern-ab/src/lib.rs",
+      "line": 273,
+      "column": 1,
+      "snippet": "pub extern \"C\" fn sagejs_class_group_dealloc(pointer: u32, length: u32) {",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      },
+      "name": "sagejs_class_group_dealloc"
+    },
+    {
+      "kind": "rust_ffi_export",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-factor-pattern-ab/src/lib.rs",
+      "line": 283,
+      "column": 1,
+      "snippet": "pub extern \"C\" fn sagejs_class_group_run_json(pointer: u32, length: u32) -> u64 {",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      },
+      "name": "sagejs_class_group_run_json"
+    },
+    {
+      "kind": "rust_ffi_export",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-prepared-factor-base/src/lib.rs",
+      "line": 144,
+      "column": 1,
+      "snippet": "pub extern \"C\" fn sagejs_class_group_abi_version() -> i32 {",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      },
+      "name": "sagejs_class_group_abi_version"
+    },
+    {
+      "kind": "rust_ffi_export",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-prepared-factor-base/src/lib.rs",
+      "line": 149,
+      "column": 1,
+      "snippet": "pub extern \"C\" fn sagejs_class_group_alloc(length: u32) -> u32 {",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      },
+      "name": "sagejs_class_group_alloc"
+    },
+    {
+      "kind": "rust_ffi_export",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-prepared-factor-base/src/lib.rs",
+      "line": 159,
+      "column": 1,
+      "snippet": "pub extern \"C\" fn sagejs_class_group_dealloc(pointer: u32, length: u32) {",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      },
+      "name": "sagejs_class_group_dealloc"
+    },
+    {
+      "kind": "rust_ffi_export",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-prepared-factor-base/src/lib.rs",
+      "line": 171,
+      "column": 1,
+      "snippet": "pub extern \"C\" fn sagejs_class_group_run_json(pointer: u32, length: u32) -> u64 {",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      },
+      "name": "sagejs_class_group_run_json"
+    },
+    {
+      "kind": "rust_ffi_export",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-prepared-relation-prefix/src/lib.rs",
+      "line": 228,
+      "column": 1,
+      "snippet": "pub extern \"C\" fn sagejs_class_group_abi_version() -> i32 {",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      },
+      "name": "sagejs_class_group_abi_version"
+    },
+    {
+      "kind": "rust_ffi_export",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-prepared-relation-prefix/src/lib.rs",
+      "line": 233,
+      "column": 1,
+      "snippet": "pub extern \"C\" fn sagejs_class_group_alloc(length: u32) -> u32 {",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      },
+      "name": "sagejs_class_group_alloc"
+    },
+    {
+      "kind": "rust_ffi_export",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-prepared-relation-prefix/src/lib.rs",
+      "line": 243,
+      "column": 1,
+      "snippet": "pub extern \"C\" fn sagejs_class_group_dealloc(pointer: u32, length: u32) {",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      },
+      "name": "sagejs_class_group_dealloc"
+    },
+    {
+      "kind": "rust_ffi_export",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-prepared-relation-prefix/src/lib.rs",
+      "line": 253,
+      "column": 1,
+      "snippet": "pub extern \"C\" fn sagejs_class_group_run_json(pointer: u32, length: u32) -> u64 {",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      },
+      "name": "sagejs_class_group_run_json"
+    },
+    {
+      "kind": "rust_ffi_export",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-public-cubic-e2e/src/lib.rs",
+      "line": 297,
+      "column": 1,
+      "snippet": "pub extern \"C\" fn sagejs_class_group_abi_version() -> i32 {",
+      "safetyRationale": {
+        "present": true,
+        "classification": "explicit-safety-rationale",
+        "line": 294,
+        "text": "// FFI-SAFETY: this version query uses the C ABI and exchanges only an `i32`;"
+      },
+      "name": "sagejs_class_group_abi_version"
+    },
+    {
+      "kind": "rust_ffi_export",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-public-cubic-e2e/src/lib.rs",
+      "line": 305,
+      "column": 1,
+      "snippet": "pub extern \"C\" fn sagejs_class_group_alloc(length: usize) -> *mut u8 {",
+      "safetyRationale": {
+        "present": true,
+        "classification": "explicit-safety-rationale",
+        "line": 301,
+        "text": "// FFI-SAFETY: the exported allocator accepts a Wasm `usize`, rejects zero and"
+      },
+      "name": "sagejs_class_group_alloc"
+    },
+    {
+      "kind": "rust_ffi_export",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-public-cubic-e2e/src/lib.rs",
+      "line": 320,
+      "column": 1,
+      "snippet": "pub extern \"C\" fn sagejs_class_group_dealloc(pointer: *mut u8, length: usize) {",
+      "safetyRationale": {
+        "present": true,
+        "classification": "explicit-safety-rationale",
+        "line": 316,
+        "text": "// FFI-SAFETY: callers may pass only a non-null pointer returned by this ABI"
+      },
+      "name": "sagejs_class_group_dealloc"
+    },
+    {
+      "kind": "rust_ffi_export",
+      "scope": "qualification-only",
+      "file": "qualification/wasm-public-cubic-e2e/src/lib.rs",
+      "line": 335,
+      "column": 1,
+      "snippet": "pub extern \"C\" fn sagejs_class_group_run_json(pointer: *const u8, length: usize) -> u64 {",
+      "safetyRationale": {
+        "present": true,
+        "classification": "explicit-safety-rationale",
+        "line": 331,
+        "text": "// FFI-SAFETY: callers must pass a readable, initialized guest allocation from"
+      },
+      "name": "sagejs_class_group_run_json"
+    },
+    {
+      "kind": "c_ffi_export",
+      "scope": "product-candidate",
+      "file": "src/flint_normal_form.c",
+      "line": 154,
+      "column": 5,
+      "snippet": "int sagejs_rust_flint_snf_i64(",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      },
+      "name": "sagejs_rust_flint_snf_i64"
+    },
+    {
+      "kind": "c_ffi_export",
+      "scope": "product-candidate",
+      "file": "src/flint_normal_form.c",
+      "line": 185,
+      "column": 5,
+      "snippet": "int sagejs_rust_flint_hnf_basis_i64(",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      },
+      "name": "sagejs_rust_flint_hnf_basis_i64"
+    },
+    {
+      "kind": "c_ffi_export",
+      "scope": "product-candidate",
+      "file": "src/flint_normal_form.c",
+      "line": 239,
+      "column": 5,
+      "snippet": "int sagejs_rust_flint_hnf_basis_modular_i64(",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      },
+      "name": "sagejs_rust_flint_hnf_basis_modular_i64"
+    },
+    {
+      "kind": "c_ffi_export",
+      "scope": "product-candidate",
+      "file": "src/flint_normal_form.c",
+      "line": 302,
+      "column": 5,
+      "snippet": "int sagejs_rust_flint_hnf_profile_i64(",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      },
+      "name": "sagejs_rust_flint_hnf_profile_i64"
+    },
+    {
+      "kind": "c_ffi_export",
+      "scope": "product-candidate",
+      "file": "src/flint_normal_form.c",
+      "line": 339,
+      "column": 5,
+      "snippet": "int sagejs_rust_flint_incremental_hnf_i64(",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      },
+      "name": "sagejs_rust_flint_incremental_hnf_i64"
+    },
+    {
+      "kind": "c_ffi_export",
+      "scope": "product-candidate",
+      "file": "src/flint_normal_form.c",
+      "line": 678,
+      "column": 6,
+      "snippet": "void sagejs_rust_flint_small_surplus_workspace_free(void *opaque)",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      },
+      "name": "sagejs_rust_flint_small_surplus_workspace_free"
+    },
+    {
+      "kind": "c_ffi_export",
+      "scope": "product-candidate",
+      "file": "src/flint_normal_form.c",
+      "line": 692,
+      "column": 5,
+      "snippet": "int sagejs_rust_flint_small_surplus_class_order_i64(",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      },
+      "name": "sagejs_rust_flint_small_surplus_class_order_i64"
+    },
+    {
+      "kind": "c_ffi_export",
+      "scope": "product-candidate",
+      "file": "src/flint_normal_form.c",
+      "line": 1087,
+      "column": 5,
+      "snippet": "int sagejs_rust_flint_small_surplus_relation_witnesses_mpz(",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      },
+      "name": "sagejs_rust_flint_small_surplus_relation_witnesses_mpz"
+    },
+    {
+      "kind": "c_ffi_export",
+      "scope": "product-candidate",
+      "file": "src/flint_normal_form.c",
+      "line": 1445,
+      "column": 5,
+      "snippet": "int sagejs_rust_flint_lll_columns_mpz(",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      },
+      "name": "sagejs_rust_flint_lll_columns_mpz"
+    },
+    {
+      "kind": "c_ffi_export",
+      "scope": "product-candidate",
+      "file": "src/flint_normal_form.c",
+      "line": 1494,
+      "column": 5,
+      "snippet": "int sagejs_rust_flint_snf_class_map_i64(",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      },
+      "name": "sagejs_rust_flint_snf_class_map_i64"
+    },
+    {
+      "kind": "c_ffi_export",
+      "scope": "product-candidate",
+      "file": "src/flint_normal_form.c",
+      "line": 1589,
+      "column": 5,
+      "snippet": "int sagejs_rust_flint_relation_witnesses_i64(",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      },
+      "name": "sagejs_rust_flint_relation_witnesses_i64"
+    },
+    {
+      "kind": "c_ffi_export",
+      "scope": "product-candidate",
+      "file": "src/flint_normal_form.c",
+      "line": 1763,
+      "column": 5,
+      "snippet": "int sagejs_rust_flint_staged_relation_witnesses_i64(",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      },
+      "name": "sagejs_rust_flint_staged_relation_witnesses_i64"
+    },
+    {
+      "kind": "c_ffi_export",
+      "scope": "product-candidate",
+      "file": "src/flint_normal_form.c",
+      "line": 2029,
+      "column": 5,
+      "snippet": "int sagejs_rust_flint_left_kernel_i64(",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      },
+      "name": "sagejs_rust_flint_left_kernel_i64"
+    },
+    {
+      "kind": "c_ffi_export",
+      "scope": "product-candidate",
+      "file": "src/flint_normal_form.c",
+      "line": 2338,
+      "column": 5,
+      "snippet": "int sagejs_rust_flint_compact_cubic_regulator(",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      },
+      "name": "sagejs_rust_flint_compact_cubic_regulator"
+    },
+    {
+      "kind": "c_ffi_export",
+      "scope": "product-candidate",
+      "file": "src/flint_normal_form.c",
+      "line": 2580,
+      "column": 5,
+      "snippet": "int sagejs_rust_flint_bdf_factor_base_margin(",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      },
+      "name": "sagejs_rust_flint_bdf_factor_base_margin"
+    },
+    {
+      "kind": "c_ffi_export",
+      "scope": "product-candidate",
+      "file": "src/flint_normal_form.c",
+      "line": 2713,
+      "column": 5,
+      "snippet": "int sagejs_rust_flint_bf_index_enclosure(",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      },
+      "name": "sagejs_rust_flint_bf_index_enclosure"
+    },
+    {
+      "kind": "rust_ffi_import_block",
+      "scope": "product-candidate",
+      "file": "src/flint_normal_form.rs",
+      "line": 307,
+      "column": 1,
+      "snippet": "unsafe extern \"C\" {",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      }
+    },
+    {
+      "kind": "rust_ffi_import",
+      "scope": "product-candidate",
+      "file": "src/flint_normal_form.rs",
+      "line": 308,
+      "column": 5,
+      "snippet": "fn sagejs_rust_flint_snf_i64(",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      },
+      "name": "sagejs_rust_flint_snf_i64"
+    },
+    {
+      "kind": "rust_ffi_import",
+      "scope": "product-candidate",
+      "file": "src/flint_normal_form.rs",
+      "line": 314,
+      "column": 5,
+      "snippet": "fn sagejs_rust_flint_hnf_basis_i64(",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      },
+      "name": "sagejs_rust_flint_hnf_basis_i64"
+    },
+    {
+      "kind": "rust_ffi_import",
+      "scope": "product-candidate",
+      "file": "src/flint_normal_form.rs",
+      "line": 320,
+      "column": 5,
+      "snippet": "fn sagejs_rust_flint_hnf_basis_modular_i64(",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      },
+      "name": "sagejs_rust_flint_hnf_basis_modular_i64"
+    },
+    {
+      "kind": "rust_ffi_import",
+      "scope": "product-candidate",
+      "file": "src/flint_normal_form.rs",
+      "line": 327,
+      "column": 5,
+      "snippet": "fn sagejs_rust_flint_hnf_profile_i64(",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      },
+      "name": "sagejs_rust_flint_hnf_profile_i64"
+    },
+    {
+      "kind": "rust_ffi_import",
+      "scope": "product-candidate",
+      "file": "src/flint_normal_form.rs",
+      "line": 333,
+      "column": 5,
+      "snippet": "fn sagejs_rust_flint_incremental_hnf_i64(",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      },
+      "name": "sagejs_rust_flint_incremental_hnf_i64"
+    },
+    {
+      "kind": "rust_ffi_import",
+      "scope": "product-candidate",
+      "file": "src/flint_normal_form.rs",
+      "line": 347,
+      "column": 5,
+      "snippet": "fn sagejs_rust_flint_small_surplus_class_order_i64(",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      },
+      "name": "sagejs_rust_flint_small_surplus_class_order_i64"
+    },
+    {
+      "kind": "rust_ffi_import",
+      "scope": "product-candidate",
+      "file": "src/flint_normal_form.rs",
+      "line": 370,
+      "column": 5,
+      "snippet": "fn sagejs_rust_flint_small_surplus_workspace_free(workspace: *mut c_void);",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      },
+      "name": "sagejs_rust_flint_small_surplus_workspace_free"
+    },
+    {
+      "kind": "rust_ffi_import",
+      "scope": "product-candidate",
+      "file": "src/flint_normal_form.rs",
+      "line": 371,
+      "column": 5,
+      "snippet": "fn sagejs_rust_flint_small_surplus_relation_witnesses_mpz(",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      },
+      "name": "sagejs_rust_flint_small_surplus_relation_witnesses_mpz"
+    },
+    {
+      "kind": "rust_ffi_import",
+      "scope": "product-candidate",
+      "file": "src/flint_normal_form.rs",
+      "line": 385,
+      "column": 5,
+      "snippet": "fn sagejs_rust_flint_lll_columns_mpz(",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      },
+      "name": "sagejs_rust_flint_lll_columns_mpz"
+    },
+    {
+      "kind": "rust_ffi_import",
+      "scope": "product-candidate",
+      "file": "src/flint_normal_form.rs",
+      "line": 389,
+      "column": 5,
+      "snippet": "fn sagejs_rust_flint_snf_class_map_i64(",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      },
+      "name": "sagejs_rust_flint_snf_class_map_i64"
+    },
+    {
+      "kind": "rust_ffi_import",
+      "scope": "product-candidate",
+      "file": "src/flint_normal_form.rs",
+      "line": 397,
+      "column": 5,
+      "snippet": "fn sagejs_rust_flint_relation_witnesses_i64(",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      },
+      "name": "sagejs_rust_flint_relation_witnesses_i64"
+    },
+    {
+      "kind": "rust_ffi_import",
+      "scope": "product-candidate",
+      "file": "src/flint_normal_form.rs",
+      "line": 409,
+      "column": 5,
+      "snippet": "fn sagejs_rust_flint_staged_relation_witnesses_i64(",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      },
+      "name": "sagejs_rust_flint_staged_relation_witnesses_i64"
+    },
+    {
+      "kind": "rust_ffi_import",
+      "scope": "product-candidate",
+      "file": "src/flint_normal_form.rs",
+      "line": 424,
+      "column": 5,
+      "snippet": "fn sagejs_rust_flint_left_kernel_i64(",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      },
+      "name": "sagejs_rust_flint_left_kernel_i64"
+    },
+    {
+      "kind": "rust_ffi_import",
+      "scope": "product-candidate",
+      "file": "src/flint_normal_form.rs",
+      "line": 435,
+      "column": 5,
+      "snippet": "fn sagejs_rust_flint_compact_cubic_regulator(",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      },
+      "name": "sagejs_rust_flint_compact_cubic_regulator"
+    },
+    {
+      "kind": "rust_ffi_import",
+      "scope": "product-candidate",
+      "file": "src/flint_normal_form.rs",
+      "line": 449,
+      "column": 5,
+      "snippet": "fn sagejs_rust_flint_bf_index_enclosure(",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      },
+      "name": "sagejs_rust_flint_bf_index_enclosure"
+    },
+    {
+      "kind": "rust_ffi_import",
+      "scope": "product-candidate",
+      "file": "src/flint_normal_form.rs",
+      "line": 472,
+      "column": 5,
+      "snippet": "fn sagejs_rust_flint_bdf_factor_base_margin(",
+      "safetyRationale": {
+        "present": false,
+        "classification": "missing",
+        "line": null,
+        "text": null
+      },
+      "name": "sagejs_rust_flint_bdf_factor_base_margin"
+    }
+  ],
+  "unclassifiedSafetyTokens": [],
+  "unclassifiedFfiTokens": [],
+  "sourceProvenance": [
+    {
+      "file": "build.rs",
+      "scope": "product-build-support",
+      "sha256": "667190bd26654dcb8f4684b6c8f7e24f5f4c458d4565ff1945ea711f9f373327",
+      "bytes": 4900,
+      "copyrightNotices": [],
+      "licenseExpression": null,
+      "originClassification": "sagejs-original-or-unspecified",
+      "headerComplete": false
+    },
+    {
+      "file": "qualification/arbitrary-ideal-reduction/src/main.rs",
+      "scope": "qualification-only",
+      "sha256": "dfd0cb946d5f6f6319a18b383e9dd124459e951930b0654273fea262b7619dbe",
+      "bytes": 5574,
+      "copyrightNotices": [],
+      "licenseExpression": null,
+      "originClassification": "sagejs-original-or-unspecified",
+      "headerComplete": false
+    },
+    {
+      "file": "qualification/candidate/src/lib.rs",
+      "scope": "qualification-only",
+      "sha256": "816fea7b60b54e4f04cb60e70c3c1975e09c75c6af760881f3ce042c4f18d003",
+      "bytes": 30940,
+      "copyrightNotices": [
+        "Copyright (C) The PARI group and Sage.js contributors."
+      ],
+      "licenseExpression": "GPL-2.0-or-later",
+      "originClassification": "pari-derived-attributed",
+      "headerComplete": true
+    },
+    {
+      "file": "qualification/candidate/src/main.rs",
+      "scope": "qualification-only",
+      "sha256": "6c5985b4da1da7b46df841c6458abaa037e6ab9bcda7b310b2a540a970b2e917",
+      "bytes": 1296,
+      "copyrightNotices": [
+        "Copyright (C) The PARI group and Sage.js contributors."
+      ],
+      "licenseExpression": "GPL-2.0-or-later",
+      "originClassification": "pari-derived-attributed",
+      "headerComplete": true
+    },
+    {
+      "file": "qualification/pari-control/pari_control.c",
+      "scope": "qualification-only",
+      "sha256": "a7a205bb0d0d53a18cf18db3c1d5d369f2ce564cf5cf4a8be766fc544993c91e",
+      "bytes": 5920,
+      "copyrightNotices": [],
+      "licenseExpression": null,
+      "originClassification": "qualification-control-adapter",
+      "headerComplete": false
+    },
+    {
+      "file": "qualification/principal-relation-lift/src/lib.rs",
+      "scope": "qualification-only",
+      "sha256": "8f1affcadb3677cf409f8d886a30e02945a8d0284403c1ab772043c2e8cbe440",
+      "bytes": 27818,
+      "copyrightNotices": [
+        "Copyright (C) The PARI group and Sage.js contributors."
+      ],
+      "licenseExpression": "GPL-2.0-or-later",
+      "originClassification": "pari-derived-attributed",
+      "headerComplete": true
+    },
+    {
+      "file": "qualification/principal-relation-lift/src/main.rs",
+      "scope": "qualification-only",
+      "sha256": "4f6f233f4595da5d314ca4018e6bbfcf917daea725f88a6fac2473f3a63d5a91",
+      "bytes": 2275,
+      "copyrightNotices": [
+        "Copyright (C) The PARI group and Sage.js contributors."
+      ],
+      "licenseExpression": "GPL-2.0-or-later",
+      "originClassification": "pari-derived-attributed",
+      "headerComplete": true
+    },
+    {
+      "file": "qualification/principal-relation-lift/tests/row6_evidence.rs",
+      "scope": "qualification-only",
+      "sha256": "ffe83a2aa5a8333b3adf84244536234575a7f7504984b170b7d47c0f135990ad",
+      "bytes": 1791,
+      "copyrightNotices": [
+        "Copyright (C) Sage.js contributors."
+      ],
+      "licenseExpression": "GPL-2.0-or-later",
+      "originClassification": "sagejs-original-or-unspecified",
+      "headerComplete": true
+    },
+    {
+      "file": "qualification/public-cubic-e2e/src/lib.rs",
+      "scope": "qualification-only",
+      "sha256": "59b728c218ec1836a961138183787a66b2c0993a224a419d769f5e6b8e2c2915",
+      "bytes": 69059,
+      "copyrightNotices": [
+        "Copyright (C) Sage.js contributors."
+      ],
+      "licenseExpression": "GPL-2.0-or-later",
+      "originClassification": "sagejs-original-or-unspecified",
+      "headerComplete": true
+    },
+    {
+      "file": "qualification/public-cubic-e2e/src/main.rs",
+      "scope": "qualification-only",
+      "sha256": "5d2713f15438a35c2b97736baf1c51440174fc174e2cb6e719d240099c6d8e84",
+      "bytes": 2549,
+      "copyrightNotices": [
+        "Copyright (C) Sage.js contributors."
+      ],
+      "licenseExpression": "GPL-2.0-or-later",
+      "originClassification": "sagejs-original-or-unspecified",
+      "headerComplete": true
+    },
+    {
+      "file": "qualification/public-cubic-e2e/tests/cli.rs",
+      "scope": "qualification-only",
+      "sha256": "8f8fc7376285945ae08803689d32f3bd20206f259219440b9b01e8163ccbbc45",
+      "bytes": 4532,
+      "copyrightNotices": [
+        "Copyright (C) Sage.js contributors."
+      ],
+      "licenseExpression": "GPL-2.0-or-later",
+      "originClassification": "sagejs-original-or-unspecified",
+      "headerComplete": true
+    },
+    {
+      "file": "qualification/public-quadratic-boundary/src/bin/benchmark_public.rs",
+      "scope": "qualification-only",
+      "sha256": "c475ef4bfe220135954c848e693e620c02d328429ae8e69c62ca63dfda0cba6d",
+      "bytes": 2922,
+      "copyrightNotices": [
+        "Copyright (C) Sage.js contributors."
+      ],
+      "licenseExpression": "GPL-2.0-or-later",
+      "originClassification": "sagejs-original-or-unspecified",
+      "headerComplete": true
+    },
+    {
+      "file": "qualification/public-quadratic-boundary/src/imaginary.rs",
+      "scope": "qualification-only",
+      "sha256": "b751d3134cf2bb3d3f7e6e5868f2fc0afbaed7523b5efdc93d13c937842eb87e",
+      "bytes": 57981,
+      "copyrightNotices": [
+        "Copyright (C) Sage.js contributors."
+      ],
+      "licenseExpression": "GPL-2.0-or-later",
+      "originClassification": "sagejs-original-or-unspecified",
+      "headerComplete": true
+    },
+    {
+      "file": "qualification/public-quadratic-boundary/src/lib.rs",
+      "scope": "qualification-only",
+      "sha256": "76a6af27784aeae7667cee67685333531dc152cd45252288e50d19aa71f31b93",
+      "bytes": 11116,
+      "copyrightNotices": [
+        "Copyright (C) Sage.js contributors."
+      ],
+      "licenseExpression": "GPL-2.0-or-later",
+      "originClassification": "sagejs-original-or-unspecified",
+      "headerComplete": true
+    },
+    {
+      "file": "qualification/public-quadratic-boundary/src/main.rs",
+      "scope": "qualification-only",
+      "sha256": "ded7662c343d49249f6dc893889183f4797498457c504c2138cc096220ec1492",
+      "bytes": 1905,
+      "copyrightNotices": [
+        "Copyright (C) Sage.js contributors."
+      ],
+      "licenseExpression": "GPL-2.0-or-later",
+      "originClassification": "sagejs-original-or-unspecified",
+      "headerComplete": true
+    },
+    {
+      "file": "qualification/public-quadratic-boundary/tests/pari_broad_differential.rs",
+      "scope": "qualification-only",
+      "sha256": "1077ecc272e77b1451f617024948932718fb28e1666978f5943e06fec01592df",
+      "bytes": 3722,
+      "copyrightNotices": [
+        "Copyright (C) Sage.js contributors."
+      ],
+      "licenseExpression": "GPL-2.0-or-later",
+      "originClassification": "sagejs-original-or-unspecified",
+      "headerComplete": true
+    },
+    {
+      "file": "qualification/public-quadratic-boundary/tests/pari_differential.rs",
+      "scope": "qualification-only",
+      "sha256": "1474cf67f212475ab6029c450f3f8eedfc90f5803b23310b0fe4d2118f8f3eab",
+      "bytes": 7303,
+      "copyrightNotices": [
+        "Copyright (C) Sage.js contributors."
+      ],
+      "licenseExpression": "GPL-2.0-or-later",
+      "originClassification": "sagejs-original-or-unspecified",
+      "headerComplete": true
+    },
+    {
+      "file": "qualification/row6-candidate/src/main.rs",
+      "scope": "qualification-only",
+      "sha256": "11d2916df077b0cdc16722088a9375736cf9fba56a1dd43b03ac84b98917e64d",
+      "bytes": 91158,
+      "copyrightNotices": [
+        "Copyright (C) Sage.js contributors."
+      ],
+      "licenseExpression": "GPL-2.0-or-later",
+      "originClassification": "sagejs-original-or-unspecified",
+      "headerComplete": true
+    },
+    {
+      "file": "qualification/unit-completeness-replay/src/main.rs",
+      "scope": "qualification-only",
+      "sha256": "2db71ee7edeb6bcf9c80e1e0aa94ca6ac75abbc8faabdefe783544677f657247",
+      "bytes": 49812,
+      "copyrightNotices": [
+        "Copyright (C) Sage.js contributors."
+      ],
+      "licenseExpression": "GPL-2.0-or-later",
+      "originClassification": "sagejs-original-or-unspecified",
+      "headerComplete": true
+    },
+    {
+      "file": "qualification/wasm-arithmetic/build.rs",
+      "scope": "qualification-build-support",
+      "sha256": "2ae0f7784fc892e6431427e603e4be0316f17fcb8fe0f44a1eb63b0c0d569319",
+      "bytes": 814,
+      "copyrightNotices": [],
+      "licenseExpression": null,
+      "originClassification": "sagejs-original-or-unspecified",
+      "headerComplete": false
+    },
+    {
+      "file": "qualification/wasm-arithmetic/src/lib.rs",
+      "scope": "qualification-only",
+      "sha256": "309e1781c7192cf7f612739dc2cca1d171856ca740b04d063a5b3df0ddb5d460",
+      "bytes": 5492,
+      "copyrightNotices": [],
+      "licenseExpression": null,
+      "originClassification": "sagejs-original-or-unspecified",
+      "headerComplete": false
+    },
+    {
+      "file": "qualification/wasm-arithmetic/src/main.rs",
+      "scope": "qualification-only",
+      "sha256": "e2b0029f742c35a7a9480e7e8c08236a06b801e498daa3b7001be52c2a195015",
+      "bytes": 246,
+      "copyrightNotices": [],
+      "licenseExpression": null,
+      "originClassification": "sagejs-original-or-unspecified",
+      "headerComplete": false
+    },
+    {
+      "file": "qualification/wasm-arithmetic/src/no_std_import_probe.rs",
+      "scope": "qualification-only",
+      "sha256": "d96ef44e8cb31ac944bf2a60924b549f3f7f5c3e9218b8d0ba63518f3c0e9f18",
+      "bytes": 1125,
+      "copyrightNotices": [],
+      "licenseExpression": null,
+      "originClassification": "sagejs-original-or-unspecified",
+      "headerComplete": false
+    },
+    {
+      "file": "qualification/wasm-class-group-candidate/src/lib.rs",
+      "scope": "qualification-only",
+      "sha256": "b58a29f11e14ec43446f3e0e2731c30d3801752d5be8dec86886fe4b185c45e4",
+      "bytes": 27804,
+      "copyrightNotices": [],
+      "licenseExpression": null,
+      "originClassification": "sagejs-original-or-unspecified",
+      "headerComplete": false
+    },
+    {
+      "file": "qualification/wasm-enclosure/build.rs",
+      "scope": "qualification-build-support",
+      "sha256": "9d3f24de6b2cc11f648c1ce59053c6e1af1262439f0609f2eee02e254e6d211b",
+      "bytes": 1292,
+      "copyrightNotices": [],
+      "licenseExpression": null,
+      "originClassification": "sagejs-original-or-unspecified",
+      "headerComplete": false
+    },
+    {
+      "file": "qualification/wasm-enclosure/src/lib.rs",
+      "scope": "qualification-only",
+      "sha256": "fe5cd3bbaaea68c1452713c7cc5a37a8e219f3720da535ca40b9bfba08dacd22",
+      "bytes": 11940,
+      "copyrightNotices": [],
+      "licenseExpression": null,
+      "originClassification": "sagejs-original-or-unspecified",
+      "headerComplete": false
+    },
+    {
+      "file": "qualification/wasm-enclosure/src/main.rs",
+      "scope": "qualification-only",
+      "sha256": "eb577cf7ea4ec2efe155a03013490f1da977dda8bc8802b67f017d6417c7c1de",
+      "bytes": 255,
+      "copyrightNotices": [],
+      "licenseExpression": null,
+      "originClassification": "sagejs-original-or-unspecified",
+      "headerComplete": false
+    },
+    {
+      "file": "qualification/wasm-factor-pattern-ab/src/lib.rs",
+      "scope": "qualification-only",
+      "sha256": "fe0380cf7e6fb231394767bb4f8240eb823da294dce7dbbd898c33b757d96f53",
+      "bytes": 13771,
+      "copyrightNotices": [],
+      "licenseExpression": null,
+      "originClassification": "sagejs-original-or-unspecified",
+      "headerComplete": false
+    },
+    {
+      "file": "qualification/wasm-factor-pattern-ab/src/main.rs",
+      "scope": "qualification-only",
+      "sha256": "534061b8db52aa5317044dc2bb1ee803364afca3bf55514b61e7f759e5f16004",
+      "bytes": 1519,
+      "copyrightNotices": [],
+      "licenseExpression": null,
+      "originClassification": "sagejs-original-or-unspecified",
+      "headerComplete": false
+    },
+    {
+      "file": "qualification/wasm-prepared-factor-base/build.rs",
+      "scope": "qualification-build-support",
+      "sha256": "2da46a56f4e0bccd34064e2c065f5da1d439dc6ee109470895cfa2165b293f78",
+      "bytes": 711,
+      "copyrightNotices": [],
+      "licenseExpression": null,
+      "originClassification": "sagejs-original-or-unspecified",
+      "headerComplete": false
+    },
+    {
+      "file": "qualification/wasm-prepared-factor-base/src/bin/native-benchmark.rs",
+      "scope": "qualification-only",
+      "sha256": "5210402aab39c2a6be1c25e4dd30c9fc76b75fef546d1f3856a2de31631c4b07",
+      "bytes": 1391,
+      "copyrightNotices": [],
+      "licenseExpression": null,
+      "originClassification": "sagejs-original-or-unspecified",
+      "headerComplete": false
+    },
+    {
+      "file": "qualification/wasm-prepared-factor-base/src/lib.rs",
+      "scope": "qualification-only",
+      "sha256": "ba0119e7249a7ea795b8235ca2cb77d6ac3eb5b851093c8dfbd1ea4007c8b494",
+      "bytes": 7953,
+      "copyrightNotices": [],
+      "licenseExpression": null,
+      "originClassification": "sagejs-original-or-unspecified",
+      "headerComplete": false
+    },
+    {
+      "file": "qualification/wasm-prepared-relation-prefix/build.rs",
+      "scope": "qualification-build-support",
+      "sha256": "45eacf4d09631ccab3e774055fa13da9e29364b0d5a9135245b062928e2430f0",
+      "bytes": 1005,
+      "copyrightNotices": [],
+      "licenseExpression": null,
+      "originClassification": "sagejs-original-or-unspecified",
+      "headerComplete": false
+    },
+    {
+      "file": "qualification/wasm-prepared-relation-prefix/src/bin/native-benchmark.rs",
+      "scope": "qualification-only",
+      "sha256": "8e38031c10ae5690e1ab0badad84303d4ad300c5901a4f9971eed96a9914a639",
+      "bytes": 1779,
+      "copyrightNotices": [],
+      "licenseExpression": null,
+      "originClassification": "sagejs-original-or-unspecified",
+      "headerComplete": false
+    },
+    {
+      "file": "qualification/wasm-prepared-relation-prefix/src/lib.rs",
+      "scope": "qualification-only",
+      "sha256": "ac103e484cb3348c4f68ded556211830dde82fc8b5e94b608eee9f00dc61eb05",
+      "bytes": 11975,
+      "copyrightNotices": [],
+      "licenseExpression": null,
+      "originClassification": "sagejs-original-or-unspecified",
+      "headerComplete": false
+    },
+    {
+      "file": "qualification/wasm-public-cubic-e2e/src/lib.rs",
+      "scope": "qualification-only",
+      "sha256": "aae19f715a6c4ee350fd3032101fd865e81835d17bb2ecb834fcfb89f51b498c",
+      "bytes": 13346,
+      "copyrightNotices": [
+        "Copyright (C) Sage.js contributors."
+      ],
+      "licenseExpression": "GPL-2.0-or-later",
+      "originClassification": "sagejs-original-or-unspecified",
+      "headerComplete": true
+    },
+    {
+      "file": "src/analytic_completion.rs",
+      "scope": "product-candidate",
+      "sha256": "9221e78a1664d17cf2d2d18267e5e0ef8f23736626abd3761b4e4e679b97f6ee",
+      "bytes": 19656,
+      "copyrightNotices": [
+        "Copyright (C) Sage.js contributors."
+      ],
+      "licenseExpression": "GPL-2.0-or-later",
+      "originClassification": "sagejs-original-or-unspecified",
+      "headerComplete": true
+    },
+    {
+      "file": "src/api.rs",
+      "scope": "product-candidate",
+      "sha256": "1e1ba008b83c3d415eecb6ab9332ab4d695efbb771234924aeb9520630259807",
+      "bytes": 14772,
+      "copyrightNotices": [
+        "Copyright (C) The PARI group and Sage.js contributors."
+      ],
+      "licenseExpression": "GPL-2.0-or-later",
+      "originClassification": "pari-derived-attributed",
+      "headerComplete": true
+    },
+    {
+      "file": "src/arbitrary_ideal_reduction.rs",
+      "scope": "product-candidate",
+      "sha256": "81f624add39e8101ce004becd2ae984127249e06884273ee926143de8fc15733",
+      "bytes": 50700,
+      "copyrightNotices": [
+        "Copyright (C) Sage.js contributors."
+      ],
+      "licenseExpression": "GPL-2.0-or-later",
+      "originClassification": "sagejs-original-or-unspecified",
+      "headerComplete": true
+    },
+    {
+      "file": "src/bruteforce_collector.rs",
+      "scope": "product-candidate",
+      "sha256": "7a1dc481f518fa98ca46125550bb4a0252c3bda38617aa8cfe815d7c6081ffb7",
+      "bytes": 15581,
+      "copyrightNotices": [
+        "Copyright (C) The PARI group and Sage.js contributors."
+      ],
+      "licenseExpression": "GPL-2.0-or-later",
+      "originClassification": "pari-derived-attributed",
+      "headerComplete": true
+    },
+    {
+      "file": "src/class_group.rs",
+      "scope": "product-candidate",
+      "sha256": "382059d537f7e3d60529f0461fe6a8b113f98a30b63c969613c6c99e9803ab77",
+      "bytes": 57573,
+      "copyrightNotices": [
+        "Copyright (C) The PARI group and Sage.js contributors."
+      ],
+      "licenseExpression": "GPL-2.0-or-later",
+      "originClassification": "pari-derived-attributed",
+      "headerComplete": true
+    },
+    {
+      "file": "src/class_maps.rs",
+      "scope": "product-candidate",
+      "sha256": "45b6b64e389e56c01e13e24e771da2959c21f1082288f3eda036b63ce88706d2",
+      "bytes": 31597,
+      "copyrightNotices": [
+        "Copyright (C) Sage.js contributors."
+      ],
+      "licenseExpression": "GPL-2.0-or-later",
+      "originClassification": "sagejs-original-or-unspecified",
+      "headerComplete": true
+    },
+    {
+      "file": "src/collector_schedule.rs",
+      "scope": "product-candidate",
+      "sha256": "f5f4d65a68465fc29d5dd216763abb45ce8465ea8485334786e5cd3e7b45c783",
+      "bytes": 6526,
+      "copyrightNotices": [
+        "Copyright (C) The PARI group and Sage.js contributors."
+      ],
+      "licenseExpression": "GPL-2.0-or-later",
+      "originClassification": "pari-derived-attributed",
+      "headerComplete": true
+    },
+    {
+      "file": "src/compact_cubic_presentation.rs",
+      "scope": "product-candidate",
+      "sha256": "17d4b641e16556b2c0ae501e858fee6075858efbf7fa88504d953d4a39cc1ac7",
+      "bytes": 83669,
+      "copyrightNotices": [
+        "Copyright (C) Sage.js contributors."
+      ],
+      "licenseExpression": "GPL-2.0-or-later",
+      "originClassification": "sagejs-original-or-unspecified",
+      "headerComplete": true
+    },
+    {
+      "file": "src/cubic_completion.rs",
+      "scope": "product-candidate",
+      "sha256": "5697fef9b529e78f1f4e0dc06b9216e2765e846a5308a2dde77e0d48a9e6cc18",
+      "bytes": 61354,
+      "copyrightNotices": [
+        "Copyright (C) Sage.js contributors."
+      ],
+      "licenseExpression": "GPL-2.0-or-later",
+      "originClassification": "sagejs-original-or-unspecified",
+      "headerComplete": true
+    },
+    {
+      "file": "src/cubic_presentation.rs",
+      "scope": "product-candidate",
+      "sha256": "27f17a8afc174025a72c451aefcfaa6b3e6d10e4cab2e8b234a9f3849ffb135d",
+      "bytes": 31321,
+      "copyrightNotices": [
+        "Copyright (C) Sage.js contributors."
+      ],
+      "licenseExpression": "GPL-2.0-or-later",
+      "originClassification": "sagejs-original-or-unspecified",
+      "headerComplete": true
+    },
+    {
+      "file": "src/enumeration.rs",
+      "scope": "product-candidate",
+      "sha256": "0ea9216253e830e099fd0c9d2cbdb162b141309346729900e431896d65568b38",
+      "bytes": 6295,
+      "copyrightNotices": [
+        "Copyright (C) The PARI group and Sage.js contributors."
+      ],
+      "licenseExpression": "GPL-2.0-or-later",
+      "originClassification": "pari-derived-attributed",
+      "headerComplete": true
+    },
+    {
+      "file": "src/factor_base.rs",
+      "scope": "product-candidate",
+      "sha256": "b8682e13cb701dfbbea13fe22ef3d85fc16d42c7b764f13efd9d5bb985cfa6a2",
+      "bytes": 44597,
+      "copyrightNotices": [
+        "Copyright (C) The PARI group and Sage.js contributors."
+      ],
+      "licenseExpression": "GPL-2.0-or-later",
+      "originClassification": "pari-derived-attributed",
+      "headerComplete": true
+    },
+    {
+      "file": "src/flint_normal_form.c",
+      "scope": "product-candidate",
+      "sha256": "9bff5e701c828f27641c447672871562188871cc4311c9b54e2978aa3ec408cf",
+      "bytes": 114009,
+      "copyrightNotices": [
+        "Copyright (C) Sage.js contributors."
+      ],
+      "licenseExpression": "GPL-2.0-or-later",
+      "originClassification": "sagejs-original-or-unspecified",
+      "headerComplete": true
+    },
+    {
+      "file": "src/flint_normal_form.rs",
+      "scope": "product-candidate",
+      "sha256": "e34eda1552e637ed5f06b66caca9ef18a69ccee21e455cee6de293a57154c6a6",
+      "bytes": 85897,
+      "copyrightNotices": [
+        "Copyright (C) Sage.js contributors."
+      ],
+      "licenseExpression": "GPL-2.0-or-later",
+      "originClassification": "sagejs-original-or-unspecified",
+      "headerComplete": true
+    },
+    {
+      "file": "src/gmp_smith.rs",
+      "scope": "product-candidate",
+      "sha256": "65a98c0bef3233260d979d53cd22b0e98f78471fb08c1fa4f7f850010e264af8",
+      "bytes": 12963,
+      "copyrightNotices": [
+        "Copyright (C) Sage.js contributors."
+      ],
+      "licenseExpression": "GPL-2.0-or-later",
+      "originClassification": "sagejs-original-or-unspecified",
+      "headerComplete": true
+    },
+    {
+      "file": "src/hnf.rs",
+      "scope": "product-candidate",
+      "sha256": "d35bf3f4d154e3425f95a365f09b5147eaaf7353ae2ab1f67bb5321b470a87e6",
+      "bytes": 28189,
+      "copyrightNotices": [
+        "Copyright (C) Sage.js contributors."
+      ],
+      "licenseExpression": "GPL-2.0-or-later",
+      "originClassification": "sagejs-original-or-unspecified",
+      "headerComplete": true
+    },
+    {
+      "file": "src/ideal_arithmetic.rs",
+      "scope": "product-candidate",
+      "sha256": "4e18797b8b645b761c58b82d73af0a7c30eef0ddd4659f57624f9c3d5b4a9a52",
+      "bytes": 17888,
+      "copyrightNotices": [
+        "Copyright (C) The PARI group and Sage.js contributors."
+      ],
+      "licenseExpression": "GPL-2.0-or-later",
+      "originClassification": "pari-derived-attributed",
+      "headerComplete": true
+    },
+    {
+      "file": "src/lib.rs",
+      "scope": "product-candidate",
+      "sha256": "1a713082ade1e813183b37517daa9b0a8fef613829a621d4beb65b04d9a2eedd",
+      "bytes": 7864,
+      "copyrightNotices": [
+        "Copyright (C) The PARI group and Sage.js contributors."
+      ],
+      "licenseExpression": "GPL-2.0-or-later",
+      "originClassification": "pari-derived-attributed",
+      "headerComplete": true
+    },
+    {
+      "file": "src/main.rs",
+      "scope": "product-candidate",
+      "sha256": "746f5a6a967c5369556158ae0242501f4bd61c9a0bfa02e522401c51502bcf4d",
+      "bytes": 35044,
+      "copyrightNotices": [
+        "Copyright (C) The PARI group and Sage.js contributors."
+      ],
+      "licenseExpression": "GPL-2.0-or-later",
+      "originClassification": "pari-derived-attributed",
+      "headerComplete": true
+    },
+    {
+      "file": "src/numerical_preparation.rs",
+      "scope": "product-candidate",
+      "sha256": "760cb3dce5ac14e96c1032918a13999e661922a8225a27a5f4b1397154074d8b",
+      "bytes": 33748,
+      "copyrightNotices": [
+        "Copyright (C) The PARI group and Sage.js contributors."
+      ],
+      "licenseExpression": "GPL-2.0-or-later",
+      "originClassification": "pari-derived-attributed",
+      "headerComplete": true
+    },
+    {
+      "file": "src/pari_random.rs",
+      "scope": "product-candidate",
+      "sha256": "7bed82f9c8d1cd27b753e0f39e5cf37ef49ae90e9c236ff9f9a397382d83e269",
+      "bytes": 2696,
+      "copyrightNotices": [
+        "Copyright (C) The PARI group and Sage.js contributors."
+      ],
+      "licenseExpression": "GPL-2.0-or-later",
+      "originClassification": "pari-derived-attributed",
+      "headerComplete": true
+    },
+    {
+      "file": "src/polynomial_preparation.rs",
+      "scope": "product-candidate",
+      "sha256": "7d18effdf0affe5e8e7de8105578103a5ac87ead4c195c07bc71b208bddf59b6",
+      "bytes": 44236,
+      "copyrightNotices": [
+        "Copyright (C) Sage.js contributors."
+      ],
+      "licenseExpression": "GPL-2.0-or-later",
+      "originClassification": "sagejs-original-or-unspecified",
+      "headerComplete": true
+    },
+    {
+      "file": "src/prepared.rs",
+      "scope": "product-candidate",
+      "sha256": "80b7ce8f953b2df50fb88ac4d1d068f1ac8148e1b335aa01f0d322e6c8feada5",
+      "bytes": 44766,
+      "copyrightNotices": [
+        "Copyright (C) The PARI group and Sage.js contributors."
+      ],
+      "licenseExpression": "GPL-2.0-or-later",
+      "originClassification": "pari-derived-attributed",
+      "headerComplete": true
+    },
+    {
+      "file": "src/prepared_factor_base.rs",
+      "scope": "product-candidate",
+      "sha256": "588b86af0748e91d2472ada9759df226be07e4684e63be4f368ce44e9259d266",
+      "bytes": 36715,
+      "copyrightNotices": [
+        "Copyright (C) Sage.js contributors."
+      ],
+      "licenseExpression": "GPL-2.0-or-later",
+      "originClassification": "sagejs-original-or-unspecified",
+      "headerComplete": true
+    },
+    {
+      "file": "src/prepared_ideal.rs",
+      "scope": "product-candidate",
+      "sha256": "7e783a4296a7a800fe86b62ed25c82459d68b6b6a7125d7d457fbf5d4537540c",
+      "bytes": 21757,
+      "copyrightNotices": [
+        "Copyright (C) Sage.js contributors."
+      ],
+      "licenseExpression": "GPL-2.0-or-later",
+      "originClassification": "sagejs-original-or-unspecified",
+      "headerComplete": true
+    },
+    {
+      "file": "src/prepared_input.rs",
+      "scope": "product-candidate",
+      "sha256": "d40a584a67d7c798464ada71c17270e788999f002153c24f7fc866b3b359370c",
+      "bytes": 13343,
+      "copyrightNotices": [
+        "Copyright (C) Sage.js contributors."
+      ],
+      "licenseExpression": "GPL-2.0-or-later",
+      "originClassification": "sagejs-original-or-unspecified",
+      "headerComplete": true
+    },
+    {
+      "file": "src/prime_valuation.rs",
+      "scope": "product-candidate",
+      "sha256": "5b533a94a1eed76a1fa09b97d6e43071678babc88910133c32f561423d770a9e",
+      "bytes": 11014,
+      "copyrightNotices": [
+        "Copyright (C) The PARI group and Sage.js contributors."
+      ],
+      "licenseExpression": "GPL-2.0-or-later",
+      "originClassification": "pari-derived-attributed",
+      "headerComplete": true
+    },
+    {
+      "file": "src/relation_cache.rs",
+      "scope": "product-candidate",
+      "sha256": "d474991bbfc02e842bb563d109b946bf1d88285ef667e82e1a40f0f605be619b",
+      "bytes": 20626,
+      "copyrightNotices": [
+        "Copyright (C) The PARI group and Sage.js contributors."
+      ],
+      "licenseExpression": "GPL-2.0-or-later",
+      "originClassification": "pari-derived-attributed",
+      "headerComplete": true
+    },
+    {
+      "file": "src/smith.rs",
+      "scope": "product-candidate",
+      "sha256": "d367b6bcc7d372bfe886dcb746ab327b4eaafb1cb7ccda26935404d2e7842192",
+      "bytes": 10463,
+      "copyrightNotices": [
+        "Copyright (C) Sage.js contributors."
+      ],
+      "licenseExpression": "GPL-2.0-or-later",
+      "originClassification": "sagejs-original-or-unspecified",
+      "headerComplete": true
+    },
+    {
+      "file": "src/smooth_admission.rs",
+      "scope": "product-candidate",
+      "sha256": "b0931be1a8a9298594a69892637cb4d1bfeb051e0231101875ef0115c08cc00e",
+      "bytes": 28454,
+      "copyrightNotices": [
+        "Copyright (C) The PARI group and Sage.js contributors."
+      ],
+      "licenseExpression": "GPL-2.0-or-later",
+      "originClassification": "pari-derived-attributed",
+      "headerComplete": true
+    },
+    {
+      "file": "src/unit_lattice.rs",
+      "scope": "product-candidate",
+      "sha256": "47c958f225d7a7ccda5f2b62d6ca062ad2bd8a092f05627c05e97ac447f8fb56",
+      "bytes": 14210,
+      "copyrightNotices": [
+        "Copyright (C) Sage.js contributors."
+      ],
+      "licenseExpression": "GPL-2.0-or-later",
+      "originClassification": "sagejs-original-or-unspecified",
+      "headerComplete": true
+    },
+    {
+      "file": "tests/arbitrary_ideal_reduction.rs",
+      "scope": "product-candidate-test",
+      "sha256": "cd806d2df37c6ac0a2dc9af3a748b7c9ff996996d128eaa4622f414eda4e227e",
+      "bytes": 31681,
+      "copyrightNotices": [],
+      "licenseExpression": null,
+      "originClassification": "sagejs-original-or-unspecified",
+      "headerComplete": false
+    },
+    {
+      "file": "tests/class_group.rs",
+      "scope": "product-candidate-test",
+      "sha256": "fcb11e9962eca718746275526d8cdd63886c68b60c3ec492ad977e9ac91709cc",
+      "bytes": 2920,
+      "copyrightNotices": [
+        "Copyright (C) Sage.js contributors."
+      ],
+      "licenseExpression": "GPL-2.0-or-later",
+      "originClassification": "sagejs-original-or-unspecified",
+      "headerComplete": true
+    },
+    {
+      "file": "tests/class_maps.rs",
+      "scope": "product-candidate-test",
+      "sha256": "a7406eb8e2aab1221f448cc23251c9c13a61777f5ee702548862693dd7c7c775",
+      "bytes": 18109,
+      "copyrightNotices": [
+        "Copyright (C) Sage.js contributors."
+      ],
+      "licenseExpression": "GPL-2.0-or-later",
+      "originClassification": "sagejs-original-or-unspecified",
+      "headerComplete": true
+    },
+    {
+      "file": "tests/collector_schedule_semantics.rs",
+      "scope": "product-candidate-test",
+      "sha256": "51c2c76e97e903f41266e7222be060dc3324d58d99d815864ad1ee449ea94987",
+      "bytes": 6447,
+      "copyrightNotices": [
+        "Copyright (C) The PARI group and Sage.js contributors."
+      ],
+      "licenseExpression": "GPL-2.0-or-later",
+      "originClassification": "pari-derived-attributed",
+      "headerComplete": true
+    },
+    {
+      "file": "tests/collector_trace.rs",
+      "scope": "product-candidate-test",
+      "sha256": "4c269c8ae1aeaae1287c77c2381af27d6833b0bb6c40c384a82578be3c68ea8c",
+      "bytes": 14865,
+      "copyrightNotices": [
+        "Copyright (C) The PARI group and Sage.js contributors."
+      ],
+      "licenseExpression": "GPL-2.0-or-later",
+      "originClassification": "pari-derived-attributed",
+      "headerComplete": true
+    },
+    {
+      "file": "tests/compact_cubic_presentation.rs",
+      "scope": "product-candidate-test",
+      "sha256": "7e7dc0c4c46bfe35868ad6b0c65cb84ae6ed66affe948b274ab4cf26a34ed8e4",
+      "bytes": 14558,
+      "copyrightNotices": [
+        "Copyright (C) Sage.js contributors."
+      ],
+      "licenseExpression": "GPL-2.0-or-later",
+      "originClassification": "sagejs-original-or-unspecified",
+      "headerComplete": true
+    },
+    {
+      "file": "tests/cubic_conditional_completion.rs",
+      "scope": "product-candidate-test",
+      "sha256": "9c3b299d2ccbb9a64c4bdfd99c3036f27781ad367a7687739674e6dbd977bebe",
+      "bytes": 12288,
+      "copyrightNotices": [
+        "Copyright (C) Sage.js contributors."
+      ],
+      "licenseExpression": "GPL-2.0-or-later",
+      "originClassification": "sagejs-original-or-unspecified",
+      "headerComplete": true
+    },
+    {
+      "file": "tests/cubic_presentation_candidate.rs",
+      "scope": "product-candidate-test",
+      "sha256": "af77e111148508de9fc17db69785fcbd42ff6a67cf31d95113f1bee0657b37fc",
+      "bytes": 8234,
+      "copyrightNotices": [
+        "Copyright (C) Sage.js contributors."
+      ],
+      "licenseExpression": "GPL-2.0-or-later",
+      "originClassification": "sagejs-original-or-unspecified",
+      "headerComplete": true
+    },
+    {
+      "file": "tests/hnf.rs",
+      "scope": "product-candidate-test",
+      "sha256": "d515d1c30a980469311fc1a16ea43f66aae43fc63e49dc8c3c2f5d87bd02dcbe",
+      "bytes": 6474,
+      "copyrightNotices": [
+        "Copyright (C) Sage.js contributors."
+      ],
+      "licenseExpression": "GPL-2.0-or-later",
+      "originClassification": "sagejs-original-or-unspecified",
+      "headerComplete": true
+    },
+    {
+      "file": "tests/index_prime_decomposition.rs",
+      "scope": "product-candidate-test",
+      "sha256": "825faee8c6137d652819b312fc991e2582b7e1ede4a86c9da76984d271c93dda",
+      "bytes": 3939,
+      "copyrightNotices": [
+        "Copyright (C) Sage.js contributors."
+      ],
+      "licenseExpression": "GPL-2.0-or-later",
+      "originClassification": "sagejs-original-or-unspecified",
+      "headerComplete": true
+    },
+    {
+      "file": "tests/prepared_relation_continuation.rs",
+      "scope": "product-candidate-test",
+      "sha256": "daec2eca842a9dcf7ae18322b59d53247902c9c66bdb545ddd2e9682ea71c840",
+      "bytes": 3058,
+      "copyrightNotices": [
+        "Copyright (C) Sage.js contributors."
+      ],
+      "licenseExpression": "GPL-2.0-or-later",
+      "originClassification": "sagejs-original-or-unspecified",
+      "headerComplete": true
+    },
+    {
+      "file": "tests/prime_valuation.rs",
+      "scope": "product-candidate-test",
+      "sha256": "2cec9ec96af9554fd1500df0805c5b41ff6488217fcf85f269412393aa983d0c",
+      "bytes": 6879,
+      "copyrightNotices": [],
+      "licenseExpression": null,
+      "originClassification": "sagejs-original-or-unspecified",
+      "headerComplete": false
+    },
+    {
+      "file": "tests/public_polynomial_preparation.rs",
+      "scope": "product-candidate-test",
+      "sha256": "387acc92b16d11f9452e24c760d43d7e59d63b9b0cf984fa5bed6e7a5ea13a99",
+      "bytes": 9597,
+      "copyrightNotices": [
+        "Copyright (C) Sage.js contributors."
+      ],
+      "licenseExpression": "GPL-2.0-or-later",
+      "originClassification": "pari-informed-source-map",
+      "headerComplete": true
+    },
+    {
+      "file": "tests/relation_cache.rs",
+      "scope": "product-candidate-test",
+      "sha256": "09462254567f94b76ada60a2d9ad67937a85d6cab273bb962d5b119adb6cbd0a",
+      "bytes": 11412,
+      "copyrightNotices": [],
+      "licenseExpression": null,
+      "originClassification": "sagejs-original-or-unspecified",
+      "headerComplete": false
+    },
+    {
+      "file": "tests/smooth_admission.rs",
+      "scope": "product-candidate-test",
+      "sha256": "451cbe069309cc7e9a332b7a20412b975dd5a12f4a912e53ab425e605b3e923d",
+      "bytes": 5559,
+      "copyrightNotices": [],
+      "licenseExpression": null,
+      "originClassification": "sagejs-original-or-unspecified",
+      "headerComplete": false
+    }
+  ],
+  "dependencyInputs": [
+    {
+      "file": "Cargo.lock",
+      "scope": "product-build-support",
+      "sha256": "bc79288b1020f10a17333e0d07306429d8bdc36f589f79a96995a039734d8af3",
+      "kind": "cargo-lock",
+      "packageCount": 28,
+      "sourceCounts": {
+        "registry": 27,
+        "git": 0,
+        "localOrUnspecified": 1,
+        "other": 0
+      }
+    },
+    {
+      "file": "Cargo.toml",
+      "scope": "product-build-support",
+      "sha256": "ef3040d612eb1547ef554645536ebea1b31fe1d64a4104a12f6c35acc8cdaf40",
+      "kind": "cargo-manifest",
+      "packageName": "sagejs-pari-class-group-rust-experiment",
+      "packageVersion": "0.1.0",
+      "declaredLicense": "GPL-2.0-or-later"
+    },
+    {
+      "file": "qualification/arbitrary-ideal-reduction/Cargo.lock",
+      "scope": "qualification-build-support",
+      "sha256": "8c50e182d6331c617c53f10e918ddb4bd5de17401c4681e6803954ea88de9507",
+      "kind": "cargo-lock",
+      "packageCount": 29,
+      "sourceCounts": {
+        "registry": 27,
+        "git": 0,
+        "localOrUnspecified": 2,
+        "other": 0
+      }
+    },
+    {
+      "file": "qualification/arbitrary-ideal-reduction/Cargo.toml",
+      "scope": "qualification-build-support",
+      "sha256": "4249efed768e7e05cf51d211ad3ff2ad68382feb0decbddfa09a30d026617743",
+      "kind": "cargo-manifest",
+      "packageName": "sagejs-arbitrary-ideal-reduction-qualification",
+      "packageVersion": "0.1.0",
+      "declaredLicense": null
+    },
+    {
+      "file": "qualification/candidate/Cargo.lock",
+      "scope": "qualification-build-support",
+      "sha256": "9b35fae243254ba04e2f4804006e89dcbd01915405443d60a722986bcd392eba",
+      "kind": "cargo-lock",
+      "packageCount": 19,
+      "sourceCounts": {
+        "registry": 18,
+        "git": 0,
+        "localOrUnspecified": 1,
+        "other": 0
+      }
+    },
+    {
+      "file": "qualification/candidate/Cargo.toml",
+      "scope": "qualification-build-support",
+      "sha256": "9aa6865717e219ef33fcfaef661736eba5c7de384f1bc32a1ad70ccc7322d4c1",
+      "kind": "cargo-manifest",
+      "packageName": "sagejs-rust-class-group-compact-certificate",
+      "packageVersion": "0.1.0",
+      "declaredLicense": null
+    },
+    {
+      "file": "qualification/principal-relation-lift/Cargo.lock",
+      "scope": "qualification-build-support",
+      "sha256": "b38196d001c100409d77837eb30424af14582f58c2efb9f32f703930bef10bcf",
+      "kind": "cargo-lock",
+      "packageCount": 29,
+      "sourceCounts": {
+        "registry": 27,
+        "git": 0,
+        "localOrUnspecified": 2,
+        "other": 0
+      }
+    },
+    {
+      "file": "qualification/principal-relation-lift/Cargo.toml",
+      "scope": "qualification-build-support",
+      "sha256": "2f85cbaebe3a532b65bcb5b98cf505353374583ea69ded39356ae0ceb961301d",
+      "kind": "cargo-manifest",
+      "packageName": "sagejs-principal-relation-lift-qualification",
+      "packageVersion": "0.1.0",
+      "declaredLicense": "GPL-2.0-or-later"
+    },
+    {
+      "file": "qualification/public-cubic-e2e/Cargo.lock",
+      "scope": "qualification-build-support",
+      "sha256": "46211265f8e9a0a1a9d43c874a36a5443ba3fe96c00df2277e2ce088de16c798",
+      "kind": "cargo-lock",
+      "packageCount": 29,
+      "sourceCounts": {
+        "registry": 27,
+        "git": 0,
+        "localOrUnspecified": 2,
+        "other": 0
+      }
+    },
+    {
+      "file": "qualification/public-cubic-e2e/Cargo.toml",
+      "scope": "qualification-build-support",
+      "sha256": "6877cc418e533ff800ede4179e7016deecf2603e532c38e3e67d188027143395",
+      "kind": "cargo-manifest",
+      "packageName": "sagejs-public-cubic-class-group-e2e-qualification",
+      "packageVersion": "0.1.0",
+      "declaredLicense": "GPL-2.0-or-later"
+    },
+    {
+      "file": "qualification/public-quadratic-boundary/Cargo.lock",
+      "scope": "qualification-build-support",
+      "sha256": "4402c1178ac26d79ee93ed4c1f4576f478030d113b9c8020120ae3f021265df0",
+      "kind": "cargo-lock",
+      "packageCount": 29,
+      "sourceCounts": {
+        "registry": 27,
+        "git": 0,
+        "localOrUnspecified": 2,
+        "other": 0
+      }
+    },
+    {
+      "file": "qualification/public-quadratic-boundary/Cargo.toml",
+      "scope": "qualification-build-support",
+      "sha256": "0366ed6e43452771b270e1747b249895b5d4be7e493356488b9f5f410c428629",
+      "kind": "cargo-manifest",
+      "packageName": "sagejs-public-quadratic-boundary-qualification",
+      "packageVersion": "0.1.0",
+      "declaredLicense": "GPL-2.0-or-later"
+    },
+    {
+      "file": "qualification/row6-candidate/Cargo.lock",
+      "scope": "qualification-build-support",
+      "sha256": "1a39993905d79968e5daec63f7c38e06a254dbbdc543a24eeded5e5e5067f398",
+      "kind": "cargo-lock",
+      "packageCount": 29,
+      "sourceCounts": {
+        "registry": 27,
+        "git": 0,
+        "localOrUnspecified": 2,
+        "other": 0
+      }
+    },
+    {
+      "file": "qualification/row6-candidate/Cargo.toml",
+      "scope": "qualification-build-support",
+      "sha256": "19f2a2bbc404ab69eaaeeaee80e0ddaaf6f099de1058974afcb1dcf671bd6d37",
+      "kind": "cargo-manifest",
+      "packageName": "sagejs-row6-rust-candidate-diagnostic",
+      "packageVersion": "0.1.0",
+      "declaredLicense": null
+    },
+    {
+      "file": "qualification/unit-completeness-replay/Cargo.lock",
+      "scope": "qualification-build-support",
+      "sha256": "dc51698e4f2487bdbe96db57a5970c60cf5e39b6b9a9835a3138f2922bec7d31",
+      "kind": "cargo-lock",
+      "packageCount": 30,
+      "sourceCounts": {
+        "registry": 27,
+        "git": 0,
+        "localOrUnspecified": 3,
+        "other": 0
+      }
+    },
+    {
+      "file": "qualification/unit-completeness-replay/Cargo.toml",
+      "scope": "qualification-build-support",
+      "sha256": "bf361736222bfb1d224dfe0f2b4b2b63842e1909408aacc4d33e9743498a8e6e",
+      "kind": "cargo-manifest",
+      "packageName": "sagejs-rust-unit-completeness-replay",
+      "packageVersion": "0.1.0",
+      "declaredLicense": "GPL-2.0-or-later"
+    },
+    {
+      "file": "qualification/wasm-arithmetic/Cargo.lock",
+      "scope": "qualification-build-support",
+      "sha256": "fdfa3c96a47a75db6986e12ae12472886cf849ca3b5ab8c161adf5d354618df6",
+      "kind": "cargo-lock",
+      "packageCount": 1,
+      "sourceCounts": {
+        "registry": 0,
+        "git": 0,
+        "localOrUnspecified": 1,
+        "other": 0
+      }
+    },
+    {
+      "file": "qualification/wasm-arithmetic/Cargo.toml",
+      "scope": "qualification-build-support",
+      "sha256": "494236d6ee85a8461d35c61b9c2371f287bf6ae512de022c6b3980e5e20f769d",
+      "kind": "cargo-manifest",
+      "packageName": "sagejs-rust-wasm-arithmetic-probe",
+      "packageVersion": "0.1.0",
+      "declaredLicense": null
+    },
+    {
+      "file": "qualification/wasm-class-group-candidate/Cargo.lock",
+      "scope": "qualification-build-support",
+      "sha256": "d29e0e7b1fabea3ac7445f1b0333c708cb91ba468583a7171988939d63019943",
+      "kind": "cargo-lock",
+      "packageCount": 12,
+      "sourceCounts": {
+        "registry": 11,
+        "git": 0,
+        "localOrUnspecified": 1,
+        "other": 0
+      }
+    },
+    {
+      "file": "qualification/wasm-class-group-candidate/Cargo.toml",
+      "scope": "qualification-build-support",
+      "sha256": "8bfeab5a386fb19e36de2069e8019159d5535327017c21e68aa483cc5fea12a0",
+      "kind": "cargo-manifest",
+      "packageName": "sagejs-rust-wasm-class-group-candidate",
+      "packageVersion": "0.1.0",
+      "declaredLicense": null
+    },
+    {
+      "file": "qualification/wasm-enclosure/Cargo.lock",
+      "scope": "qualification-build-support",
+      "sha256": "d15f2bb9c095838b687c58e459d7c0b2a6e979d1a0cbaf71dfa004a292fde426",
+      "kind": "cargo-lock",
+      "packageCount": 1,
+      "sourceCounts": {
+        "registry": 0,
+        "git": 0,
+        "localOrUnspecified": 1,
+        "other": 0
+      }
+    },
+    {
+      "file": "qualification/wasm-enclosure/Cargo.toml",
+      "scope": "qualification-build-support",
+      "sha256": "8e357ba4ed87c0fb3b38e2cb3b4ad72574f01645f33b11ec50494aae63e0a53a",
+      "kind": "cargo-manifest",
+      "packageName": "sagejs-rust-wasm-enclosure-probe",
+      "packageVersion": "0.1.0",
+      "declaredLicense": null
+    },
+    {
+      "file": "qualification/wasm-factor-pattern-ab/Cargo.lock",
+      "scope": "qualification-build-support",
+      "sha256": "bbbf6605e92b4a08bb97850832fbe6fea7928c5f91f65e2060df70a1ac9997a3",
+      "kind": "cargo-lock",
+      "packageCount": 22,
+      "sourceCounts": {
+        "registry": 21,
+        "git": 0,
+        "localOrUnspecified": 1,
+        "other": 0
+      }
+    },
+    {
+      "file": "qualification/wasm-factor-pattern-ab/Cargo.toml",
+      "scope": "qualification-build-support",
+      "sha256": "84dca680161977f1e1a353fdc6d46a98cba5df59b25fc49a0b2c6f8e33936249",
+      "kind": "cargo-manifest",
+      "packageName": "sagejs-rust-wasm-factor-pattern-ab",
+      "packageVersion": "0.1.0",
+      "declaredLicense": null
+    },
+    {
+      "file": "qualification/wasm-prepared-factor-base/Cargo.lock",
+      "scope": "qualification-build-support",
+      "sha256": "365a9d70ce5f7f6dd1d51024d7387fe110baafa47bcce5ce6a7cf9689a705d31",
+      "kind": "cargo-lock",
+      "packageCount": 33,
+      "sourceCounts": {
+        "registry": 32,
+        "git": 0,
+        "localOrUnspecified": 1,
+        "other": 0
+      }
+    },
+    {
+      "file": "qualification/wasm-prepared-factor-base/Cargo.toml",
+      "scope": "qualification-build-support",
+      "sha256": "fa589e9d19d9fc9f1068022c15cfc6dc9cb196147f23a45565a698f3ea878f55",
+      "kind": "cargo-manifest",
+      "packageName": "sagejs-rust-wasm-prepared-factor-base",
+      "packageVersion": "0.1.0",
+      "declaredLicense": null
+    },
+    {
+      "file": "qualification/wasm-prepared-relation-prefix/Cargo.lock",
+      "scope": "qualification-build-support",
+      "sha256": "1ed81533a3cbbd7dd7d92bc3b468c46a93ec97ad0cd3115b3431ddb4ae274f3f",
+      "kind": "cargo-lock",
+      "packageCount": 33,
+      "sourceCounts": {
+        "registry": 32,
+        "git": 0,
+        "localOrUnspecified": 1,
+        "other": 0
+      }
+    },
+    {
+      "file": "qualification/wasm-prepared-relation-prefix/Cargo.toml",
+      "scope": "qualification-build-support",
+      "sha256": "f4a46a98edcac4034ea1c7f4a34b10e996d659dfd8b4969633256b2fd64ccb4b",
+      "kind": "cargo-manifest",
+      "packageName": "sagejs-rust-wasm-prepared-relation-prefix",
+      "packageVersion": "0.1.0",
+      "declaredLicense": null
+    },
+    {
+      "file": "qualification/wasm-public-cubic-e2e/Cargo.lock",
+      "scope": "qualification-build-support",
+      "sha256": "2820522dab242993b3e645e59b8e015d472abd0690bb326e514104a574d047cb",
+      "kind": "cargo-lock",
+      "packageCount": 30,
+      "sourceCounts": {
+        "registry": 27,
+        "git": 0,
+        "localOrUnspecified": 3,
+        "other": 0
+      }
+    },
+    {
+      "file": "qualification/wasm-public-cubic-e2e/Cargo.toml",
+      "scope": "qualification-build-support",
+      "sha256": "82f0b284f9723165f8f641220ae265c2b9c6f5c25f883c1a2fdadbbb48ebc42a",
+      "kind": "cargo-manifest",
+      "packageName": "sagejs-rust-wasm-public-cubic-e2e",
+      "packageVersion": "0.1.0",
+      "declaredLicense": "GPL-2.0-or-later"
+    }
+  ],
+  "claims": {
+    "inventoryReproducible": true,
+    "generatedSourcesAudited": false,
+    "sourceProvenanceEstablished": false,
+    "dependencyLicenseCoverageEstablished": false,
+    "sanitizerCoverageEstablished": false,
+    "miriCoverageEstablished": false,
+    "productionQualified": false
+  },
+  "inventorySha256": "1ec517635625c34d009315a36305b55ab3530194935559a1239f3aa06f5d924a"
+}

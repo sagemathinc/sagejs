@@ -1,0 +1,96 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "field3-full15-ancestry",
+  "title": "Field3 full terminal ancestry",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Publish authenticated additive T301x15 ancestry and packed A13 plus Ce2 terminal prefix with exact relation-image certificates",
+  "base_commit": "a75488259246faa05ee68b40d372a13e030ccf44",
+  "claims": [
+    "bench/pari-class-group-port/field3_full_terminal_ancestry.py",
+    "bench/pari-class-group-port/field3_full_terminal_ancestry_coordinator.cjs",
+    "bench/pari-class-group-port/check_field3_full_terminal_ancestry.cjs",
+    "bench/pari-class-group-port/field3_full_terminal_ancestry_audit.md",
+    "bench/pari-class-group-port/field3_high_precision_hnf_transform.py"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "immutable field3 local-HNF v1 protocol replay"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "not-applicable",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native",
+    "env SAGEJS_REPLAY_RUNTIME_ROOT=/home/user/sagejs-worktrees/pari-class-group-e2e-integration node bench/pari-class-group-port/check_field3_full_terminal_ancestry.cjs",
+    "pnpm exec ruff check bench/pari-class-group-port/field3_full_terminal_ancestry.py"
+  ],
+  "runs": [
+    {
+      "command": "env SAGEJS_REPLAY_RUNTIME_ROOT=/home/user/sagejs-worktrees/pari-class-group-e2e-integration node bench/pari-class-group-port/check_field3_full_terminal_ancestry.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 11.255,
+      "started_at": "2026-09-17T14:35:43.860Z",
+      "commit": "a75488259246faa05ee68b40d372a13e030ccf44",
+      "workspace_fingerprint": "600a113b8afd849c627e4b9519da9ce73b0a5f55f4e7455402e64e8defbb1e89",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm exec ruff check bench/pari-class-group-port/field3_full_terminal_ancestry.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.533,
+      "started_at": "2026-09-17T14:35:59.450Z",
+      "commit": "a75488259246faa05ee68b40d372a13e030ccf44",
+      "workspace_fingerprint": "600a113b8afd849c627e4b9519da9ce73b0a5f55f4e7455402e64e8defbb1e89",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 11.171,
+      "started_at": "2026-09-17T14:36:53.138Z",
+      "commit": "a75488259246faa05ee68b40d372a13e030ccf44",
+      "workspace_fingerprint": "600a113b8afd849c627e4b9519da9ce73b0a5f55f4e7455402e64e8defbb1e89",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 66.925,
+      "started_at": "2026-09-17T14:37:30.913Z",
+      "commit": "a75488259246faa05ee68b40d372a13e030ccf44",
+      "workspace_fingerprint": "8c76c51d22d35d39a027287af74d39b58791779125ff58fa45e1d1c9ff6193ec",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Adds an authenticated, additive 301-by-15 terminal ancestry owner. It preserves the old 301-by-13 unit transform exactly, proves the two extra class columns map to terminal H under the terminal permutation, replays and splits packed A13/Ce2, and publishes atomically under a content hash.",
+    "risks": [
+      "The focused test intentionally uses exact-zero packed logs; the authentic 153088-bit raw-log owner must be run later by the integration lane.",
+      "The JavaScript oracle used the already-built integration compiler because this isolated worktree intentionally had no dist build.",
+      "The broad pnpm test:native and architecture:check receipts are intentionally deferred to integration; no heavy build was authorized for this lane."
+    ],
+    "next_steps": [
+      "Cherry-pick this lane into integration, then run the coordinator once against the authentic complete C1 raw-log owner.",
+      "Use Tclass together with the retained M1/Uir suffix witnesses to construct exact class-generator principal/order evidence."
+    ]
+  }
+}

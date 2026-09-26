@@ -1,0 +1,95 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "field3-result-composer",
+  "title": "Field-3 class-unit result composer",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Compose independently replayed field-3 class, torsion, and PRECI unit evidence into the field-neutral result boundary without overstating missing unit correspondence",
+  "base_commit": "e635ce1766b5ea4473e5b52cfcdd927bcd8fa9a5",
+  "claims": [
+    "bench/pari-class-group-port/field3_class_unit_result_composer.cjs",
+    "bench/pari-class-group-port/check_field3_class_unit_result_composer.cjs",
+    "bench/pari-class-group-port/field3_class_unit_result_composer_audit.md"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "not-applicable",
+    "oracles": [
+      "Integrated exact field3 relation replay/map, mixed-real torsion authority, and compact-unit replay receipts"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "not-applicable",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "node --check bench/pari-class-group-port/field3_class_unit_result_composer.cjs",
+    "node --check bench/pari-class-group-port/check_field3_class_unit_result_composer.cjs",
+    "env SAGEJS_REPLAY_RUNTIME_ROOT=/home/user/sagejs-worktrees/pari-class-group-e2e-integration node bench/pari-class-group-port/check_field3_class_unit_result_composer.cjs",
+    "node bench/pari-class-group-port/check_class_unit_correspondence_result.cjs",
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "env SAGEJS_REPLAY_RUNTIME_ROOT=/home/user/sagejs-worktrees/pari-class-group-e2e-integration node bench/pari-class-group-port/check_field3_class_unit_result_composer.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 104.677,
+      "started_at": "2026-09-17T09:44:45.227Z",
+      "commit": "e635ce1766b5ea4473e5b52cfcdd927bcd8fa9a5",
+      "workspace_fingerprint": "75a6ab1ed3d5a97f906239b15c6a022d8073123f44dc4d94792ddfb8e18ff91f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --check bench/pari-class-group-port/field3_class_unit_result_composer.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.03,
+      "started_at": "2026-09-17T09:47:21.581Z",
+      "commit": "e635ce1766b5ea4473e5b52cfcdd927bcd8fa9a5",
+      "workspace_fingerprint": "75a6ab1ed3d5a97f906239b15c6a022d8073123f44dc4d94792ddfb8e18ff91f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --check bench/pari-class-group-port/check_field3_class_unit_result_composer.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.037,
+      "started_at": "2026-09-17T09:47:22.287Z",
+      "commit": "e635ce1766b5ea4473e5b52cfcdd927bcd8fa9a5",
+      "workspace_fingerprint": "75a6ab1ed3d5a97f906239b15c6a022d8073123f44dc4d94792ddfb8e18ff91f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/pari-class-group-port/check_class_unit_correspondence_result.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.071,
+      "started_at": "2026-09-17T09:47:23.057Z",
+      "commit": "e635ce1766b5ea4473e5b52cfcdd927bcd8fa9a5",
+      "workspace_fingerprint": "75a6ab1ed3d5a97f906239b15c6a022d8073123f44dc4d94792ddfb8e18ff91f",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Added a narrow field-3 adapter which opens independently replayed, out-of-band-authorized relation-map, compact-unit, and exact torsion receipts. Authentic retained evidence composes class invariants [2,2], class number 4, the exact arbitrary-ideal quotient, rank-two compact data, exact order-two torsion, and PRECI/not_given, then stops before sealing with correspondence_complete=false because the 301x13 exact unit transform and same-run suffix are absent. A typed future unit boundary and a second field-neutral publication authority are both required before transactional publication. The authentic focused replay passes and rejects 14 mutations.",
+    "risks": [
+      "No completed field-neutral field-3 envelope is published: the current run still lacks the 3,913-entry raw-to-accepted transform and a same-run 13-column suffix.",
+      "The future ready path is deliberately not exercised with fabricated transform data; it needs a positive receipt from the transform-retention lane.",
+      "The focused exact relation replay peaked below 4 GiB and passed. Broad strict/native gates were not rerun because this additive bench-only lane was instructed to avoid broad builds while other implementation writers are active."
+    ],
+    "next_steps": [
+      "Inject the transform-retention lane's exact same-run 301x13 owner through field3-unit-correspondence-boundary-v1 and add the positive ready-path replay.",
+      "Supply the separately transported ClassUnitCorrespondenceResult authority and verify atomic publication into the existing field-neutral envelope.",
+      "Run the cumulative strict/native/architecture gates once the integration checkpoint is frozen."
+    ]
+  }
+}

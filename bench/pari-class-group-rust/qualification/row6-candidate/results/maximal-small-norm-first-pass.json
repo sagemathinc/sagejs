@@ -1,0 +1,34 @@
+{
+  "schema": "sagejs.rust-class-group/row6-maximal-small-norm-prefix-v1",
+  "qualificationStatus": "diagnostic-candidate-only",
+  "usesOracleAsInput": false,
+  "limits": {
+    "maximumVisitedIdeals": 2000,
+    "maximumCandidates": 1000000
+  },
+  "factorBase": { "idealCount": 1130, "relationBound": 9196 },
+  "relations": {
+    "rows": 1133,
+    "missingRank": 4,
+    "completeRankAndSurplus": false
+  },
+  "counters": {
+    "visitedIdeals": 1130,
+    "cursorTrials": 528738,
+    "primitiveNonscalarCandidates": 525269,
+    "smoothCandidates": 3687,
+    "appendedRelations": 930,
+    "positiveCacheStatuses": 930
+  },
+  "timingsNanoseconds": {
+    "factorBase": 226663313,
+    "initialCache": 8350949,
+    "catalogSetup": 3435020,
+    "numericalPreparation": 1061532091,
+    "enumerationAndNorm": 56492245,
+    "rationalFactorization": 494749361,
+    "primeValuationAndCache": 6383618438,
+    "totalInternal": 8802881723,
+    "totalExternal": 8811396923
+  }
+}

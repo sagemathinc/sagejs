@@ -1,0 +1,81 @@
+{
+  "schema": "sagejs.rust-class-group/wasm-public-cubic-ideal-query-node-v1",
+  "outcome": "pass",
+  "artifact": {
+    "bytes": 5867215,
+    "sha256": "0b94eeaddaa40984b223968384d8a4db4842e9728c71f6e58572481a92603bd6"
+  },
+  "vectorSha256": "5835121de772eb47df3f77b00afdde28c860a762c4713a9dae93d6f1c3b94653",
+  "timingsMs": {
+    "open": 86.11454800000001,
+    "firstQuery": 10.944467000000003,
+    "secondQuery": 8.014897999999988,
+    "close": 0.4228999999999985,
+    "staleQueryRejection": 0.07019999999999982
+  },
+  "memoryPagesBefore": 256,
+  "memoryPagesAfter": 256,
+  "lifecycle": {
+    "handle": 1,
+    "maximumResidentSessions": 4,
+    "repeatedQueryByteIdentical": true,
+    "closeSucceeded": true,
+    "staleQueryRejected": true,
+    "doubleCloseRejected": true,
+    "capacityExhaustionRejected": true
+  },
+  "observed": {
+    "schema": "sagejs.rust-class-group/public-cubic-arbitrary-ideal-query-receipt-v1",
+    "outcome": "complete-conditional-grh-ideal-class",
+    "polynomialAscending": [
+      "-29",
+      "-30",
+      "-8",
+      "1"
+    ],
+    "classNumber": "2",
+    "classCoordinates": [
+      "1"
+    ],
+    "presentationZero": false,
+    "queriedIdealIntegralBasisRows": [
+      [
+        "1",
+        "0",
+        "2"
+      ],
+      [
+        "0",
+        "1",
+        "2"
+      ],
+      [
+        "0",
+        "0",
+        "3"
+      ]
+    ]
+  },
+  "certificate": {
+    "maximalOrderEvidence": "rust-proved-maximal-order",
+    "factorBaseSize": 7,
+    "principalElementIntegralBasisCoordinates": [
+      "3",
+      "0",
+      "0"
+    ],
+    "quotientFactorBaseExponents": [
+      {
+        "factorBaseIndexZeroBased": 3,
+        "exponent": "1"
+      }
+    ],
+    "classCoordinates": [
+      "1"
+    ],
+    "presentationZero": false,
+    "cursorTrials": 3,
+    "primitiveCandidates": 1,
+    "smoothQuotientNorms": 1
+  }
+}

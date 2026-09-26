@@ -1,0 +1,81 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "int64-graph-proof-authority",
+  "title": "Authenticate private-graph int64 proofs",
+  "lane": "native-compiler",
+  "status": "active",
+  "owner": "user",
+  "objective": "Authenticate existing checked-region int64 interval proofs against the complete private graph at emission time without expanding proof coverage",
+  "base_commit": "f589cf73abc57da6df8047520d701ab0c62194ca",
+  "claims": [
+    "tools/native-kernel/checked-regions.cjs",
+    "tools/native-kernel/tagged-backend.cjs",
+    "tools/native-kernel/test/checked-private-region.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "same-source",
+    "oracles": [
+      "Existing checked int64 helpers and generated tagged C"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "node --test tools/native-kernel/test/checked-private-region.cjs tools/native-kernel/test/structural-proof-authority.cjs",
+    "pnpm architecture:check",
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "node --test tools/native-kernel/test/checked-private-region.cjs tools/native-kernel/test/structural-proof-authority.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 31.635,
+      "started_at": "2026-09-16T15:51:38.208Z",
+      "commit": "f589cf73abc57da6df8047520d701ab0c62194ca",
+      "workspace_fingerprint": "b72e6f874f5b8797bcfb99fb99d14634ca81db3c2be5d2c2f8a852ced8ee5915",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.613,
+      "started_at": "2026-09-16T15:52:16.548Z",
+      "commit": "f589cf73abc57da6df8047520d701ab0c62194ca",
+      "workspace_fingerprint": "b72e6f874f5b8797bcfb99fb99d14634ca81db3c2be5d2c2f8a852ced8ee5915",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 57.986,
+      "started_at": "2026-09-16T15:52:33.477Z",
+      "commit": "f589cf73abc57da6df8047520d701ab0c62194ca",
+      "workspace_fingerprint": "b72e6f874f5b8797bcfb99fb99d14634ca81db3c2be5d2c2f8a852ced8ee5915",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Existing checked-region int64 interval proofs now require emission-time structural authority over the complete authenticated private graph. Tagged and direct-result emission cache one verifier per function; any executable IR, root guard, graph membership, partial-map, or claim mutation retains checked add/subtract/multiply helpers without changing proof coverage.",
+    "risks": [
+      "The change intentionally authenticates only existing interval proofs; it does not prove additional hot arithmetic sites.",
+      "Full pnpm test:native remains an integration-lane validation because it is costly and the focused compiler suite covers the changed authority path."
+    ],
+    "next_steps": [
+      "Run the full native suite after integration.",
+      "Treat any future affine or loop-induction proof expansion as a separate theorem and benchmark slice."
+    ]
+  }
+}

@@ -1,0 +1,167 @@
+{
+  "schema": "sagejs.checked-region/stage-g1-direct-result-evidence-v1",
+  "compiler": {
+    "worktree": "/home/user/sagejs-worktrees/virtual-u64-fixed-views",
+    "commit": "35a1acbfd4be784e555267adc3520a1cb86509d0",
+    "status": "clean",
+    "cflags": [
+      "-O3",
+      "-fPIC",
+      "-Wall",
+      "-Wextra",
+      "-ffunction-sections",
+      "-fdata-sections"
+    ],
+    "ldflags": [
+      "-Wl,--gc-sections",
+      "-Wl,--exclude-libs,ALL",
+      "-Wl,--strip-all",
+      "-Wl,-z,nodelete"
+    ]
+  },
+  "fixture": {
+    "path": "/tmp/sagejs-int64-prime-degree-catalog-fcTr9K/fixtures.json",
+    "sha256": "f61f6aed8d229a2fc10a6336559e97a23d58758151481fb1dfc09fb84a906312",
+    "packets": 4,
+    "activeOutputsInTimedPacket": 7081
+  },
+  "arms": {
+    "stageD": {
+      "directory": "/tmp/sagejs-stage-a-catalog-HD0RF6",
+      "coreSha256": "9ee37b3c0cb15c0be6a7ea0b5ef07e9cc6f9a06ec9b80057f4bd3b1947c9169f",
+      "objectSha256": "fabb001cdbe3e452cf96dd08d74ce8f5625e9805fba6568d7b84f71dd2d267b6",
+      "addonSha256": "a0d23ba41fb76d1a9e7525520e4d5cfeb34763b82487e4db63738c2e9dad1895",
+      "coreBytes": 6307459,
+      "adapterBytes": 161062,
+      "objectBytes": 346832,
+      "objectTextBytes": 212853,
+      "addonBytes": 354880,
+      "elfTextBytes": 347495,
+      "objectCallInstructions": 1771,
+      "addonCallInstructions": 1850,
+      "preparedVariants": 36
+    },
+    "stageE": {
+      "directory": "/tmp/sagejs-stage-a-catalog-SBxCj2",
+      "coreSha256": "04923fbaef0dd5f2b67aedbd3d016ef2c54e26d0ebaab65032224955f1804853",
+      "objectSha256": "ba018ccd238a0717cc648e52d61c6b8a080d5d19404ec611a4dddaf1d078abd2",
+      "addonSha256": "98449806f857a174cf42284807514273ced369faafc6e10fe699f7e633ea439e",
+      "coreBytes": 6305446,
+      "privateCoreBytes": 1355770,
+      "adapterBytes": 161062,
+      "objectBytes": 346832,
+      "objectTextBytes": 212853,
+      "addonBytes": 354880,
+      "elfTextBytes": 347495,
+      "objectCallInstructions": 1771,
+      "addonCallInstructions": 1850,
+      "preparedVariants": 36,
+      "survivingCheckedRegionSymbols": 11
+    },
+    "stageG1": {
+      "directory": "/tmp/sagejs-stage-a-catalog-OLBXHS",
+      "coreSha256": "502a705a6bb85a8f77e4bd8606c04c3ab58dc4d5e5819f89a6888d7b90453698",
+      "objectSha256": "7dada1ee33f1d842689858e1decb3d5689c7e3de6dbf8294d604d4c46d23f0fc",
+      "addonSha256": "50a466fa06a087e3beb66ed36862b757998f5732c0be1b57be93ed7e1185d6a4",
+      "coreBytes": 6323708,
+      "privateCoreBytes": 1373792,
+      "adapterBytes": 161062,
+      "objectBytes": 345848,
+      "objectTextBytes": 211250,
+      "addonBytes": 354880,
+      "elfTextBytes": 345895,
+      "objectCallInstructions": 1784,
+      "addonCallInstructions": 1863,
+      "preparedVariants": 37,
+      "survivingCheckedRegionSymbols": 11,
+      "survivingDirectResultSymbols": 1
+    }
+  },
+  "sharedEmission": {
+    "bindingGypSha256": "9521eb22d6b3f5d293115c36606daebd91f7c953e5f11c9a63ecd3bf08893c43",
+    "adapterSha256": "4587ba3852ca5774e6d3ac80327f80d7ca452e32039c33e58c403c6143cd6f7f"
+  },
+  "semanticReplay": {
+    "catalogValidComparisons": 12,
+    "catalogMalformedComparisons": 27,
+    "publicCopyComparisons": 45,
+    "allPassed": true,
+    "timing": null
+  },
+  "directResultShape": {
+    "preparedName": "sagejs_checked_r0_int64_pari_flx_copy__local_fast_0",
+    "machineSymbol": "sagejs_direct_sagejs_checked_r0_int64_pari_flx_copy__local_fast_0.constprop.0.isra.0",
+    "preparedDirectResults": 1,
+    "preparedDirectCallSites": 3,
+    "generatedDirectDefinitions": 1,
+    "generatedOrdinaryCheckedCopyDefinitions": 1,
+    "directMachineBytes": 57,
+    "ordinaryCheckedCopyMachineBytesStageE": 660,
+    "ordinaryCheckedCopyMachineBytesStageG1": 660,
+    "sourceRangeLatchCheckedAdds": 3,
+    "machineCallsInDirectCore": 0,
+    "viewDescriptorsInDirectCore": 0,
+    "statusOrOutputParametersInDirectCore": 0
+  },
+  "staticPrivateSlice": {
+    "stageE": {
+      "viewValidationFailures": 11,
+      "uint64BufferLocalDeclarations": 0,
+      "viewDataAssignments": 0,
+      "viewLengthAssignments": 0,
+      "viewOffsetAdjustments": 0,
+      "signedBufferIndexCalls": 67,
+      "uint64BoundsFailures": 68
+    },
+    "stageG1": {
+      "viewValidationFailures": 11,
+      "uint64BufferLocalDeclarations": 14,
+      "viewDataAssignments": 7,
+      "viewLengthAssignments": 7,
+      "viewOffsetAdjustments": 7,
+      "signedBufferIndexCalls": 67,
+      "uint64BoundsFailures": 68
+    },
+    "materializationAttribution": {
+      "tagged_sagejs_checked_r0__int64_pari_flx_divrem": 8,
+      "tagged_sagejs_checked_r0_int64_pari_flx_mul": 6
+    }
+  },
+  "copyRelocations": {
+    "stageE": {
+      "checkedPrivateCopy": 23,
+      "directCopy": 0,
+      "ordinaryTaggedCopy": 45,
+      "total": 68
+    },
+    "stageG1": {
+      "checkedPrivateCopy": 7,
+      "directCopy": 2,
+      "ordinaryTaggedCopy": 68,
+      "total": 77
+    }
+  },
+  "objectCallAttribution": {
+    "tagged_sagejs_checked_r0_int64_pari_flx_gcd": [0, 4],
+    "tagged_sagejs_checked_r0_int64_pari_flx_normalize": [0, 2],
+    "tagged_sagejs_checked_r0__int64_pari_flx_divrem": [0, 2],
+    "tagged_sagejs_checked_r0_int64_pari_flx_small_ddf.constprop.0": [39, 40],
+    "tagged_sagejs_checked_r0_int64_pari_flxq_mul": [3, 4],
+    "tagged_sagejs_checked_r0_int64_pari_flx_mul.constprop.0": [23, 24],
+    "tagged_sagejs_checked_r0_int64_pari_flxq_sqr.constprop.0": [15, 16],
+    "tagged_sagejs_checked_r0_int64_pari_flx_small_degfact.constprop.0": [11, 12]
+  },
+  "machineGates": {
+    "checkedCopyRelocationsDecrease": true,
+    "totalCopyRelocationsDoNotIncrease": false,
+    "totalCallInstructionsDoNotIncrease": false,
+    "newDirectCoreFitsWithinStageECheckedCopyBody": true,
+    "objectTextDoesNotGrow": true,
+    "elfTextDoesNotGrow": true,
+    "overallPass": false
+  },
+  "acceptanceTiming": {
+    "run": false,
+    "reason": "Stage G1 failed the frozen relocation and total-call machine gates"
+  }
+}

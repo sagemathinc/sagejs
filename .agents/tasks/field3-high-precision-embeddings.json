@@ -1,0 +1,59 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "field3-high-precision-embeddings",
+  "title": "Quartic high precision embeddings",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "field3_high_precision_embeddings",
+  "objective": "Retain the authentic prepared integral-basis owner for x^4-2000022*x-2000042 and rebuild its 153088-bit roots and integral-basis embedding matrix with bit-exact PARI correspondence and independent tensor identities",
+  "base_commit": "ffc97682f8645f8d4010b43a71d676f91864aaa2",
+  "claims": [
+    "bench/pari-class-group-port/field3_high_precision_embeddings.py",
+    "bench/pari-class-group-port/check_field3_high_precision_embeddings.py",
+    "bench/pari-class-group-port/check_field3_high_precision_embeddings.cjs",
+    "bench/pari-class-group-port/field3_high_precision_embeddings_audit.md",
+    "bench/pari-class-group-port/field3_high_precision_embeddings_result.json"
+  ],
+  "dependencies": ["high-precision-full-product"],
+  "references": [],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "Pristine PARI 2.17.4 packed roots and integral-basis embedding matrix",
+      "Independent exact multiplication-tensor homomorphism identities"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "fallback",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native",
+    "pnpm parallel:check",
+    "prlimit --as=4294967296 -- timeout 600s node bench/pari-class-group-port/check_field3_high_precision_embeddings.cjs"
+  ],
+  "runs": [
+    {
+      "command": "prlimit --as=4294967296 -- timeout 600s node bench/pari-class-group-port/check_field3_high_precision_embeddings.cjs",
+      "status": "passed",
+      "summary": "Four packed roots bit-exact; 15/16 M cells bit-exact; exact owner/tensor replay passed; GMP positive call 268.4 ms"
+    }
+  ],
+  "handoff": {
+    "summary": "Captured the authentic prepared-nf basis owner atomically, rebuilt all 153088-bit quartic root components bit-exactly, and localized the remaining M discrepancy to one ulp in one of 16 cells.",
+    "risks": [
+      "Full M is not yet claimed: make_M consumes pre-truncation get_roots guard words that are absent from exported nf roots."
+    ],
+    "next_steps": [
+      "Port or retain the pre-truncation get_roots state at F->prec + F->extraprec, then re-run the existing bit-exact M oracle."
+    ]
+  }
+}

@@ -128,6 +128,10 @@
           "runtime/analytic-backend.mjs",
           "runtime/auto-receipt-policy.mjs",
           "runtime/capability-trace.mjs",
+          "runtime/class-group-core-loader.mjs",
+          "runtime/class-group-core-worker.mjs",
+          "runtime/class-group-core.d.ts",
+          "runtime/class-group-core.mjs",
           "runtime/compiler-worker.mjs",
           "runtime/curve-backend.d.ts",
           "runtime/curve-backend.mjs",
@@ -165,7 +169,7 @@
         ],
         "maximumCompressedDelta": {
           "gzipBytes": 17600000,
-          "brotliBytes": 9700000
+          "brotliBytes": 9800000
         }
       },
       {

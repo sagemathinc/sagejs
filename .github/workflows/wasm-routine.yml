@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - "packages/flint-wasm/**"
+      - "packages/class-groups/**"
       - "packages/wasm-toolchain/**"
       - "packages/flint/src/**"
       - "src/**"
@@ -18,6 +19,7 @@ on:
     branches: [main]
     paths:
       - "packages/flint-wasm/**"
+      - "packages/class-groups/**"
       - "packages/wasm-toolchain/**"
       - "packages/flint/src/**"
       - "src/**"
@@ -63,9 +65,16 @@ jobs:
           key: >-
             sagejs-wasm-dist-v1-${{ runner.os }}-${{
             hashFiles('pnpm-lock.yaml', 'packages/flint-wasm/**',
+            'packages/class-groups/**',
             'packages/wasm-toolchain/**', 'tools/source-mirror/**',
             'packages/flint/src/**', 'ffi/**', 'tools/ffi/**',
             'tools/native-kernel/**', 'src/**') }}
+
+      - uses: dtolnay/rust-toolchain@stable
+        if: steps.artifact-cache.outputs.cache-hit != 'true'
+        with:
+          toolchain: 1.98.1
+          targets: wasm32-wasip1
 
       - name: Resolve the pinned toolchain cache
         if: steps.artifact-cache.outputs.cache-hit != 'true'

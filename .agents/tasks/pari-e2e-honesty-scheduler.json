@@ -1,0 +1,127 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "pari-e2e-honesty-scheduler",
+  "title": "PARI frozen honesty scheduler",
+  "lane": "arithmetic-algebra",
+  "status": "review",
+  "owner": "user",
+  "objective": "Expand the authenticated PARI 2.17.4 unequal-bound honesty leaf into the complete connected scheduler for the frozen case, preserving orbit order, reductions, random products, retries, RNG, and transactional state across all available backends",
+  "base_commit": "dc534fa05e68c330871fd3720718bdfa7c03e8db",
+  "claims": [
+    "bench/pari-class-group-port/honesty_scheduler.py",
+    "bench/pari-class-group-port/check_honesty_scheduler.cjs",
+    "bench/pari-class-group-port/honesty_scheduler_fixture.json",
+    "bench/pari-class-group-port/honesty_scheduler_audit.md",
+    "bench/pari-class-group-port/test_honesty_scheduler.py"
+  ],
+  "dependencies": [],
+  "references": [
+    "PARI 2.17.4 src/basemath/buch2.c be_honest"
+  ],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "Pristine PARI 2.17.4 full frozen-case be_honest trace",
+      "cpython",
+      "javascript",
+      "native GMP/tagged differential replay"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "fallback",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "node bench/pari-class-group-port/check_honesty_scheduler.cjs /home/user/upstream/pari-2.17.4 /home/user/upstream/pari-2.17.4.tar.gz",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 41.189,
+      "started_at": "2026-09-17T00:28:26.647Z",
+      "commit": "dc534fa05e68c330871fd3720718bdfa7c03e8db",
+      "workspace_fingerprint": "d074e0badd1f977588b975d8e7e1c8a3f90ceb95954cb2a6b290a22630eb65c0",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "python3 -c import sys,unittest;sys.path.append(\"src/lib\");s=unittest.defaultTestLoader.discover(\"bench/pari-class-group-port\",pattern=\"test_honesty_scheduler.py\");r=unittest.TextTestRunner(verbosity=2).run(s);raise SystemExit(not r.wasSuccessful())",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.087,
+      "started_at": "2026-09-17T00:29:15.082Z",
+      "commit": "dc534fa05e68c330871fd3720718bdfa7c03e8db",
+      "workspace_fingerprint": "d074e0badd1f977588b975d8e7e1c8a3f90ceb95954cb2a6b290a22630eb65c0",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 58.249,
+      "started_at": "2026-09-17T00:29:19.764Z",
+      "commit": "dc534fa05e68c330871fd3720718bdfa7c03e8db",
+      "workspace_fingerprint": "d074e0badd1f977588b975d8e7e1c8a3f90ceb95954cb2a6b290a22630eb65c0",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 883.586,
+      "started_at": "2026-09-17T00:30:22.741Z",
+      "commit": "dc534fa05e68c330871fd3720718bdfa7c03e8db",
+      "workspace_fingerprint": "c08588a9008bd8d5aa2e9631b78eac2f5a0657f892ddb70aec3f689f0fe52a60",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/pari-class-group-port/check_honesty_scheduler.cjs /home/user/upstream/pari-2.17.4 /home/user/upstream/pari-2.17.4.tar.gz",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 55.287,
+      "started_at": "2026-09-17T00:46:17.982Z",
+      "commit": "dc534fa05e68c330871fd3720718bdfa7c03e8db",
+      "workspace_fingerprint": "c08588a9008bd8d5aa2e9631b78eac2f5a0657f892ddb70aec3f689f0fe52a60",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "python3 -c import sys,unittest;sys.path.append(\"src/lib\");s=unittest.defaultTestLoader.discover(\"bench/pari-class-group-port\",pattern=\"test_honesty_scheduler.py\");r=unittest.TextTestRunner(verbosity=2).run(s);raise SystemExit(not r.wasSuccessful())",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.084,
+      "started_at": "2026-09-17T00:47:31.801Z",
+      "commit": "dc534fa05e68c330871fd3720718bdfa7c03e8db",
+      "workspace_fingerprint": "c08588a9008bd8d5aa2e9631b78eac2f5a0657f892ddb70aec3f689f0fe52a60",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 57.188,
+      "started_at": "2026-09-17T00:47:56.890Z",
+      "commit": "dc534fa05e68c330871fd3720718bdfa7c03e8db",
+      "workspace_fingerprint": "c08588a9008bd8d5aa2e9631b78eac2f5a0657f892ddb70aec3f689f0fe52a60",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Implements and authenticates the complete connected be_honest scheduler for the frozen unequal-bound all-failure case: exact PARI 2.17.4 outer orbit schedule, 51 real no-cache collector probes, 50 independent random-product retries from id0, and transactional RNG/ideal/scheduler publication. CPython, JavaScript, GMP, and tagged native paths reproduce the frozen trace and hashes. The shared end-to-end driver is intentionally unchanged.",
+    "risks": [
+      "This is complete only for the frozen all-failure case with no nonidentity automorphisms; it does not claim a generic be_honest scheduler.",
+      "The frozen case does not execute outer Q_primpart, the greater-than-100-bit idealred branch, successful KCZ increment, or all-success restoration."
+    ],
+    "next_steps": [
+      "Freeze and implement a successful unequal-bound honesty fixture exercising KCZ increment and all-success restoration.",
+      "Add authenticated fixtures for nontrivial automorphism orbits, outer primitive-part normalization, and the high-bit idealred path.",
+      "Integrate with the shared end-to-end driver only after those generic control-flow gaps are represented."
+    ]
+  }
+}

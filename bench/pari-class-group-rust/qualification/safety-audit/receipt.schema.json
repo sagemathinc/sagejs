@@ -1,0 +1,113 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sagejs.org/schemas/rust-class-group-safety-provenance-audit-v1.json",
+  "title": "Rust class-group safety and provenance audit receipt",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "auditPolicy",
+    "summary",
+    "unsafeItems",
+    "ffiBoundaries",
+    "unclassifiedSafetyTokens",
+    "unclassifiedFfiTokens",
+    "sourceProvenance",
+    "dependencyInputs",
+    "claims",
+    "inventorySha256"
+  ],
+  "properties": {
+    "schema": { "const": "sagejs.rust-class-group/safety-provenance-audit-v1" },
+    "auditPolicy": { "type": "object" },
+    "summary": {
+      "type": "object",
+      "required": [
+        "sourceFiles",
+        "unsafeItems",
+        "unsafeItemsMissingRationale",
+        "ffiBoundaries",
+        "ffiBoundariesMissingRationale",
+        "unclassifiedSafetyTokens",
+        "unclassifiedFfiTokens",
+        "unclassifiedSourceScopes",
+        "sourceFilesMissingProvenanceHeader",
+        "byScope",
+        "documentationGatePassed",
+        "promotionGatePassed"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "sourceFiles": { "type": "integer", "minimum": 0 },
+        "unsafeItems": { "type": "integer", "minimum": 0 },
+        "unsafeItemsMissingRationale": { "type": "integer", "minimum": 0 },
+        "ffiBoundaries": { "type": "integer", "minimum": 0 },
+        "ffiBoundariesMissingRationale": { "type": "integer", "minimum": 0 },
+        "unclassifiedSafetyTokens": { "type": "integer", "minimum": 0 },
+        "unclassifiedFfiTokens": { "type": "integer", "minimum": 0 },
+        "unclassifiedSourceScopes": { "type": "integer", "minimum": 0 },
+        "sourceFilesMissingProvenanceHeader": { "type": "integer", "minimum": 0 },
+        "byScope": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": { "type": "integer", "minimum": 0 }
+          }
+        },
+        "documentationGatePassed": { "type": "boolean" },
+        "promotionGatePassed": { "type": "boolean" }
+      }
+    },
+    "unsafeItems": { "type": "array", "items": { "$ref": "#/$defs/finding" } },
+    "ffiBoundaries": { "type": "array", "items": { "$ref": "#/$defs/finding" } },
+    "unclassifiedSafetyTokens": { "type": "array", "items": { "$ref": "#/$defs/finding" } },
+    "unclassifiedFfiTokens": { "type": "array", "items": { "$ref": "#/$defs/finding" } },
+    "sourceProvenance": { "type": "array", "items": { "type": "object" } },
+    "dependencyInputs": { "type": "array", "items": { "type": "object" } },
+    "claims": { "type": "object" },
+    "inventorySha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+  },
+  "$defs": {
+    "finding": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["kind", "scope", "file", "line", "column", "snippet", "safetyRationale"],
+      "properties": {
+        "kind": { "type": "string" },
+        "scope": {
+          "enum": [
+            "product-candidate",
+            "product-build-support",
+            "product-candidate-test",
+            "qualification-only",
+            "qualification-build-support",
+            "support",
+            "unclassified"
+          ]
+        },
+        "file": { "type": "string" },
+        "line": { "type": "integer", "minimum": 1 },
+        "column": { "type": "integer", "minimum": 1 },
+        "snippet": { "type": "string" },
+        "name": { "type": "string" },
+        "safetyRationale": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["present", "classification", "line", "text"],
+          "properties": {
+            "present": { "type": "boolean" },
+            "classification": {
+              "enum": [
+                "explicit-safety-rationale",
+                "adjacent-comment-without-explicit-rationale",
+                "missing"
+              ]
+            },
+            "line": { "type": ["integer", "null"], "minimum": 1 },
+            "text": { "type": ["string", "null"] }
+          }
+        }
+      }
+    }
+  }
+}

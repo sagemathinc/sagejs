@@ -6,7 +6,7 @@
  * architecture, then compiles the unchanged source normally.
  */
 
-import { mkdirSync, realpathSync, statSync } from "fs";
+import { lstatSync, mkdirSync, realpathSync, statSync, unlinkSync } from "fs";
 import { homedir } from "os";
 import { dirname, join, resolve } from "path";
 import { createRequire } from "module";
@@ -191,7 +191,7 @@ function rejectOptimizerProfileRawJavaScript(root: unknown): void {
 // `tools/native-kernel/c-backend.cjs`. Production-kernel tests ratchet the two
 // values together. Keeping the expected value in the runtime makes an old
 // cache fail closed even when its Python source has not changed.
-export const NATIVE_KERNEL_ABI_VERSION = 23;
+export const NATIVE_KERNEL_ABI_VERSION = 24;
 
 // A real statement gives the output pipeline a module to which it can attach
 // the generated baselib.  This used to be a RapydScript anonymous-function
@@ -1297,6 +1297,17 @@ export function runRuntimeBootstrap(
         try {
           cachedData = moduleScript.createCachedData();
           mkdirSync(dirname(cacheFilename), { recursive: true });
+          if (process.platform === "win32") {
+            // Windows cache publication is first-writer-wins to avoid exposing
+            // partially replaced files to concurrent readers. Remove an old
+            // regular-file entry before refreshing rejected bytecode or a
+            // malformed source map; otherwise that stale entry wins forever.
+            // A competing reader may still use its already-open complete file.
+            try {
+              const existing = lstatSync(cacheFilename);
+              if (existing.isFile() && !existing.isSymbolicLink()) unlinkSync(cacheFilename);
+            } catch (_error) {}
+          }
           atomicWriteCacheFileSync(cacheFilename, JSON.stringify({
             version: compiler.get_compiler_version(),
             signature: sourceHash,

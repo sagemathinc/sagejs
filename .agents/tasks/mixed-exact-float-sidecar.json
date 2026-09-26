@@ -1,0 +1,336 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "mixed-exact-float-sidecar",
+  "title": "Exact native Float64 scheduling sidecar",
+  "lane": "native-compiler",
+  "status": "active",
+  "owner": "user",
+  "objective": "Allow exact @native call graphs to invoke pure Float64 helpers and use Float64Buffer scheduling sidecars through explicit checked signed-Integer-to-Float64 conversion without weakening exact proof authority",
+  "base_commit": "938ccd425f0a322bafb1375968d5e24b38d5cde5",
+  "claims": [
+    "tools/native-kernel/test/mpz-word-conversion.cjs",
+    "tools/native-kernel/gmp-checkpoint-allocator.cjs",
+    "tools/native-kernel/fmpz-backend.cjs",
+    "tools/native-kernel/test/arena-reservation-policy.cjs",
+    "test/native-gmp-checkpoint-allocator.cjs",
+    "test/fixtures/native-exact-workspace-direct-reference.c",
+    "tools/native-kernel/exact-runtime.cjs",
+    "tools/native-kernel/tagged-backend.cjs",
+    "tools/native-kernel/word-backend.cjs",
+    "tools/native-kernel/test/integer-bit-length.cjs",
+    "tools/native-kernel/test/integer-gcd.cjs",
+    "tools/native-kernel/test/integer-isqrt.cjs",
+    "tools/native-kernel/test/integer-shifts.cjs",
+    "tools/native-kernel/test/explicit-errors.cjs",
+    "tools/native-kernel/ir.cjs",
+    "tools/native-kernel/float64-ir.cjs",
+    "tools/native-kernel/test/float64-log.cjs",
+    "tools/native-kernel/test/native-call-statement.cjs",
+    "tools/native-kernel/native-imports.cjs",
+    "tools/native-kernel/wasm-production-pack.cjs",
+    "tools/native-kernel/compiler.cjs",
+    "tools/native-kernel/test/relative-native-imports.cjs",
+    "tools/native-kernel/test/prepared-field-inputs.cjs",
+    "test/native-kernel.cjs",
+    "tools/native-kernel/integer-ir.cjs",
+    "tools/native-kernel/c-backend.cjs",
+    "tools/native-kernel/js-backend.cjs",
+    "tools/native-kernel/exact-analysis.cjs",
+    "tools/native-kernel/wasm-bridge.cjs",
+    "src/lib/sagejs/native.py",
+    "docs/optimizer-opportunities.md",
+    "docs/mixed-exact-float-sidecar.md",
+    "tools/native-kernel/test/mixed-exact-float64.cjs",
+    "tools/native-kernel/test/mixed_exact_float64_witness.py"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "same-source",
+    "oracles": [
+      "CPython dynamic same-source execution",
+      "Generated Node native and Wasm isolated-core differential execution"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "pnpm architecture:check",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 9.277,
+      "started_at": "2026-09-04T06:35:27.301Z",
+      "commit": "94f646fcf240ba5150ab1af6cfb08ab3006ab7e7",
+      "workspace_fingerprint": "7797696222fd3366d39a137175becda798b35a4649022f25de0b35dec3c37136",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 41.813,
+      "started_at": "2026-09-04T06:35:59.246Z",
+      "commit": "94f646fcf240ba5150ab1af6cfb08ab3006ab7e7",
+      "workspace_fingerprint": "7797696222fd3366d39a137175becda798b35a4649022f25de0b35dec3c37136",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 2173.519,
+      "started_at": "2026-09-04T06:36:45.109Z",
+      "commit": "94f646fcf240ba5150ab1af6cfb08ab3006ab7e7",
+      "workspace_fingerprint": "7797696222fd3366d39a137175becda798b35a4649022f25de0b35dec3c37136",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test tools/native-kernel/test/float64-log.cjs tools/native-kernel/test/mixed-exact-float64.cjs tools/native-kernel/test/native-call-statement.cjs tools/native-kernel/test/relative-native-imports.cjs tools/native-kernel/test/explicit-errors.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 7.958,
+      "started_at": "2026-09-14T08:47:14.723Z",
+      "commit": "9903c3dce6f571c14161233505857a41fc1f2d0d",
+      "workspace_fingerprint": "73ba41a4a48a97972fa7133a7078cea78c3a98dc54d5f8409b1dbc5c743c56b7",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test tools/native-kernel/test/float64-log.cjs tools/native-kernel/test/mixed-exact-float64.cjs tools/native-kernel/test/native-call-statement.cjs tools/native-kernel/test/relative-native-imports.cjs tools/native-kernel/test/explicit-errors.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 7.787,
+      "started_at": "2026-09-14T08:52:48.150Z",
+      "commit": "9903c3dce6f571c14161233505857a41fc1f2d0d",
+      "workspace_fingerprint": "fd20d6e2dac13c65809c7e7f592489cc1006dca1e8a1a93acb40c4c9c86fa2d3",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test tools/native-kernel/test/float64-log.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 6.372,
+      "started_at": "2026-09-14T09:12:30.141Z",
+      "commit": "1927840fc1f813c137ea86c0b7b9146f0ce2f0cb",
+      "workspace_fingerprint": "3744538fcd7fcaf29cd53bcdc85ec075fb04154de741a649bb2af2b07f532790",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test tools/native-kernel/test/explicit-errors.cjs tools/native-kernel/test/float64-log.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 6.398,
+      "started_at": "2026-09-14T09:15:49.040Z",
+      "commit": "4419d6cff023c92c824f241abb2b8b4c6c540b0b",
+      "workspace_fingerprint": "a5c6f719c8f845a04ae992d861dbdc452a21d6b12273490756c7fee8738b85d6",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test tools/native-kernel/test/explicit-errors.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.883,
+      "started_at": "2026-09-14T09:16:20.814Z",
+      "commit": "4419d6cff023c92c824f241abb2b8b4c6c540b0b",
+      "workspace_fingerprint": "e8853e6bf7235a2e3828b94b9018eef24cc5275c430f0bb2ddb877f07454548b",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test tools/native-kernel/test/explicit-errors.cjs tools/native-kernel/test/float64-log.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 6.301,
+      "started_at": "2026-09-14T09:20:58.523Z",
+      "commit": "17f210e0fdd639fc2e3f5df291a12d819a36cd1f",
+      "workspace_fingerprint": "ee1f69ac012666ffd60d8809971ec27666028e8a5627937aa172443527a886ed",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test tools/native-kernel/test/explicit-errors.cjs tools/native-kernel/test/float64-log.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 6.378,
+      "started_at": "2026-09-14T09:22:04.680Z",
+      "commit": "17f210e0fdd639fc2e3f5df291a12d819a36cd1f",
+      "workspace_fingerprint": "2ee0474cfb1e9a227b15b8d0c99123699113623ff7d3c104743216c7650c49b9",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test tools/native-kernel/test/float64-log.cjs tools/native-kernel/test/explicit-errors.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 7.047,
+      "started_at": "2026-09-14T09:41:01.328Z",
+      "commit": "a14c36b38b5d78e8f4fd4e0d9c5393361063eca4",
+      "workspace_fingerprint": "acc8cabfb4a9bec5f8d2c7f2d4a61cbc563b211ee97b8cd1b53b9fe12d601366",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test tools/native-kernel/test/relative-native-imports.cjs tools/native-kernel/test/mixed-exact-float64.cjs tools/native-kernel/test/float64-log.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 8.521,
+      "started_at": "2026-09-14T10:32:56.905Z",
+      "commit": "946b3507113afc5c10b7d214488729f3d8e51c60",
+      "workspace_fingerprint": "62c99269a95c72f75700627b656e8ce8ce274aa90b1839b53ed0d4cb6277838c",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test tools/native-kernel/test/integer-shifts.cjs tools/native-kernel/test/integer-bit-length.cjs tools/native-kernel/test/integer-gcd.cjs tools/native-kernel/test/mixed-exact-float64.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.835,
+      "started_at": "2026-09-14T11:37:15.727Z",
+      "commit": "68fbe40290a88abb97152e15d8ee7819b4b3b93c",
+      "workspace_fingerprint": "6c5304debd74d59a512f5cd97499c37a008493135451c6ec2108b3885d40edc8",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:changed -- --base HEAD",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 644.654,
+      "started_at": "2026-09-14T11:38:35.973Z",
+      "commit": "68fbe40290a88abb97152e15d8ee7819b4b3b93c",
+      "workspace_fingerprint": "cd2ee58c989196383b5c4d9b2949344b6f099ec37d287a28108f408286c1d11d",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test tools/native-kernel/test/integer-shifts.cjs tools/native-kernel/test/integer-bit-length.cjs tools/native-kernel/test/integer-gcd.cjs tools/native-kernel/test/mixed-exact-float64.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.899,
+      "started_at": "2026-09-14T11:49:57.788Z",
+      "commit": "68fbe40290a88abb97152e15d8ee7819b4b3b93c",
+      "workspace_fingerprint": "a23083a5e9059b76bfa3e9e852bea85c60709e9721e2066d7712e4c4f6d99f70",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "python3 /home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/meter_command.py node --test tools/native-kernel/test/integer-shifts.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.729,
+      "started_at": "2026-09-14T15:36:40.143Z",
+      "commit": "b294bcc05de37d850596f4f8a23f83422751ab72",
+      "workspace_fingerprint": "ccbff4caf493dc8ff001824e0543f569a041c2e7245b93691c9b5a1560e1e93b",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "python3 /home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/meter_command.py node --test tools/native-kernel/test/integer-shifts.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.006,
+      "started_at": "2026-09-14T15:46:28.862Z",
+      "commit": "d1e398266f63237b6a2ce27d96b9e7556f0178cf",
+      "workspace_fingerprint": "bc1241cb8d2905b45b30ee399fbaee9052d843e79f891141fe1e7cdb04beadc3",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "python3 /home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/meter_command.py node --test tools/native-kernel/test/integer-shifts.cjs tools/native-kernel/test/integer-bit-length.cjs tools/native-kernel/test/integer-gcd.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.747,
+      "started_at": "2026-09-14T16:01:56.943Z",
+      "commit": "281edb0d8223a37252e0bcf9a077571fe5faf62c",
+      "workspace_fingerprint": "671e556684ca0746296647280eb8633a7bf9e82726607fdee62fc39cc212184d",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test tools/native-kernel/test/float64-log.cjs tools/native-kernel/test/mixed-exact-float64.cjs tools/native-kernel/test/relative-native-imports.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 9.693,
+      "started_at": "2026-09-14T20:57:26.824Z",
+      "commit": "e4a2d82b6c4e0d3224028f684ed44efba1fc7afd",
+      "workspace_fingerprint": "56a72c62021771f1e79c68e0f2d2463a20227d30f77a68a0b985f1200e4971ba",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "python3 /home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/meter_command.py prlimit --as=4294967296 node --test tools/native-kernel/test/float64-log.cjs tools/native-kernel/test/mixed-exact-float64.cjs tools/native-kernel/test/native-call-statement.cjs tools/native-kernel/test/relative-native-imports.cjs tools/native-kernel/test/explicit-errors.cjs tools/native-kernel/test/integer-bit-length.cjs tools/native-kernel/test/integer-shifts.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 10.34,
+      "started_at": "2026-09-15T01:51:34.857Z",
+      "commit": "17ac1e5435b4c93ad1bd7b100f3249e3e434b1bc",
+      "workspace_fingerprint": "e1882562425aaae07f7a991ed4cd1866bd81bfb9e7b4eb4ec74482c7223ea691",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "python3 /home/user/sagejs-worktrees/pari-class-group-port/bench/pari-class-group-port/meter_command.py prlimit --as=4294967296 node --test tools/native-kernel/test/integer-isqrt.cjs tools/native-kernel/test/integer-bit-length.cjs tools/native-kernel/test/integer-shifts.cjs tools/native-kernel/test/explicit-errors.cjs tools/native-kernel/test/mixed-exact-float64.cjs tools/native-kernel/test/native-call-statement.cjs tools/native-kernel/test/relative-native-imports.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 8.569,
+      "started_at": "2026-09-15T02:43:47.589Z",
+      "commit": "511c05d94d15e485ca719fd895fa5a967a1e448c",
+      "workspace_fingerprint": "8a42bf2387d8a43ff8d4b4a035e0a6490b91dfa349fd37dc7419f94d58a8157b",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test tools/native-kernel/test/native-call-statement.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 5.386,
+      "started_at": "2026-09-15T14:11:16.591Z",
+      "commit": "888b5fd2f6173ee4ca193c0f3720284bda3a44f9",
+      "workspace_fingerprint": "490562bc35a5f2ebccf5bccb51f52cefed96bf394a42c877735cb12e43082601",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test tools/native-kernel/test/native-call-statement.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 5.485,
+      "started_at": "2026-09-15T14:11:43.810Z",
+      "commit": "888b5fd2f6173ee4ca193c0f3720284bda3a44f9",
+      "workspace_fingerprint": "6820da9c742e1b9bb157aa160c50e01bef71144b607512cb2dce6a1751914ba9",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test tools/native-kernel/test/native-call-statement.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 6.907,
+      "started_at": "2026-09-15T17:26:53.075Z",
+      "commit": "b57cf916a9a5a0116e4ca27a56f27fba9e31b2f2",
+      "workspace_fingerprint": "8fcc9ffdefcd60ec0f83b5dc2fb97afddc4f6ccfe27eee9f59659f41aeeb83cd",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test tools/native-kernel/test/native-call-statement.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 6.735,
+      "started_at": "2026-09-15T17:27:14.997Z",
+      "commit": "b57cf916a9a5a0116e4ca27a56f27fba9e31b2f2",
+      "workspace_fingerprint": "da2287dacc895beaeaf55d6c2ad9cffe7cbafbd1ea6f7ae7d5e9809e5bc0705b",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test tools/native-kernel/test/native-call-statement.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 7.515,
+      "started_at": "2026-09-15T17:31:29.611Z",
+      "commit": "af079adf307cd859f74693c046d8223dc962f0a2",
+      "workspace_fingerprint": "35fe13d914e634c60f9dd8a258660d8115c3e3bb7ac235a2213e0fdbb559b6c9",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}

@@ -1,0 +1,108 @@
+{
+  "schema": "sagejs.rust-class-group/open-development-panel-v1",
+  "status": "initial-open-partial",
+  "spec": "qualification-corpus-spec-v1.json",
+  "answerVisibility": "public-development-only",
+  "cases": [
+    {
+      "id": "small-x3-x-1",
+      "polynomialAscending": ["-1", "-1", "0", "1"],
+      "polynomialSha256": "1db1ba49f76fe4b2c5ffd079e36160a73f7e91b7301b991e19cea36d2281c6e7",
+      "degree": 3,
+      "signature": [1, 1],
+      "timingStratum": "under-5ms",
+      "traits": ["trivial-class-group", "nontrivial-units"],
+      "expected": {"classNumber": "1", "invariantFactors": []},
+      "source": "../../corpus/x3-x-1.json"
+    },
+    {
+      "id": "small-discriminant-49",
+      "polynomialAscending": ["1", "-2", "-1", "1"],
+      "polynomialSha256": "106b08f31f2c2c4f3a8769ecbf3271b85de228fd9e99d3893ab8d8c64e0f78e0",
+      "degree": 3,
+      "signature": [3, 0],
+      "timingStratum": "under-5ms",
+      "traits": ["trivial-class-group", "nontrivial-units", "ramified-factor-base-prime"],
+      "expected": {"classNumber": "1", "invariantFactors": []},
+      "source": "../../corpus/discriminant-49.json"
+    },
+    {
+      "id": "small-class-number-2",
+      "polynomialAscending": ["-29", "-30", "-8", "1"],
+      "polynomialSha256": "3b76e1ade47b397517faf9a9b6ba8587e617ac903f748b563897322e492682d1",
+      "degree": 3,
+      "signature": [3, 0],
+      "timingStratum": "under-5ms",
+      "traits": ["nontrivial-class-group", "nontrivial-units"],
+      "expected": {"classNumber": "2", "invariantFactors": ["2"]},
+      "source": "../../corpus/class-number-2.json"
+    },
+    {
+      "id": "small-class-number-3",
+      "polynomialAscending": ["-26", "-30", "-8", "1"],
+      "polynomialSha256": "595e8e5db13b19380fa791e99dc2acec76f9db955a7b1632faf644c2cdf34706",
+      "degree": 3,
+      "signature": [3, 0],
+      "timingStratum": "under-5ms",
+      "traits": ["nontrivial-class-group", "nontrivial-units"],
+      "expected": {"classNumber": "3", "invariantFactors": ["3"]},
+      "source": "../../corpus/class-number-3.json"
+    },
+    {
+      "id": "small-class-number-4",
+      "polynomialAscending": ["-37", "-30", "-8", "1"],
+      "polynomialSha256": "cb4874e7839ed85fa96f6353316f675ab782ccd48f4fd43ddebe4497f33e2a3d",
+      "degree": 3,
+      "signature": [3, 0],
+      "timingStratum": "under-5ms",
+      "traits": ["nontrivial-class-group", "noncyclic-class-group", "nontrivial-units"],
+      "expected": {"classNumber": "4", "invariantFactors": ["2", "2"]},
+      "source": "../../corpus/class-number-4.json"
+    },
+    {
+      "id": "small-class-number-6",
+      "polynomialAscending": ["-34", "-30", "-8", "1"],
+      "polynomialSha256": "ec2d023ee5fbe6421f2965c1da7a41c42379be4e2443d2a4c65240110c13769d",
+      "degree": 3,
+      "signature": [3, 0],
+      "timingStratum": "under-5ms",
+      "traits": ["nontrivial-class-group", "nontrivial-units"],
+      "expected": {"classNumber": "6", "invariantFactors": ["6"]},
+      "source": "../../corpus/class-number-6.json"
+    },
+    {
+      "id": "h1-real-cubic",
+      "polynomialAscending": ["20034", "-20018", "0", "1"],
+      "polynomialSha256": "2d0fa668fad6c929a71eabdee7ebfb7acc1938307a41d4c1b49847cc99c7964d",
+      "degree": 3,
+      "signature": [3, 0],
+      "timingStratum": "5ms-to-100ms",
+      "traits": ["trivial-class-group", "nontrivial-units", "large-exact-intermediates"],
+      "expected": {"classNumber": "1", "invariantFactors": []},
+      "source": "../../corpus/h1.json"
+    },
+    {
+      "id": "row1-index-3-cubic",
+      "polynomialAscending": ["20018", "-20010", "0", "1"],
+      "polynomialSha256": "394cce5d99f0e9f8ba49a12e1542ff41f36c98b535a4535071414a575ded95ba",
+      "degree": 3,
+      "signature": [3, 0],
+      "timingStratum": "5ms-to-100ms",
+      "traits": ["nontrivial-class-group", "nontrivial-equation-order-index", "ramified-factor-base-prime", "nontrivial-units", "large-exact-intermediates"],
+      "expected": {"classNumber": "3", "invariantFactors": ["3"]},
+      "source": "../../../pari-class-group-port/panel.json#row-1"
+    },
+    {
+      "id": "row6-continuation-cubic",
+      "polynomialAscending": ["2000000000018", "-2000000000010", "0", "1"],
+      "polynomialSha256": "26fed17015f6479f2de7a3544d8e2ac9ef41ec899b18193d997489a0aeafa416",
+      "degree": 3,
+      "signature": [3, 0],
+      "timingStratum": "2s-to-30s",
+      "traits": ["nontrivial-class-group", "noncyclic-class-group", "nontrivial-equation-order-index", "ramified-factor-base-prime", "nontrivial-units", "precision-restart", "relation-continuation", "large-exact-intermediates"],
+      "expected": {"classNumber": "4", "invariantFactors": ["2", "2"]},
+      "source": "../../../pari-class-group-port/panel.json#row-6"
+    }
+  ],
+  "unfilledOpenSlots": 51
+}

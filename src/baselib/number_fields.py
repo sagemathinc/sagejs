@@ -127,6 +127,13 @@ def _nf_class_unit_groups_module() -> Any:
     )
 
 
+def _nf_rust_class_group_runtime_module() -> Any:
+    return _nf_lazy_import(
+        "__sagejs_nf_rust_class_group_runtime_module__",
+        "sagejs.number_fields.rust_class_group_runtime",
+    )
+
+
 def _nf_quadratic_class_units_module() -> Any:
     return _nf_lazy_import(
         "__sagejs_nf_quadratic_class_units_module__",
@@ -2348,6 +2355,21 @@ class NumberFieldParent(sage.Parent):
         algorithm: str = "auto",
         **limits: Any,
     ) -> "tuple[Any, ...]":
+        rust_context = _nf_rust_class_group_runtime_module().rust_class_unit_context(
+            self,
+            proof=proof,
+            algorithm=algorithm,
+            options=limits,
+        )
+        if rust_context is not None:
+            result = rust_context.unit_group()
+            if not result.complete:
+                raise NotImplementedError(result.reason)
+            generators = []
+            for generator in result.generators:
+                evaluate = getattr(generator, "evaluate", None)
+                generators.append(evaluate() if callable(evaluate) else generator)
+            return runtime.math_tuple(generators)
         if self._is_tutorial_cubic():
             generator = self.gen()
             unit = self(-3) * generator**2 - self(13) * generator - self(13)
@@ -2376,6 +2398,17 @@ class NumberFieldParent(sage.Parent):
         algorithm: str = "auto",
         **limits: Any,
     ) -> Any:
+        rust_context = _nf_rust_class_group_runtime_module().rust_class_unit_context(
+            self,
+            proof=proof,
+            algorithm=algorithm,
+            options=limits,
+        )
+        if rust_context is not None:
+            result = rust_context.unit_group()
+            if not result.complete:
+                raise ValueError("the Rust unit subgroup has not been proved complete")
+            return result
         if algorithm in ("minkowski", "buchmann-hecke"):
             return _nf_class_unit_groups_module().unit_group(
                 self, proof=proof, algorithm=algorithm, **limits
@@ -2436,6 +2469,20 @@ class NumberFieldParent(sage.Parent):
         algorithm: str = "auto",
         **limits: Any,
     ) -> Any:
+        rust_context = _nf_rust_class_group_runtime_module().rust_class_unit_context(
+            self,
+            proof=proof,
+            algorithm=algorithm,
+            options=limits,
+        )
+        if rust_context is not None:
+            current = rust_context.regulator()
+            if int(current.precision_bits) >= int(prec):
+                return current
+            if algorithm == "rust":
+                raise NotImplementedError(
+                    "the Rust regulator enclosure does not meet the requested precision"
+                )
         if self.degree() > 2:
             return _nf_class_unit_groups_module().regulator(
                 self,
@@ -2455,6 +2502,14 @@ class NumberFieldParent(sage.Parent):
         algorithm: str = "auto",
         **limits: Any,
     ) -> Any:
+        rust_context = _nf_rust_class_group_runtime_module().rust_class_unit_context(
+            self,
+            proof=proof,
+            algorithm=algorithm,
+            options=limits,
+        )
+        if rust_context is not None:
+            return rust_context
         return _nf_class_unit_groups_module().class_unit_context(
             self, proof=proof, algorithm=algorithm, **limits
         )
@@ -2822,6 +2877,22 @@ class NumberFieldParent(sage.Parent):
         **limits: Any,
     ) -> Any:
         del names
+        rust_group = _nf_rust_class_group_runtime_module().rust_class_group(
+            self,
+            proof=proof,
+            algorithm=algorithm,
+            options=limits,
+        )
+        if rust_group is not None:
+            return rust_group
+        rust_context = _nf_rust_class_group_runtime_module().rust_class_unit_context(
+            self,
+            proof=proof,
+            algorithm=algorithm,
+            options=limits,
+        )
+        if rust_context is not None:
+            return rust_context.class_group()
         general_algorithm = algorithm
         if self.degree() == 4 and algorithm == "auto" and len(limits) == 0:
             class_units = _nf_class_unit_groups_module()
@@ -2964,6 +3035,14 @@ class NumberFieldParent(sage.Parent):
         algorithm: str = "auto",
         **limits: Any,
     ) -> int:
+        rust_context = _nf_rust_class_group_runtime_module().rust_class_unit_context(
+            self,
+            proof=proof,
+            algorithm=algorithm,
+            options=limits,
+        )
+        if rust_context is not None:
+            return int(rust_context.class_number())
         if self.degree() == 3 and algorithm == "auto" and len(limits) == 0:
             # Enter the closed polynomial-to-class-group program directly at
             # the public degree-specific dispatch point.  A successful exact

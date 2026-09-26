@@ -2,6 +2,9 @@
 
 const { createCompiler } = require("../..");
 const { analyzeExactModule } = require("./exact-analysis.cjs");
+const {
+  attachAndVerifyCheckedBoundsProofs,
+} = require("./checked-bounds-proofs.cjs");
 const { evaluateIntegerConstant } = require("./integer-constants.cjs");
 const {
   canonicalType,
@@ -27,7 +30,7 @@ const {
 const { loadRegistry: loadFfiRegistry } = require("../ffi/declarations.cjs");
 const { isBundleClass, prepareWorkspaceBundles } = require("./workspace-bundles.cjs");
 
-const IR_VERSION = 39;
+const IR_VERSION = 46;
 const MAX_SMALL_POWER = 64n;
 const MAX_SAFE_START = BigInt(Number.MAX_SAFE_INTEGER);
 const PARENT_ELEMENT_TYPES = new Map([
@@ -36,6 +39,9 @@ const PARENT_ELEMENT_TYPES = new Map([
 ]);
 const SUPPORTED_ARGUMENT_TYPES = new Set([
   ...PARENT_ELEMENT_TYPES.keys(),
+  ...PARENT_ELEMENT_TYPES.values(),
+  "RealNumberBuffer",
+  "ComplexNumberBuffer",
   "Integer",
   "uint64",
 ]);
@@ -64,6 +70,37 @@ function isCIdentifier(name) {
 
 function array(value) {
   return Array.from(value || []);
+}
+
+function importLevel(item) {
+  if (Number.isInteger(item.level)) return item.level;
+  // Older generated compiler ASTs do not declare `AST_Import.level`, so their
+  // constructor drops the field supplied by the Tree-sitter lowerer. The
+  // authoritative frontend still preserves the original relative spelling on
+  // the module token. Recover only its leading dots; never infer a relative
+  // import from the resolved module key.
+  const spelling = item.start?.type === "relative_import"
+    ? item.start.value : undefined;
+  return typeof spelling === "string"
+    ? spelling.match(/^\.+/)?.[0].length || 0
+    : 0;
+}
+
+function importedModuleName(item) {
+  return typeof item.key === "string"
+    ? ".".repeat(importLevel(item)) + item.key
+    : item.key;
+}
+
+function canonicalDefinition(value) {
+  return JSON.stringify(value, (_key, item) => {
+    if (item === null || Array.isArray(item) || typeof item !== "object") {
+      return item;
+    }
+    return Object.fromEntries(
+      Object.keys(item).sort().map((key) => [key, item[key]]),
+    );
+  });
 }
 
 function assignment(statement, description) {
@@ -274,6 +311,18 @@ function lowerOperand(node, context, operations) {
 
 function lowerExpression(node, target, context, operations) {
   ensureLocal(context, target);
+  if (nodeType(node) === "AST_ItemAccess" &&
+      nodeType(node.expression) === "AST_SymbolRef" &&
+      context.bufferNames?.has(node.expression.name)) {
+    const literal = integerLiteral(node.property);
+    const index = literal !== undefined ? literal.toString() : node.property.name;
+    expect((literal !== undefined && literal >= 0n && literal <= 18446744073709551615n) ||
+      (nodeType(node.property) === "AST_SymbolRef" && context.scalarTypes.get(index) === "uint64"),
+    "field buffer indexing requires a nonnegative constant or uint64 index");
+    operations.push({kind: elementKind(context, "buffer.get"), target,
+      buffer: node.expression.name, index, constantIndex: literal !== undefined});
+    return;
+  }
 
   if (context.elementType === "Integer") {
     const value = integerLiteral(node);
@@ -394,7 +443,7 @@ function lowerAssignment(statement, context, description) {
   return operations;
 }
 
-function lowerRange(node, iterationName) {
+function lowerRange(node, iterationNames) {
   expect(
     nodeType(node) === "AST_Call" &&
       nodeType(node.expression) === "AST_SymbolRef" &&
@@ -405,9 +454,9 @@ function lowerRange(node, iterationName) {
   if (
     args.length === 1 &&
     nodeType(args[0]) === "AST_SymbolRef" &&
-    args[0].name === iterationName
+    iterationNames.includes(args[0].name)
   ) {
-    return { start: 0, count: iterationName };
+    return { start: 0, count: args[0].name };
   }
 
   const start = args.length === 2 ? integerLiteral(args[0]) : undefined;
@@ -427,27 +476,31 @@ function lowerRange(node, iterationName) {
     start !== undefined &&
       start >= 0n &&
       start <= MAX_SAFE_START &&
-      stopName === iterationName &&
+      iterationNames.includes(stopName) &&
       stopOffset === start,
-    `native two-argument loop must use range(k, ${iterationName} + k) ` +
+    `native two-argument loop must use range(k, ${iterationNames.join(" or ")} + k) ` +
       "with a nonnegative safe integer k",
   );
-  return { start: Number(start), count: iterationName };
+  return { start: Number(start), count: stopName };
 }
 
-function nativeDecorator(fn) {
+function nativeDecoratorName(fn) {
   const decorators = array(fn.decorators);
   const marked = decorators.filter(
     (decorator) =>
       nodeType(decorator.expression) === "AST_SymbolRef" &&
-      decorator.expression.name === "native",
+      ["native", "native_inline"].includes(decorator.expression.name),
   );
-  if (marked.length === 0) return false;
+  if (marked.length === 0) return undefined;
   expect(
     decorators.length === 1,
-    "@native cannot currently be combined with other decorators",
+    "@native and @native_inline cannot currently be combined with other decorators",
   );
-  return true;
+  return marked[0].expression.name;
+}
+
+function nativeDecorator(fn) {
+  return nativeDecoratorName(fn) !== undefined;
 }
 
 function hoistSyntheticConstants(operations) {
@@ -518,11 +571,8 @@ function lowerLegacyFunction(fn, decorated = false) {
     elementType = "Integer";
   } else {
     expect(
-      parentParams.length === 1 &&
-        integerParams.length === 0 &&
-        iterationParams.length === 1 &&
-        params.length === 2,
-      "a real or complex native kernel requires one supported field and one uint64 argument",
+      parentParams.length === 1 && integerParams.length === 0,
+      "a real or complex native kernel requires one supported field",
     );
     parent = parentParams[0];
     elementType = PARENT_ELEMENT_TYPES.get(parent.type);
@@ -530,11 +580,17 @@ function lowerLegacyFunction(fn, decorated = false) {
       returnType === elementType,
       `${fn.name.name} with ${parent.type} must return ${elementType}`,
     );
+    expect(params.every((param) => param === parent ||
+      param.type === "uint64" || param.type === elementType ||
+      param.type === elementType + "Buffer"),
+    "prepared field inputs must match the result field type");
   }
-  const iterationName = iterationParams[0].name;
   const context = {
     elementType,
-    localTypes: new Map(),
+    bufferNames: new Set(params.filter((param) => param.type === elementType + "Buffer")
+      .map((param) => param.name)),
+    localTypes: new Map(params.filter((param) => param.type === elementType)
+      .map((param) => [param.name, param.type])),
     nextTemporary: 0,
     paramNames: new Set(params.map((param) => param.name)),
     parentName: parent?.name,
@@ -572,7 +628,7 @@ function lowerLegacyFunction(fn, decorated = false) {
           !context.scalarTypes.has(index),
         `native loop index ${index} conflicts with a value`,
       );
-      const range = lowerRange(statement.object, iterationName);
+      const range = lowerRange(statement.object, iterationParams.map((param) => param.name));
       context.scalarTypes.set(index, "uint64");
       context.scalarCoercions = new Map();
       const loopBody = [];
@@ -595,12 +651,14 @@ function lowerLegacyFunction(fn, decorated = false) {
 
     if (nodeType(statement) === "AST_Return") {
       expect(returned === undefined, "native function has multiple returns");
-      expect(
-        nodeType(statement.value) === "AST_SymbolRef" &&
-          context.localTypes.get(statement.value.name) === elementType,
-        `native function must return a ${elementType} local`,
-      );
-      returned = statement.value.name;
+      if (nodeType(statement.value) === "AST_SymbolRef" &&
+          context.localTypes.get(statement.value.name) === elementType &&
+          !context.paramNames.has(statement.value.name)) {
+        returned = statement.value.name;
+      } else {
+        returned = temporary(context);
+        lowerExpression(statement.value, returned, context, body);
+      }
       body.push({ kind: "return", value: returned });
       continue;
     }
@@ -615,7 +673,8 @@ function lowerLegacyFunction(fn, decorated = false) {
     body[body.length - 1]?.kind === "return",
     "native return must be the final statement",
   );
-  const locals = Array.from(context.localTypes, ([name, type]) => ({
+  const locals = Array.from(context.localTypes).filter(([name]) =>
+    !context.paramNames.has(name)).map(([name, type]) => ({
     name,
     type,
     storage: name === returned ? "return" : "local",
@@ -650,15 +709,31 @@ function isNativeRecordClass(statement) {
     array(statement.bases)[0].name === "NativeRecord";
 }
 
+function isNativeMappingClass(statement) {
+  return nodeType(statement) === "AST_Class" &&
+    array(statement.bases).length === 1 &&
+    nodeType(array(statement.bases)[0]) === "AST_SymbolRef" &&
+    array(statement.bases)[0].name === "TypedDict";
+}
+
 function nativeRecordSchemas(topLevel, filename) {
-  const declarations = topLevel.filter(isNativeRecordClass);
-  const names = new Set(declarations.map((record) => record.name?.name));
-  const recordTypes = new Map(Array.from(names, (name) => [name, true]));
-  const supportedFields = new Set([
+  const declarations = topLevel.filter((statement) =>
+    isNativeRecordClass(statement) || isNativeMappingClass(statement)
+  );
+  const recordTypes = new Map(declarations.map((record) => {
+    const name = record.name?.name;
+    return [name, {
+      name,
+      type: `${isNativeMappingClass(record) ? "Mapping" : "Record"}:${name}`,
+    }];
+  }));
+  const nativeRecordFields = new Set([
     "UInt64Buffer", "uint64", "PrimeModulusValue",
   ]);
+  const nativeMappingFields = new Set(["uint64", "int64", "bool"]);
   const schemas = declarations.map((record) => {
     const name = record.name?.name;
+    const mapping = isNativeMappingClass(record);
     expect(isCIdentifier(name), `${filename}: native record name must be a C identifier`);
     expect(array(record.decorators).length === 0,
       `${filename}: native record ${name} may not have decorators`);
@@ -669,11 +744,14 @@ function nativeRecordSchemas(topLevel, filename) {
       const annotated = statement.body;
       expect(nodeType(annotated.target) === "AST_SymbolRef",
         `${filename}: native record ${name} fields must be simple names`);
+      expect(isCIdentifier(annotated.target.name),
+        `${filename}: native record ${name} field names must be C identifiers`);
       expect(annotated.value === undefined || annotated.value === null,
         `${filename}: native record ${name}.${annotated.target.name} may not have a default`);
       const type = canonicalType(annotated.annotation, recordTypes);
+      const supportedFields = mapping ? nativeMappingFields : nativeRecordFields;
       expect(type !== undefined && supportedFields.has(type),
-        `${filename}: unsupported native record field ` +
+        `${filename}: unsupported native ${mapping ? "mapping" : "record"} field ` +
           `${name}.${annotated.target.name}`);
       return { name: annotated.target.name, type };
     });
@@ -682,9 +760,12 @@ function nativeRecordSchemas(topLevel, filename) {
       `${filename}: native record ${name} has duplicate fields`);
     return {
       name,
-      type: `Record:${name}`,
-      layout: "compiler-owned-value",
-      ownership: "borrowed-fields",
+      type: `${mapping ? "Mapping" : "Record"}:${name}`,
+      layout: mapping
+        ? "compiler-owned-closed-mapping"
+        : "compiler-owned-value",
+      ownership: mapping ? "copied-scalar-fields" : "borrowed-fields",
+      ...(mapping ? { access: "literal-string-keys" } : {}),
       fields,
     };
   });
@@ -694,16 +775,18 @@ function nativeRecordSchemas(topLevel, filename) {
 function supportedModulePreamble(statement) {
   if (isEmptyDecoratorStatement(statement) ||
       nodeType(statement) === "AST_EmptyStatement") return true;
-  if (isNativeRecordClass(statement)) return true;
+  if (isNativeRecordClass(statement) || isNativeMappingClass(statement)) return true;
   if (isBundleClass(statement)) return true;
   if (nodeType(statement) !== "AST_Imports") return false;
   return array(statement.imports).every((item) => {
     const moduleName = item.module?.name;
     const names = array(item.argnames).map((arg) => arg.name);
     return (
-      moduleName === "math" && names.every((name) => name === "sqrt")
+      importLevel(item) === 0 && moduleName === "math" && names.every((name) => ["sqrt", "isqrt", "gcd", "log", "log2", "atan", "exp", "pow", "ldexp", "frexp", "copysign"].includes(name))
     ) || (
-      moduleName === "typing" && names.every((name) => name === "Tuple")
+      moduleName === "typing" && names.every((name) =>
+        name === "Tuple" || name === "TypedDict"
+      )
     ) || (
       item.key === "sagejs.native"
     ) || (
@@ -784,7 +867,7 @@ function ffiImports(topLevel, filename) {
   for (const statement of topLevel) {
     if (nodeType(statement) !== "AST_Imports") continue;
     for (const item of array(statement.imports)) {
-      const moduleName = item.key;
+      const moduleName = importLevel(item) ? null : item.key;
       if (typeof moduleName !== "string" ||
           !moduleName.startsWith("sagejs.ffi.")) continue;
       const library = registry.byModule.get(moduleName);
@@ -938,9 +1021,9 @@ async function lowerSource(source, filename, options = {}) {
     for (const statement of topLevel) {
       if (nodeType(statement) !== "AST_Imports") continue;
       for (const item of array(statement.imports)) {
-        const moduleName = item.key;
+        const moduleName = importedModuleName(item);
         if (typeof moduleName !== "string" ||
-            !moduleName.startsWith("sagejs.") ||
+            (!moduleName.startsWith("sagejs.") && !moduleName.startsWith(".")) ||
             moduleName === "sagejs.native" ||
             moduleName.startsWith("sagejs.ffi.") || item.star) continue;
         for (const imported of array(item.argnames)) {
@@ -973,11 +1056,32 @@ async function lowerSource(source, filename, options = {}) {
     }
   }
   const integerConstants = moduleIntegerConstants(topLevel, filename);
+  const mathFunctions = new Map();
+  const importCounts = new Map();
+  for (const statement of topLevel) {
+    if (nodeType(statement) !== "AST_Imports") continue;
+    for (const item of array(statement.imports)) {
+      for (const imported of array(item.argnames)) {
+        const local = imported.alias?.name || imported.name;
+        importCounts.set(local, (importCounts.get(local) || 0) + 1);
+      }
+      if (importLevel(item) || item.module?.name !== "math") continue;
+      for (const imported of array(item.argnames)) {
+        if (["sqrt", "isqrt", "gcd", "log", "log2", "atan", "exp", "pow", "ldexp", "frexp", "copysign"].includes(imported.name)) mathFunctions.set(imported.alias?.name || imported.name, imported.name);
+      }
+    }
+  }
   const records = nativeRecordSchemas(topLevel, filename);
   const foreignImports = ffiImports(topLevel, filename);
   const foreignFunctions = foreignImports.functions;
   const foreignResources = foreignImports.resources;
   const workspaces = prepareWorkspaceBundles(topLevel, compiler, foreignResources, filename);
+  // Workspace schemas reserve their base and member-helper names. Diagnose an
+  // import that shadows one of those names as a workspace contract violation
+  // before applying generic imported-math ambiguity checks to the module.
+  for (const name of mathFunctions.keys()) {
+    expect(importCounts.get(name) === 1, `${filename}: ambiguous math.${mathFunctions.get(name)} import binding ${name}`);
+  }
   const definitions = topLevel.filter(
     (statement) => nodeType(statement) === "AST_Function",
   );
@@ -1054,7 +1158,8 @@ async function lowerSource(source, filename, options = {}) {
         type === "Float64" ||
         type === "Float64Buffer" || type === "Int64Buffer" ||
         type === "Int64Record" || type === "IntegerBuffer" ||
-        type === "UInt64Buffer" || type?.startsWith("Record:")
+        type === "UInt64Buffer" || type?.startsWith("Record:") ||
+        type?.startsWith("Mapping:")
       )
     );
     if (completeSignature || partiallyTypedSelected) {
@@ -1068,6 +1173,11 @@ async function lowerSource(source, filename, options = {}) {
         !signature.returnType.startsWith("Record:"),
         `${fn.name.name}: compiler-owned records are borrowed values and ` +
           "may not be returned from a native kernel",
+      );
+      expect(
+        !signature.returnType.startsWith("Mapping:"),
+        `${fn.name.name}: compiler-owned closed mappings are borrowed values ` +
+          "and may not be returned from a native kernel",
       );
       expect(
         isIntegerSignature(signature) ||
@@ -1098,17 +1208,30 @@ async function lowerSource(source, filename, options = {}) {
     );
   }
   function lowerDefinition(fn) {
+    const signature = signatures.get(fn.name.name);
+    // These binary64 operations and typed helper calls may carry exact integer
+    // locals even when the public signature contains only floats. The pure
+    // buffer lowering does not admit native calls; use the mixed typed body.
+    let integerExponentMath = false;
+    // Inspect the original parser AST, before workspace expansion introduces
+    // synthetic structural nodes which deliberately have no parser walker.
+    if (signature !== undefined && isFloat64Signature(signature)) fn.walk({_visit(node, descend) {
+      if (nodeType(node) === "AST_Call" && nodeType(node.expression) === "AST_SymbolRef" &&
+          (["ldexp", "frexp", "copysign"].includes(mathFunctions.get(node.expression.name)) ||
+            signatures.has(node.expression.name))) integerExponentMath = true;
+      if (descend !== undefined) descend();
+    }});
     const expanded = workspaces.lower(fn);
     fn = expanded.fn;
-    const signature = signatures.get(fn.name.name);
     const result = signature === undefined
       ? lowerLegacyFunction(fn, decoratedMode)
-      : isFloat64Signature(signature)
+      : isFloat64Signature(signature) && !integerExponentMath
         ? lowerFloat64Function(
             fn,
             signature,
             filename,
             decoratedMode,
+            { mathFunctions, signatures, integerConstants, foreignFunctions },
           )
         : isPrimeFieldSignature(signature)
         ? isPrimeFieldIntrinsicFunction(fn)
@@ -1137,6 +1260,7 @@ async function lowerSource(source, filename, options = {}) {
             decoratedMode,
             integerConstants,
             foreignImports.canonicalResources,
+            mathFunctions,
           );
     if (expanded.metadata.length) {
       result.workspaceBundles = expanded.metadata;
@@ -1159,13 +1283,15 @@ async function lowerSource(source, filename, options = {}) {
     // lexical `@native` decorator.  Keep the two facts distinct.  Artifact
     // discovery uses this per-definition provenance to distinguish intentional
     // private native entry points from ordinary undecorated helpers.
-    result.lexicallyNative = nativeDecorator(definition);
+    const decorator = nativeDecoratorName(definition);
+    result.lexicallyNative = decorator !== undefined;
+    result.forceInline = decorator === "native_inline";
     // Dependency closure is not an implicit request for additional host APIs.
-    // Explicit roots and lexical native entries keep their existing safety
-    // restrictions; an ordinary source helper stays private regardless of
-    // whether its parameters happen to be scalars or resident aggregates.
-    if (result.kernelKind === "integer" &&
-        !initiallySelected.has(result.name) && !result.lexicallyNative) {
+    // Only requested roots are host entries.  A lexical `@native` marker on a
+    // same-file dependency means that function can be compiled as a root in
+    // its own artifact; it does not make every transitive composed artifact
+    // export it as an additional API.
+    if (!initiallySelected.has(result.name)) {
       result.hostCallable = false;
     }
     lowered.push(result);
@@ -1190,18 +1316,44 @@ async function lowerSource(source, filename, options = {}) {
   const importedLibraries = [];
   const nativeSourceDependencies = [];
   const combinedNames = new Set(lowered.map((fn) => fn.name));
+  const importedDefinitions = new Map();
   for (const name of requiredNativeImports) {
     const imported = importedNativeFunctions.get(name);
     for (const fn of imported.ir.functions || []) {
+      const privateImportedFunction = {
+        ...fn,
+        hostCallable: false,
+      };
+      const previous = importedDefinitions.get(fn.name);
+      const definition = canonicalDefinition(privateImportedFunction);
+      const origins = [
+        {path: imported.sourcePath, sha256: imported.sourceHash},
+        ...(imported.ir.nativeSourceDependencies || []),
+      ].filter(origin => origin.path === fn.provenance?.file);
+      const origin = origins.length && origins.every(item => item.sha256 === origins[0].sha256)
+        ? origins[0] : undefined;
+      // Resolve the defining source, not the immediate import edge: a diamond
+      // may reach one pinned helper through different intermediate modules.
+      if (previous && origin && previous.path === origin.path &&
+          previous.hash === origin.sha256 &&
+          previous.definition === definition) continue;
       expect(
         !combinedNames.has(fn.name),
         `${filename}: imported native function conflicts with ${fn.name}`,
       );
       combinedNames.add(fn.name);
-      importedLowered.push(fn.kernelKind !== "integer" || fn.lexicallyNative ? fn : {
-        ...fn,
-        hostCallable: false,
+      importedDefinitions.set(fn.name, {
+        path: origin?.path,
+        hash: origin?.sha256,
+        definition,
       });
+      // An imported definition is an implementation dependency of this
+      // artifact, never an additional host entry.  Its lexical `@native`
+      // marker remains useful when its own source file is compiled, but that
+      // marker must not leak through an import edge and multiply the composed
+      // addon's public ABI.  The importing root can still call every retained
+      // representation directly inside the isolated core.
+      importedLowered.push(privateImportedFunction);
     }
     importedRecords.push(...(imported.ir.records || []));
     importedLibraries.push(...(imported.ir.foreignLibraries || []));
@@ -1225,6 +1377,7 @@ async function lowerSource(source, filename, options = {}) {
         )
       : fn,
   );
+  attachAndVerifyCheckedBoundsProofs(selected);
   const selectedForeignLibraryIds = new Set();
   for (const fn of selected) {
     for (const dependency of fn.foreignDependencies || []) {

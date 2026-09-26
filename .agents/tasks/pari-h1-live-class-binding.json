@@ -1,0 +1,79 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "pari-h1-live-class-binding",
+  "title": "Bind h1 class state from live Smith owners",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Bind the final h=1 class-generator component directly from live exact presentation and Smith owners, deriving the empty generator/order state without fixture or oracle computation inputs and retaining explicit PARI correspondence assumptions.",
+  "base_commit": "f0d3cfe24d58e46492635fd20c6a24dd5e0c0772",
+  "claims": [
+    "bench/pari-class-group-port/h1_live_class_binding.py",
+    "bench/pari-class-group-port/check_h1_live_class_binding.cjs",
+    "bench/pari-class-group-port/h1_live_class_binding_audit.md"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "exact matrix identities"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "node bench/pari-class-group-port/check_h1_live_class_binding.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.891,
+      "started_at": "2026-09-17T03:24:27.739Z",
+      "commit": "f0d3cfe24d58e46492635fd20c6a24dd5e0c0772",
+      "workspace_fingerprint": "8b1deac6c9174a2f91da175b1c39666ba77d2175eb156092c2c7722c5da7237e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "python3 -m py_compile bench/pari-class-group-port/h1_live_class_binding.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.061,
+      "started_at": "2026-09-17T03:24:29.315Z",
+      "commit": "f0d3cfe24d58e46492635fd20c6a24dd5e0c0772",
+      "workspace_fingerprint": "8b1deac6c9174a2f91da175b1c39666ba77d2175eb156092c2c7722c5da7237e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 56.507,
+      "started_at": "2026-09-17T03:25:02.025Z",
+      "commit": "f0d3cfe24d58e46492635fd20c6a24dd5e0c0772",
+      "workspace_fingerprint": "8b1deac6c9174a2f91da175b1c39666ba77d2175eb156092c2c7722c5da7237e",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Added a source-transparent exact leaf and host adapter that bind the authentic h=1 final class-generator component directly to live presentation and Smith owners. The leaf proves U*P*V=I and both inverse pairs, derives class number one and zero generators/order witnesses, and the adapter retains PARI correspondence assumptions separately from computation inputs. The focused checker covers CPython/authentic 8x8 replay plus JavaScript, GMP, and tagged native backends and mutation rejection.",
+    "risks": [
+      "This is internal correspondence completion under the explicitly recorded PARI 2.17.4/GRH factor-base assumptions; it is not a public class-group certificate."
+    ],
+    "next_steps": [
+      "Integration should pass this ClassGeneratorComponentOutput to the existing connected final-state assembler and retain the LiveH1ClassBinding metadata in the durable internal receipt."
+    ]
+  }
+}

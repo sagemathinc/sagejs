@@ -1,0 +1,33 @@
+{
+  "schema": "sagejs.rust-class-group/heldout-cubic-confirmation-policy-v2",
+  "status": "materialized-before-any-heldout-failure-fix",
+  "frozenUtc": "2026-09-21T00:10:57Z",
+  "preregistrationStatus": "commit-ready-not-preregistered-until-committed",
+  "seed": "sagejs-rust-class-group-heldout-cubic-confirmation-v2-2026-09-21",
+  "selectionAlgorithm": "seeded-sha256-over-answer-free-projection-v1",
+  "degree": 3,
+  "caseCount": 12,
+  "excludeEveryOriginalPanelFieldId": true,
+  "excludeEveryOriginalPanelPolynomialSha256": true,
+  "allowedCandidateProjectionFields": [
+    "id",
+    "polynomialAscending",
+    "polynomialSha256",
+    "degree",
+    "irreducible"
+  ],
+  "selectionForbiddenFields": [
+    "expected",
+    "constructionEvidence",
+    "signature",
+    "timingStratum",
+    "traits"
+  ],
+  "runtimeProofMode": "conditional-grh",
+  "failurePolicy": {
+    "originalHeldoutCasesRemainPermanentRegressions": true,
+    "failureFixRequiresThisUntouchedConfirmationSet": true,
+    "confirmationFailureRequiresNewSeedAndPolicyVersion": true,
+    "neverRemoveOrReplaceFailedCases": true
+  }
+}

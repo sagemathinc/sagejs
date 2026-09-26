@@ -22,11 +22,13 @@ function capture(error: Error | null, boundary?: Function): readonly unknown[] {
     const location = paren >= 0 && text.endsWith(")") ? text.slice(paren + 2, -1) : text;
     const match = /^(.*):(\d+):(\d+)$/.exec(location);
     // Keyword invocation of extract_stack has this known bootstrap trampoline
-    // immediately outside the excluded capture boundary. It is not a Python
+    // immediately outside the excluded capture boundary. V8 can report the
+    // helper's inner IIFE without a name (observed on macOS). It is not a Python
     // caller. This exemption applies ONLY to current-stack collection, never
     // to an exception stack (where dropping helpers could hide a body failure).
     if (currentStack && frames.length === 0 &&
-        (name === "ρσ_interpolate_kwargs" || name === "ρσ_invoke_prepared_method") &&
+        (name === null || name === "ρσ_interpolate_kwargs" ||
+          name === "ρσ_invoke_prepared_method") &&
         match && /^sagejs\/runtime-bootstrap-(python|sage)\.js$/.test(match[1])) continue;
     const executable = match ? executables.get(match[1]) : undefined;
     if (executable && match) {

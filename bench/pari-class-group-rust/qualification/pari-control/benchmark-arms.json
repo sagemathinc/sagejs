@@ -1,0 +1,90 @@
+{
+  "schema": "sagejs.rust-class-group/pari-control-benchmark-arms-v1",
+  "note": "Copy exactly one arm into a benchmark config whose top-level boundary label is identical. These are three different contracts, not interchangeable names for one timing.",
+  "arms": {
+    "algorithm-stage": {
+      "id": "pari",
+      "implementation": "Authenticated pristine PARI 2.17.4 complete bnfinit0 stage",
+      "boundaryLabel": "algorithm-stage/pari-bnfinit0-flag-zero-v1",
+      "command": [
+        "../pari-control/run.py",
+        "--input",
+        "../corpus/initial-open-development-v1.json",
+        "--field-id",
+        "{fieldId}",
+        "--boundary",
+        "algorithm-stage",
+        "--seed",
+        "{seed}"
+      ],
+      "durationPointer": "/kernelNanoseconds",
+      "resultProjection": {
+        "classNumber": "/result/classNumber",
+        "invariantFactors": "/result/invariantFactors"
+      }
+    },
+    "prepared-field": {
+      "id": "pari",
+      "implementation": "Authenticated pristine PARI 2.17.4 prepared-field completion",
+      "boundaryLabel": "prepared-field/pari-bnfinit0-flag-zero-v1",
+      "command": [
+        "../pari-control/run.py",
+        "--input",
+        "../corpus/initial-open-development-v1.json",
+        "--field-id",
+        "{fieldId}",
+        "--boundary",
+        "prepared-field",
+        "--seed",
+        "{seed}"
+      ],
+      "durationPointer": "/kernelNanoseconds",
+      "resultProjection": {
+        "classNumber": "/result/classNumber",
+        "invariantFactors": "/result/invariantFactors"
+      }
+    },
+    "public-call": {
+      "id": "pari",
+      "implementation": "Authenticated pristine PARI 2.17.4 public polynomial class/unit call",
+      "boundaryLabel": "public-call/pari-nfinit0-plus-bnfinit0-flag-zero-v1",
+      "command": [
+        "../pari-control/run.py",
+        "--input",
+        "../corpus/initial-open-development-v1.json",
+        "--field-id",
+        "{fieldId}",
+        "--boundary",
+        "public-call",
+        "--seed",
+        "{seed}"
+      ],
+      "durationPointer": "/kernelNanoseconds",
+      "resultProjection": {
+        "classNumber": "/result/classNumber",
+        "invariantFactors": "/result/invariantFactors"
+      }
+    }
+  },
+  "fields": [
+    {"id": "small-x3-x-1", "input": "../corpus/initial-open-development-v1.json"},
+    {"id": "small-discriminant-49", "input": "../corpus/initial-open-development-v1.json"},
+    {"id": "small-class-number-2", "input": "../corpus/initial-open-development-v1.json"},
+    {"id": "small-class-number-3", "input": "../corpus/initial-open-development-v1.json"},
+    {"id": "small-class-number-4", "input": "../corpus/initial-open-development-v1.json"},
+    {"id": "small-class-number-6", "input": "../corpus/initial-open-development-v1.json"},
+    {"id": "h1-real-cubic", "input": "../corpus/initial-open-development-v1.json"},
+    {"id": "row1-index-3-cubic", "input": "../corpus/initial-open-development-v1.json"},
+    {"id": "row6-continuation-cubic", "input": "../corpus/initial-open-development-v1.json"}
+  ],
+  "identityCommands": [
+    {
+      "id": "pari-2.17.4",
+      "command": ["/home/user/upstream/pari-2.17.4/gp", "--version"]
+    },
+    {
+      "id": "pari-control-build",
+      "command": ["python3", "../pari-control/identity.py"]
+    }
+  ]
+}

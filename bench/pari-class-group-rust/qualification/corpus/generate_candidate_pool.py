@@ -1,0 +1,835 @@
+#!/usr/bin/env python3
+"""Build a private PARI 2.17.4 candidate pool without leaking held-out answers.
+
+This is deliberately a corpus-construction tool, not part of Sage.js.  It
+generates deterministic monic polynomials, asks the pinned GP executable for
+class-group evidence and timings, and independently checks elementary field
+facts with SymPy.  Answer-bearing output is refused inside the repository.
+"""
+
+from __future__ import annotations
+
+import argparse
+import hashlib
+import json
+import random
+import re
+import subprocess
+import sys
+from pathlib import Path
+from typing import Any
+
+import sympy
+
+
+HERE = Path(__file__).resolve().parent
+REPOSITORY = HERE.parents[3]
+DEFAULT_GP = Path("/home/user/upstream/pari-2.17.4/gp")
+SEED = "sagejs-rust-class-group-candidate-pool-v1-2026-09-20"
+ADMISSIBLE_V2_SEED = "sagejs-rust-class-group-candidate-pool-v2-2026-09-20"
+HYBRID_V3_SEED = "sagejs-rust-class-group-candidate-pool-v3-2026-09-20"
+MARKER = "SAGEJS_CORPUS_V1|"
+VERSION = "2.17.4"
+EXPECTED_GP_SHA256 = "915f8085d7eace9f9778edcbc657083a234cdea657dfcc677a26003fde4232c4"
+TRACE_SOURCE_SHA256 = "904ced8034732c7fcfe1da393e23950aac0862b085150fdc24ce1e31beb7d1ac"
+RELATION_BATCH = re.compile(
+    r"#### Look for [0-9]+ relations in [0-9]+ ideals \((?:small_norm|rnd_rel)\)"
+)
+
+
+class GenerationError(RuntimeError):
+    pass
+
+
+def compact(value: Any) -> bytes:
+    return json.dumps(value, ensure_ascii=True, separators=(",", ":")).encode()
+
+
+def digest(path: Path) -> str:
+    answer = hashlib.sha256()
+    with path.open("rb") as handle:
+        for block in iter(lambda: handle.read(1024 * 1024), b""):
+            answer.update(block)
+    return answer.hexdigest()
+
+
+def polynomial_digest(coefficients: list[str]) -> str:
+    return hashlib.sha256(compact(coefficients)).hexdigest()
+
+
+def seeded_key(seed: str, candidate_id: str) -> str:
+    return hashlib.sha256((seed + "\0" + candidate_id).encode()).hexdigest()
+
+
+def profile_seed(profile: str) -> str:
+    if profile == "wide-v1":
+        return SEED
+    if profile == "admissible-v2":
+        return ADMISSIBLE_V2_SEED
+    if profile == "hybrid-v3":
+        return HYBRID_V3_SEED
+    raise GenerationError(f"unknown generation profile: {profile}")
+
+
+def is_within(path: Path, parent: Path) -> bool:
+    try:
+        path.resolve().relative_to(parent.resolve())
+        return True
+    except ValueError:
+        return False
+
+
+def require_private(path: Path) -> None:
+    if is_within(path, REPOSITORY):
+        raise GenerationError(
+            f"answer-bearing output must be outside the repository: {path}"
+        )
+
+
+def gp_identity(gp: Path) -> dict[str, Any]:
+    if not gp.is_file():
+        raise GenerationError(f"GP executable does not exist: {gp}")
+    binary_sha = digest(gp.resolve())
+    run = subprocess.run(
+        [str(gp), "-fq"],
+        input="\\v\n",
+        text=True,
+        capture_output=True,
+        check=True,
+        timeout=15,
+    )
+    banner = "\n".join(line.strip() for line in run.stdout.splitlines() if line.strip())
+    if f"Version {VERSION}" not in banner:
+        raise GenerationError(f"expected PARI {VERSION}; got:\n{banner}")
+    if binary_sha != EXPECTED_GP_SHA256:
+        raise GenerationError(
+            f"unexpected GP binary sha256 {binary_sha}; expected {EXPECTED_GP_SHA256}"
+        )
+    source = gp.resolve().parents[1] / "src" / "basemath" / "buch2.c"
+    source_sha = digest(source) if source.is_file() else None
+    if source_sha != TRACE_SOURCE_SHA256:
+        raise GenerationError(
+            f"unexpected Buchall source sha256 {source_sha}; "
+            f"expected {TRACE_SOURCE_SHA256}"
+        )
+    return {
+        "pariVersion": VERSION,
+        "gpPath": str(gp.resolve()),
+        "gpSha256": binary_sha,
+        "buchallSourcePath": str(source),
+        "buchallSourceSha256": source_sha,
+        "banner": banner,
+    }
+
+
+def gp_polynomial(coefficients: list[int]) -> str:
+    terms: list[str] = []
+    for exponent, coefficient in enumerate(coefficients):
+        if coefficient:
+            terms.append(f"({coefficient})*x^{exponent}")
+    return "+".join(terms) or "0"
+
+
+def parse_int_vector(value: str) -> list[str]:
+    value = value.strip()
+    if value == "[]":
+        return []
+    if not (value.startswith("[") and value.endswith("]")):
+        raise GenerationError(f"not a GP integer vector: {value}")
+    entries = [entry.strip() for entry in value[1:-1].split(",")]
+    if not all(re.fullmatch(r"[0-9]+", entry) for entry in entries):
+        raise GenerationError(f"not a positive GP integer vector: {value}")
+    return entries
+
+
+def oracle_case(
+    gp: Path, coefficients: list[int], repeats: int, timeout_seconds: int
+) -> dict[str, Any]:
+    polynomial = gp_polynomial(coefficients)
+    script = f"""default(parisizemax,4000000000);
+default(debug,0);
+P={polynomial};
+print(\"{MARKER}irreducible|\",polisirreducible(P));
+N=nfinit(P);
+print(\"{MARKER}signature|\",N.sign[1],\"|\",N.sign[2]);
+print(\"{MARKER}index|\",N.index);
+print(\"{MARKER}discriminant|\",N.disc);
+for(i=1,{repeats},if(i=={repeats},default(debug,1));t=getwalltime();B=bnfinit(P);print(\"{MARKER}sample|\",1000000*(getwalltime()-t),\"|\",B.clgp[1],\"|\",B.clgp[2]));
+"""
+    run = subprocess.run(
+        [str(gp), "-fq"],
+        input=script,
+        text=True,
+        capture_output=True,
+        check=True,
+        timeout=timeout_seconds,
+    )
+    records = [
+        line[len(MARKER) :].split("|")
+        for line in run.stdout.splitlines()
+        if line.startswith(MARKER)
+    ]
+    if len(records) != 4 + repeats:
+        raise GenerationError(
+            f"incomplete GP evidence ({len(records)} records): {run.stderr[-1000:]}"
+        )
+    if records[0] != ["irreducible", "1"]:
+        raise GenerationError("polynomial is reducible")
+    signature = [int(records[1][1]), int(records[1][2])]
+    equation_index = int(records[2][1])
+    discriminant = int(records[3][1])
+    samples: list[int] = []
+    class_number: str | None = None
+    invariants: list[str] | None = None
+    for record in records[4:]:
+        if record[0] != "sample" or len(record) != 4:
+            raise GenerationError(f"malformed GP sample: {record}")
+        # GP's wall timer has millisecond resolution.  Zero is a valid
+        # observation for tiny cases, represented conservatively as 1 ns so
+        # the raw sample contract remains a positive integer.
+        samples.append(max(1, int(record[1])))
+        current_h = record[2]
+        # PARI prints cyclic factors largest first. The corpus contract uses
+        # Smith invariant order (smallest first, each dividing the next).
+        current_cyc = list(reversed(parse_int_vector(record[3])))
+        if class_number is None:
+            class_number, invariants = current_h, current_cyc
+        elif (class_number, invariants) != (current_h, current_cyc):
+            raise GenerationError("PARI returned inconsistent repeated answers")
+    relation_batches = len(RELATION_BATCH.findall(run.stderr))
+    precision_restarts = run.stderr.count("increasing accuracy")
+    precision_warnings = run.stderr.count("Buchall_param (")
+    if precision_restarts != precision_warnings:
+        raise GenerationError(
+            "PARI precision trace counters disagree: "
+            f"restarts={precision_restarts}, warnings={precision_warnings}"
+        )
+    return {
+        "signature": signature,
+        "equationOrderIndex": str(equation_index),
+        "fieldDiscriminant": str(discriminant),
+        "classNumber": class_number,
+        "invariantFactors": invariants,
+        "pariPublicNanoseconds": samples,
+        "trace": {
+            "contract": "pari-buchall-debug-trace-v1",
+            "sourceSha256": TRACE_SOURCE_SHA256,
+            "debugLevel": 1,
+            "relationSearchBatches": relation_batches,
+            "relationContinuationCount": max(0, relation_batches - 1),
+            "precisionRestartCount": precision_restarts,
+        },
+    }
+
+
+def independent_check(
+    coefficients: list[int], oracle: dict[str, Any]
+) -> dict[str, Any]:
+    x = sympy.Symbol("x")
+    polynomial = sympy.Poly.from_list(list(reversed(coefficients)), gens=x)
+    irreducible = bool(polynomial.is_irreducible)
+    discriminant = int(sympy.discriminant(polynomial.as_expr(), x))
+    # Independently obtain the real-root count by isolating exact real
+    # intervals.
+    real_roots = len(sympy.polys.polytools.intervals(polynomial, eps=None))
+    signature = [real_roots, (polynomial.degree() - real_roots) // 2]
+    if not irreducible:
+        raise GenerationError("SymPy independently reports reducible")
+    if signature != oracle["signature"]:
+        raise GenerationError(
+            f"signature disagreement: SymPy {signature}, PARI {oracle['signature']}"
+        )
+    # Polynomial and field discriminants differ by the square of the equation
+    # order index.  This checks PARI's reported index and field discriminant
+    # without reusing PARI arithmetic.
+    index = int(oracle["equationOrderIndex"])
+    if discriminant != int(oracle["fieldDiscriminant"]) * index * index:
+        raise GenerationError("independent discriminant/index identity failed")
+    return {
+        "engine": f"sympy-{sympy.__version__}",
+        "irreducible": True,
+        "signature": signature,
+        "polynomialDiscriminant": str(discriminant),
+        "fieldDiscriminantTimesIndexSquared": str(
+            int(oracle["fieldDiscriminant"]) * index * index
+        ),
+    }
+
+
+def timing_stratum(samples: list[int]) -> str:
+    median = sorted(samples)[len(samples) // 2]
+    if median < 5_000_000:
+        return "under-5ms"
+    if median < 100_000_000:
+        return "5ms-to-100ms"
+    if median < 2_000_000_000:
+        return "100ms-to-2s"
+    if median <= 30_000_000_000:
+        return "2s-to-30s"
+    raise GenerationError("median PARI time exceeds 30 seconds")
+
+
+def deterministic_inputs(
+    per_degree: int, profile: str = "wide-v1"
+) -> list[dict[str, Any]]:
+    """Return an answer-free oversampled input pool.
+
+    Coefficient magnitudes deliberately span the four expected timing bands.
+    Qualification still derives the actual band from measurements; the scale
+    is never treated as an answer or timing oracle.
+    """
+
+    if profile == "hybrid-v3":
+        left = deterministic_inputs((per_degree + 1) // 2, "admissible-v2")
+        right = deterministic_inputs(per_degree // 2, "wide-v1")
+        return sorted(left + right, key=lambda case: (case["degree"], case["id"]))
+
+    def multiply(left: list[int], right: list[int]) -> list[int]:
+        product = [0] * (len(left) + len(right) - 1)
+        for i, a in enumerate(left):
+            for j, b in enumerate(right):
+                product[i + j] += a * b
+        return product
+
+    cases: list[dict[str, Any]] = []
+    # Start from a polynomial with the requested real/complex root pattern,
+    # then perturb its constant term. Qualification proves both irreducibility
+    # and the surviving signature; construction is never accepted as proof.
+    if profile == "wide-v1":
+        root_scales = [7, 15, 31, 63, 127, 255, 511, 1023, 2047]
+        seed = profile_seed(profile)
+        id_prefix = "generated"
+    elif profile == "admissible-v2":
+        # Repeated small scales retain every signature while avoiding a tail
+        # of fields whose public PARI call exceeds the frozen 30-second bound.
+        root_scales = [3, 5, 7]
+        seed = profile_seed(profile)
+        id_prefix = "admissible-v2"
+    else:
+        raise GenerationError(f"unknown generation profile: {profile}")
+    for degree in range(2, 7):
+        # Degree-local streams make every per-degree prefix stable. A smoke
+        # run with --per-degree 1 therefore qualifies exactly the first case
+        # of the frozen --per-degree 72 pool.
+        rng = random.Random(f"{seed}\0degree={degree}")
+        signatures = [(degree - 2 * r2, r2) for r2 in range(degree // 2 + 1)]
+        for ordinal in range(per_degree):
+            r1, r2 = signatures[ordinal % len(signatures)]
+            scale = root_scales[(ordinal // len(signatures)) % len(root_scales)]
+            coefficients = [1]
+            for index in range(r1):
+                root = scale * (2 * index - r1 + 1) + rng.randrange(-2, 3)
+                coefficients = multiply(coefficients, [-root, 1])
+            for index in range(r2):
+                real = scale * (index + 1) + rng.randrange(-2, 3)
+                imaginary = scale * (r2 + index + 2) + rng.randrange(1, 4)
+                coefficients = multiply(
+                    coefficients,
+                    [real * real + imaginary * imaginary, -2 * real, 1],
+                )
+            # A small nonsquare perturbation typically destroys the explicit
+            # factorization without crossing a root-discriminant boundary.
+            perturbation = 2 + ordinal // 2
+            coefficients[0] += perturbation if ordinal % 2 == 0 else -perturbation
+            encoded = [str(value) for value in coefficients]
+            case_digest = polynomial_digest(encoded)
+            cases.append(
+                {
+                    "id": f"{id_prefix}-d{degree}-{ordinal + 1:04d}-{case_digest[:12]}",
+                    "polynomialAscending": encoded,
+                    "polynomialSha256": case_digest,
+                    "degree": degree,
+                }
+            )
+    return cases
+
+
+def qualification_inputs(
+    per_degree: int, profile: str = "wide-v1"
+) -> list[dict[str, Any]]:
+    """Include the mandatory open fields in answer-free form."""
+
+    initial = json.loads((HERE / "initial-open-development-v1.json").read_text())
+    mandatory = [
+        {
+            key: case[key]
+            for key in ("id", "polynomialAscending", "polynomialSha256", "degree")
+        }
+        for case in initial["cases"]
+    ]
+    return mandatory + deterministic_inputs(per_degree, profile)
+
+
+def traits(case: dict[str, Any], oracle: dict[str, Any]) -> list[str]:
+    h = int(oracle["classNumber"])
+    answer = ["trivial-class-group" if h == 1 else "nontrivial-class-group"]
+    if len(oracle["invariantFactors"]) > 1:
+        answer.append("noncyclic-class-group")
+    if int(oracle["equationOrderIndex"]) > 1:
+        answer.append("nontrivial-equation-order-index")
+    discriminant = abs(int(oracle["fieldDiscriminant"]))
+    # Every rational prime dividing the field discriminant ramifies. The
+    # qualification factor-base policy always includes ramified primes below
+    # 100, so this is exact structural evidence rather than a timing proxy.
+    if any(discriminant % prime == 0 for prime in sympy.primerange(2, 100)):
+        answer.append("ramified-factor-base-prime")
+    if oracle["signature"][0] + oracle["signature"][1] - 1 > 0:
+        answer.append("nontrivial-units")
+    if max(abs(int(value)) for value in case["polynomialAscending"]) >= 10**8:
+        answer.append("large-exact-intermediates")
+    if oracle["trace"]["precisionRestartCount"] > 0:
+        answer.append("precision-restart")
+    if oracle["trace"]["relationContinuationCount"] > 0:
+        answer.append("relation-continuation")
+    return answer
+
+
+def command_verify(arguments: argparse.Namespace) -> None:
+    print(json.dumps(gp_identity(Path(arguments.gp)), indent=2))
+
+
+def command_neutral(arguments: argparse.Namespace) -> None:
+    value = {
+        "schema": "sagejs.rust-class-group/neutral-candidate-input-pool-v1",
+        "seed": profile_seed(arguments.profile),
+        "answerVisibility": "none",
+        "cases": deterministic_inputs(arguments.per_degree, arguments.profile),
+    }
+    rendered = json.dumps(value, indent=2) + "\n"
+    if arguments.output:
+        target = Path(arguments.output)
+        target.write_text(rendered, encoding="utf-8")
+        print(f"wrote {target} sha256={digest(target)}")
+    else:
+        sys.stdout.write(rendered)
+
+
+def command_eligibility(arguments: argparse.Namespace) -> None:
+    pool_path = Path(arguments.input)
+    pool = json.loads(pool_path.read_text(encoding="utf-8"))
+    if pool.get("schema") != "sagejs.rust-class-group/neutral-candidate-input-pool-v1":
+        raise GenerationError("unexpected neutral input pool schema")
+    x = sympy.Symbol("x")
+    cases = []
+    for case in pool["cases"]:
+        coefficients = list(map(int, case["polynomialAscending"]))
+        polynomial = sympy.Poly.from_list(list(reversed(coefficients)), gens=x)
+        cases.append(
+            {
+                "id": case["id"],
+                "polynomialSha256": case["polynomialSha256"],
+                "irreducible": bool(polynomial.is_irreducible),
+            }
+        )
+    value = {
+        "schema": "sagejs.rust-class-group/neutral-eligibility-evidence-v1",
+        "candidatePool": pool_path.name,
+        "candidatePoolSha256": digest(pool_path),
+        "engine": f"sympy-{sympy.__version__}",
+        "method": "exact-Poly.is_irreducible-over-QQ",
+        "answerVisibility": "none",
+        "cases": cases,
+    }
+    target = Path(arguments.output)
+    target.write_text(json.dumps(value, indent=2) + "\n", encoding="utf-8")
+    print(
+        f"wrote {target} sha256={digest(target)} "
+        f"irreducible={sum(case['irreducible'] for case in cases)}/{len(cases)}"
+    )
+
+
+def command_qualify(arguments: argparse.Namespace) -> None:
+    gp = Path(arguments.gp)
+    identity = gp_identity(gp)
+    output = Path(arguments.output).resolve()
+    require_private(output)
+    inputs = qualification_inputs(arguments.per_degree, arguments.profile)
+    if arguments.ids_from:
+        shortlist = json.loads(Path(arguments.ids_from).read_text(encoding="utf-8"))
+        if (
+            shortlist.get("schema")
+            != "sagejs.rust-class-group/private-candidate-shortlist-v1"
+        ):
+            raise GenerationError("--ids-from has an unexpected shortlist schema")
+        if shortlist.get("complete") is not True:
+            raise GenerationError(
+                "--ids-from shortlist is only a partial smoke artifact"
+            )
+        if shortlist.get("generatorSeed") != profile_seed(arguments.profile):
+            raise GenerationError("--ids-from shortlist uses a different profile seed")
+        selected_ids = set(shortlist.get("caseIds", []))
+        mandatory_ids = {
+            case["id"]
+            for case in json.loads(
+                (HERE / "initial-open-development-v1.json").read_text()
+            )["cases"]
+        }
+        if not mandatory_ids <= selected_ids:
+            raise GenerationError("shortlist omits mandatory open fields")
+        inputs = [case for case in inputs if case["id"] in selected_ids]
+        if len(inputs) != len(selected_ids):
+            raise GenerationError("shortlist contains IDs outside this generated pool")
+    checkpoint_schema = (
+        "sagejs.rust-class-group/private-candidate-screen-v1"
+        if arguments.screen
+        else "sagejs.rust-class-group/private-candidate-pool-v1"
+    )
+    candidates: list[dict[str, Any]] = []
+    failures: list[dict[str, str]] = []
+    if arguments.resume and output.exists():
+        checkpoint = json.loads(output.read_text(encoding="utf-8"))
+        if checkpoint.get("schema") != checkpoint_schema:
+            raise GenerationError("resume checkpoint has an unexpected schema")
+        if checkpoint.get("generatorSeed") != profile_seed(arguments.profile):
+            raise GenerationError("resume checkpoint has a different generator seed")
+        if checkpoint.get("oracleBuild", {}).get("gpSha256") != identity["gpSha256"]:
+            raise GenerationError("resume checkpoint used a different GP binary")
+        candidates = checkpoint.get("candidates", [])
+        failures = checkpoint.get("failures", [])
+    completed = {case["id"] for case in candidates} | {
+        failure["id"] for failure in failures
+    }
+    for position, case in enumerate(inputs, start=1):
+        if case["id"] in completed:
+            continue
+        coefficients = list(map(int, case["polynomialAscending"]))
+        try:
+            oracle = oracle_case(
+                gp,
+                coefficients,
+                arguments.repeats,
+                arguments.candidate_timeout_seconds,
+            )
+            independent = independent_check(coefficients, oracle)
+            candidates.append(
+                {
+                    **case,
+                    "signature": oracle["signature"],
+                    "timingStratum": timing_stratum(oracle["pariPublicNanoseconds"]),
+                    "traits": traits(case, oracle),
+                    "irreducible": True,
+                    "expected": {
+                        "classNumber": oracle["classNumber"],
+                        "invariantFactors": oracle["invariantFactors"],
+                        "pariPublicNanoseconds": oracle["pariPublicNanoseconds"],
+                        "oracleIdentity": (
+                            f"pari-{VERSION}-gp-sha256:{identity['gpSha256']}"
+                        ),
+                        "validationStatus": "pari-plus-independent-check",
+                    },
+                    "constructionEvidence": {
+                        "equationOrderIndex": oracle["equationOrderIndex"],
+                        "fieldDiscriminant": oracle["fieldDiscriminant"],
+                        "pariTrace": oracle["trace"],
+                        "independent": independent,
+                    },
+                }
+            )
+        except (GenerationError, subprocess.SubprocessError) as error:
+            failures.append({"id": case["id"], "reason": str(error)})
+        print(
+            f"[{position}/{len(inputs)}] accepted={len(candidates)} failures={len(failures)}",
+            file=sys.stderr,
+            flush=True,
+        )
+        checkpoint = {
+            "schema": checkpoint_schema,
+            "generatorSeed": profile_seed(arguments.profile),
+            "oracleBuild": identity,
+            "sampleStatus": "screening-one-sample"
+            if arguments.screen
+            else "full-15-sample",
+            "candidates": candidates,
+            "failures": failures,
+        }
+        output.parent.mkdir(parents=True, exist_ok=True)
+        output.write_text(json.dumps(checkpoint, indent=2) + "\n", encoding="utf-8")
+    print(f"wrote {output} sha256={digest(output)}")
+
+
+def command_shortlist(arguments: argparse.Namespace) -> None:
+    source_path = Path(arguments.screen_pool).resolve()
+    source = json.loads(source_path.read_text(encoding="utf-8"))
+    if source.get("schema") != "sagejs.rust-class-group/private-candidate-screen-v1":
+        raise GenerationError("unexpected screening-pool schema")
+    spec = json.loads((HERE / "qualification-corpus-spec-v1.json").read_text())
+    candidates = source.get("candidates", [])
+    mandatory_ids = set(spec["selection"]["mandatoryOpenIds"])
+    available_ids = {case["id"] for case in candidates}
+    if not mandatory_ids <= available_ids:
+        raise GenerationError("screening pool omits mandatory open fields")
+    chosen = [case for case in candidates if case["id"] in mandatory_ids]
+    remaining = [case for case in candidates if case["id"] not in mandatory_ids]
+
+    def shortlist_score(case: dict[str, Any]) -> int:
+        signatures = {
+            (selected["degree"], *selected["signature"]) for selected in chosen
+        }
+        timing = {
+            stratum: sum(selected["timingStratum"] == stratum for selected in chosen)
+            for stratum in spec["panel"]["timingStrata"]
+        }
+        trait_counts = {
+            trait: sum(trait in selected["traits"] for selected in chosen)
+            for trait in spec["panel"]["traitMinimumPerPartition"]
+        }
+        signature = (case["degree"], *case["signature"])
+        answer = 1_000_000 if signature not in signatures else 0
+        timing_target = max(1, (5 * arguments.per_degree) // 4)
+        if timing[case["timingStratum"]] < timing_target:
+            answer += 10_000
+        for trait in case["traits"]:
+            target = 2 * spec["panel"]["traitMinimumPerPartition"].get(trait, 0) + 2
+            if trait_counts.get(trait, 0) < target:
+                answer += 100
+        return answer
+
+    for degree in spec["selection"]["degreeOrder"]:
+        needed = arguments.per_degree - sum(case["degree"] == degree for case in chosen)
+        if needed < 0:
+            raise GenerationError(
+                f"--per-degree is too small for mandatory degree {degree}"
+            )
+        for _ in range(needed):
+            eligible = [case for case in remaining if case["degree"] == degree]
+            if not eligible:
+                if arguments.partial:
+                    break
+                raise GenerationError(
+                    f"screen lacks degree-{degree} shortlist candidates"
+                )
+            eligible.sort(
+                key=lambda case: (
+                    -shortlist_score(case),
+                    seeded_key(spec["selection"]["openSeed"], case["id"]),
+                )
+            )
+            winner = eligible[0]
+            chosen.append(winner)
+            remaining.remove(winner)
+    output = Path(arguments.output).resolve()
+    require_private(output)
+    value = {
+        "schema": "sagejs.rust-class-group/private-candidate-shortlist-v1",
+        "generatorSeed": source.get("generatorSeed"),
+        "screenPoolSha256": digest(source_path),
+        "perDegree": arguments.per_degree,
+        "complete": all(
+            sum(case["degree"] == degree for case in chosen) == arguments.per_degree
+            for degree in spec["selection"]["degreeOrder"]
+        ),
+        "algorithm": "signature-timing-trait-deficit-then-open-seeded-hash-v1",
+        "caseIds": [case["id"] for case in sorted(chosen, key=lambda case: case["id"])],
+    }
+    output.write_text(json.dumps(value, indent=2) + "\n", encoding="utf-8")
+    print(f"wrote {output} sha256={digest(output)} cases={len(chosen)}")
+
+
+def command_merge_screens(arguments: argparse.Namespace) -> None:
+    sources = [Path(path).resolve() for path in arguments.screen_pool]
+    pools = [json.loads(path.read_text(encoding="utf-8")) for path in sources]
+    if any(
+        pool.get("schema") != "sagejs.rust-class-group/private-candidate-screen-v1"
+        for pool in pools
+    ):
+        raise GenerationError("unexpected screening-pool schema")
+    oracle_hashes = {pool.get("oracleBuild", {}).get("gpSha256") for pool in pools}
+    if len(oracle_hashes) != 1:
+        raise GenerationError("screening pools use different GP binaries")
+    candidates: list[dict[str, Any]] = []
+    failures: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for pool in pools:
+        for case in pool.get("candidates", []):
+            if case["id"] in seen:
+                continue
+            seen.add(case["id"])
+            candidates.append(case)
+        failures.extend(pool.get("failures", []))
+    output = Path(arguments.output).resolve()
+    require_private(output)
+    value = {
+        "schema": "sagejs.rust-class-group/private-candidate-screen-v1",
+        "generatorSeed": HYBRID_V3_SEED,
+        "oracleBuild": pools[0]["oracleBuild"],
+        "sampleStatus": "screening-one-sample",
+        "mergedScreenSha256": [digest(path) for path in sources],
+        "candidates": sorted(candidates, key=lambda case: case["id"]),
+        "failures": failures,
+    }
+    output.write_text(json.dumps(value, indent=2) + "\n", encoding="utf-8")
+    print(f"wrote {output} sha256={digest(output)} cases={len(candidates)}")
+
+
+def command_extend_shortlist(arguments: argparse.Namespace) -> None:
+    base_path = Path(arguments.base_shortlist).resolve()
+    screen_path = Path(arguments.screen_pool).resolve()
+    base = json.loads(base_path.read_text(encoding="utf-8"))
+    screen = json.loads(screen_path.read_text(encoding="utf-8"))
+    if (
+        base.get("schema") != "sagejs.rust-class-group/private-candidate-shortlist-v1"
+        or base.get("complete") is not True
+    ):
+        raise GenerationError("base shortlist is not complete")
+    if screen.get("schema") != "sagejs.rust-class-group/private-candidate-screen-v1":
+        raise GenerationError("unexpected screening-pool schema")
+    if base.get("generatorSeed") != screen.get("generatorSeed"):
+        raise GenerationError("base shortlist and screen use different seeds")
+    chosen_ids = set(base.get("caseIds", []))
+    eligible = [
+        case
+        for case in screen.get("candidates", [])
+        if case["id"] not in chosen_ids
+        and case["degree"] == arguments.degree
+        and case["timingStratum"] == arguments.timing_stratum
+    ]
+    eligible.sort(
+        key=lambda case: (
+            sorted(case["expected"]["pariPublicNanoseconds"])[
+                len(case["expected"]["pariPublicNanoseconds"]) // 2
+            ],
+            seeded_key(base["generatorSeed"], case["id"]),
+        )
+    )
+    if len(eligible) < arguments.count:
+        raise GenerationError(
+            f"only {len(eligible)} eligible supplemental candidates; "
+            f"requested {arguments.count}"
+        )
+    additions = eligible[: arguments.count]
+    output = Path(arguments.output).resolve()
+    require_private(output)
+    value = {
+        **base,
+        "baseShortlistSha256": digest(base_path),
+        "supplementalScreenSha256": digest(screen_path),
+        "supplement": {
+            "degree": arguments.degree,
+            "timingStratum": arguments.timing_stratum,
+            "count": arguments.count,
+            "order": "screen-median-then-generator-seeded-hash-v1",
+        },
+        "caseIds": sorted(chosen_ids | {case["id"] for case in additions}),
+    }
+    output.write_text(json.dumps(value, indent=2) + "\n", encoding="utf-8")
+    print(
+        f"wrote {output} sha256={digest(output)} "
+        f"cases={len(value['caseIds'])} added={len(additions)}"
+    )
+
+
+def parser() -> argparse.ArgumentParser:
+    result = argparse.ArgumentParser(description=__doc__)
+    commands = result.add_subparsers(dest="command", required=True)
+    verify = commands.add_parser("verify-oracle")
+    verify.add_argument("--gp", default=str(DEFAULT_GP))
+    verify.set_defaults(run=command_verify)
+    neutral = commands.add_parser("neutral-inputs")
+    neutral.add_argument("--per-degree", type=int, default=72)
+    neutral.add_argument(
+        "--profile",
+        choices=["wide-v1", "admissible-v2", "hybrid-v3"],
+        default="wide-v1",
+    )
+    neutral.add_argument("--output")
+    neutral.set_defaults(run=command_neutral)
+    eligibility = commands.add_parser(
+        "eligibility", help="independently certify neutral inputs as irreducible"
+    )
+    eligibility.add_argument(
+        "--input", default=str(HERE / "neutral-candidate-inputs-v1.json")
+    )
+    eligibility.add_argument(
+        "--output", default=str(HERE / "neutral-eligibility-v1.json")
+    )
+    eligibility.set_defaults(run=command_eligibility)
+    qualify = commands.add_parser("qualify")
+    qualify.add_argument("--gp", default=str(DEFAULT_GP))
+    qualify.add_argument("--per-degree", type=int, default=72)
+    qualify.add_argument(
+        "--profile",
+        choices=["wide-v1", "admissible-v2", "hybrid-v3"],
+        default="wide-v1",
+    )
+    qualify.add_argument("--repeats", type=int, default=15)
+    qualify.add_argument(
+        "--candidate-timeout-seconds",
+        type=int,
+        default=600,
+        help="wall timeout for all repeated measurements of one candidate",
+    )
+    qualify.add_argument("--output", required=True)
+    qualify.add_argument(
+        "--ids-from", help="upgrade only IDs in a private screening shortlist"
+    )
+    qualify.add_argument(
+        "--resume", action="store_true", help="resume a matching private checkpoint"
+    )
+    qualify.set_defaults(run=command_qualify, screen=False)
+    screen = commands.add_parser(
+        "screen", help="collect one PARI sample and exact trace evidence per candidate"
+    )
+    screen.add_argument("--gp", default=str(DEFAULT_GP))
+    screen.add_argument("--per-degree", type=int, default=72)
+    screen.add_argument(
+        "--profile",
+        choices=["wide-v1", "admissible-v2", "hybrid-v3"],
+        default="wide-v1",
+    )
+    screen.add_argument("--candidate-timeout-seconds", type=int, default=45)
+    screen.add_argument("--output", required=True)
+    screen.add_argument("--resume", action="store_true")
+    screen.set_defaults(run=command_qualify, repeats=1, ids_from=None, screen=True)
+    shortlist = commands.add_parser(
+        "shortlist", help="choose a deterministic upgrade set from a private screen"
+    )
+    shortlist.add_argument("--screen-pool", required=True)
+    shortlist.add_argument("--per-degree", type=int, default=30)
+    shortlist.add_argument(
+        "--partial",
+        action="store_true",
+        help="write a non-upgradeable smoke shortlist when the screen is incomplete",
+    )
+    shortlist.add_argument("--output", required=True)
+    shortlist.set_defaults(run=command_shortlist)
+    merge = commands.add_parser(
+        "merge-screens", help="merge compatible private screens for hybrid selection"
+    )
+    merge.add_argument("--screen-pool", action="append", required=True)
+    merge.add_argument("--output", required=True)
+    merge.set_defaults(run=command_merge_screens)
+    extend = commands.add_parser(
+        "extend-shortlist",
+        help="add deterministic screened timing-stratum spares to a shortlist",
+    )
+    extend.add_argument("--base-shortlist", required=True)
+    extend.add_argument("--screen-pool", required=True)
+    extend.add_argument("--degree", type=int, required=True)
+    extend.add_argument("--timing-stratum", required=True)
+    extend.add_argument("--count", type=int, required=True)
+    extend.add_argument("--output", required=True)
+    extend.set_defaults(run=command_extend_shortlist)
+    return result
+
+
+def main() -> int:
+    try:
+        arguments = parser().parse_args()
+        if getattr(arguments, "per_degree", 1) < 1:
+            raise GenerationError("--per-degree must be positive")
+        if (
+            not getattr(arguments, "screen", False)
+            and getattr(arguments, "repeats", 15) < 15
+        ):
+            raise GenerationError("--repeats must be at least 15")
+        if getattr(arguments, "candidate_timeout_seconds", 1) < 1:
+            raise GenerationError("--candidate-timeout-seconds must be positive")
+        arguments.run(arguments)
+        return 0
+    except (GenerationError, OSError, subprocess.SubprocessError) as error:
+        print(f"candidate generation error: {error}", file=sys.stderr)
+        return 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

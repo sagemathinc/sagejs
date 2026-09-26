@@ -1,0 +1,47 @@
+{
+  "schema": "sagejs.pari-class-group/h1-private-buffer-candidates-v1",
+  "layout": "pari-h1-matched-flag-zero-state-v1",
+  "reachable_functions": 374,
+  "integer_buffers": 348,
+  "private_candidates": 328,
+  "candidate_sha256": "77c94baf6f8e63577a69ab2d8013b439c48c622b5faa5a41671796f60f64bcf3",
+  "rejected": [],
+  "public_buffers": [
+    "admission_matrix_e",
+    "admission_matrix_m",
+    "admission_matrix_p",
+    "admission_primes",
+    "admission_products",
+    "analytic_primes",
+    "basis_table",
+    "extra",
+    "outer_minidx",
+    "outer_perm",
+    "packet_generators",
+    "packet_inert",
+    "packet_primes",
+    "prep_invzk",
+    "prep_polynomial",
+    "prep_zk",
+    "prep_zk_degrees",
+    "preparation_embedding",
+    "preparation_rounded_embedding",
+    "subfactor"
+  ],
+  "prior_cleared_word_evidence": {
+    "hnf_cup_arena": "0",
+    "relation_records": "0",
+    "prep_kummer_catalog_tau": "4866048",
+    "hnf_work_c": "0",
+    "hnf_work_b": "0",
+    "unmeasured_candidates": 323
+  },
+  "generated_target": {
+    "source_sha256": "70399ef1b7729a5f577e39ae4c6e5caf174189e6f31b1d5f1bd267a16568b7ca",
+    "source_bytes": 100288010,
+    "pointer_table_capacity": 1024,
+    "lookup": "root-local open-addressed pointer hash",
+    "canonicalization": "one success/failure root boundary",
+    "alias_protection": "all root sizes/limbs storage ranges pairwise disjoint"
+  }
+}

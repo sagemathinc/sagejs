@@ -1,0 +1,31 @@
+{
+  "schema": "sagejs-high-precision-complex-agm-log-v1",
+  "pariVersion": "2.17.4",
+  "targetBits": 153088,
+  "neutralCases": 1,
+  "authenticField3Cases": 1,
+  "authenticField3Embedding": "nf_get_M row 3 column 2 (complex x embedding)",
+  "authenticField3OwnerSha256": "e515b1795d3973f3cebf1e195993fdf1941891ab07670a182488f38c38788b17",
+  "packedRealTriplesBitExact": 2,
+  "packedImaginaryTriplesBitExact": 2,
+  "weightedLogConsumer": "2 * output real triple for the complex-place get_log_embed row",
+  "oracleTraceSha256": "f556963758bed14aeda2071525b197b2f70f08a855471d3f5ade0569e8799d59",
+  "outputSha256": "7416d6007a77800fd989a60a363fc3a072015fba6d86edbec5d9099de198fc05",
+  "runMilliseconds": 98804.320182,
+  "coreBytes": 6713026,
+  "addonBytes": 1301120,
+  "cacheKey": "b96b689a060b3db4fe0421c0f1e986eb5c6b7e2d2c83d9390553c51cee9e77c6",
+  "generatedOperations": ["mpz_mul", "mpz_sqrt", "mpz_fdiv_qr"],
+  "dynamicOracles": {
+    "cpythonComplexValues": 1,
+    "javascriptComplexValues": 1
+  },
+  "transactionalRejections": 2,
+  "peakAggregateRssKiB": 1262884,
+  "wallMilliseconds": 110099,
+  "resourcePolicy": {
+    "abortGiB": 3.5,
+    "hardGiB": 4,
+    "timeoutSeconds": 600
+  }
+}

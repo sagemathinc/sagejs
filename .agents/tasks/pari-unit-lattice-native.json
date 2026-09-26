@@ -1,0 +1,100 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "pari-unit-lattice-native",
+  "title": "PARI fundamental-unit lattice cut",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Implement and independently replay the smallest source-transparent Phase-4 fundamental-unit lattice cut for the two frozen totally real cubic sentinels: extract_full_lattice selection, integer and floating rank-two LLL transforms, cleanarchunit, and regulator consistency, with exact/arch trace observables and dynamic/native differentials.",
+  "base_commit": "6a43c61902dd7169c0345b089d3785ae520f8eff",
+  "claims": [
+    "bench/pari-class-group-port/unit_lattice_reduction.py",
+    "bench/pari-class-group-port/check_unit_lattice_reduction.cjs",
+    "bench/pari-class-group-port/unit-lattice-reduction-fixtures.json",
+    "bench/pari-class-group-port/unit_lattice_reduction_audit.md"
+  ],
+  "dependencies": [],
+  "references": [
+    "/home/user/upstream/pari-2.17.4/src/basemath/buch2.c",
+    "/home/user/upstream/pari-2.17.4/src/basemath/lll.c"
+  ],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "Pinned PARI 2.17.4 source-instrumented trace",
+      "Exact unimodular and determinant identities"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "fallback",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "node bench/pari-class-group-port/check_unit_lattice_reduction.cjs /home/user/upstream/pari-2.17.4.tar.gz",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.572,
+      "started_at": "2026-09-16T23:57:45.171Z",
+      "commit": "6a43c61902dd7169c0345b089d3785ae520f8eff",
+      "workspace_fingerprint": "5eb21f19afc0e182b893801946f1620444674f467502f2ec2bf19c48882fa7df",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 57.73,
+      "started_at": "2026-09-16T23:57:55.955Z",
+      "commit": "6a43c61902dd7169c0345b089d3785ae520f8eff",
+      "workspace_fingerprint": "5eb21f19afc0e182b893801946f1620444674f467502f2ec2bf19c48882fa7df",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/pari-class-group-port/check_unit_lattice_reduction.cjs /home/user/upstream/pari-2.17.4.tar.gz",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.578,
+      "started_at": "2026-09-16T23:59:40.042Z",
+      "commit": "6a43c61902dd7169c0345b089d3785ae520f8eff",
+      "workspace_fingerprint": "cf3a2990293b6ec121a83f38b238ecb4775c0f1af7dea6a3ab409913fbebaece",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 55.863,
+      "started_at": "2026-09-16T23:59:51.582Z",
+      "commit": "6a43c61902dd7169c0345b089d3785ae520f8eff",
+      "workspace_fingerprint": "cf3a2990293b6ec121a83f38b238ecb4775c0f1af7dea6a3ab409913fbebaece",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Implemented the bounded PARI 2.17.4 totally-real cubic unit-lattice suffix. The same ordinary Python source matches the pinned source trace under CPython and generated JavaScript/GMP/tagged backends for extract_full_lattice's NULL shortcut, integer U1, real-stage U2, composite U, cleanarchunit, and regulator consistency on the h=1 and h=3 sentinels.",
+    "risks": [
+      "The frozen seven-column inputs take extract_full_lattice's NULL shortcut; the separately translated wide selector is not exercised by this lane.",
+      "The binary64 cleanarchunit projection uses bounded repeated 2*pi reduction and agrees within 1e-9, but this is not an arbitrary-precision complex-place implementation.",
+      "Clean cubic logs retain 0/pi sign phases and cannot feed a sign-free getfu leaf until doubling/sign-phase or characteristic-two handling is certified.",
+      "The complete pnpm test:native suite passed on this workspace, but it was invoked directly rather than through parallel:run; the task remains active because no canonical fresh native receipt was fabricated.",
+      "pnpm test:changed reaches architecture:check but the base optimizer opportunity manifest is stale; the failure predates and is outside this lane's claims."
+    ],
+    "next_steps": [
+      "Integrate cleaned A, U, and regulator evidence with the getfu lane through an explicit sign-phase boundary.",
+      "Exercise the existing wide extract_full_lattice selector when a development field reaches 199 or more unit-lattice columns.",
+      "Regenerate the merge-owned optimizer opportunity artifacts in the integration lane, then rerun architecture:check there."
+    ]
+  }
+}

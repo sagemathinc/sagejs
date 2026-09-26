@@ -1,0 +1,66 @@
+{
+  "schema": "sagejs.rust-class-group/row6-competitive-timing-repeats-v1",
+  "date": "2026-09-20",
+  "command": "./target/release/sagejs-row6-rust-candidate-diagnostic small-norm-unit-kernel 2000 600000",
+  "rustBuild": "cargo build --quiet --release",
+  "proofStatusRequired": "grh-conditional-class-unit-index-one",
+  "pariControl": {
+    "version": "2.17.4",
+    "boundary": "pristine public total",
+    "nanoseconds": 3886499614
+  },
+  "rustRuns": [
+    {
+      "receiptSha256": "ce0be5325361b525b3dc7e8c79431ea231f731bc5931136b15b1aa9d4dbd8271",
+      "timingsNanoseconds": {
+        "collection": 2763825677,
+        "presentationClassOrder": 3700604359,
+        "presentationSquareDeterminant": 3366922120,
+        "presentationSurplusCoordinateSolve": 160306416,
+        "presentationSurplusKernel": 3825939,
+        "kernelReorderAndMetadata": 602200,
+        "logarithmicEmbedding": 245962208,
+        "unitLatticeReconstructionAndReplay": 826654696,
+        "analyticCompletionNestedWithinUnitLattice": 622065499,
+        "totalExternal": 7601793636
+      }
+    },
+    {
+      "receiptSha256": "ce367a8f88174d91f4c5b0941f2ad0152d8f3ed9dfbe5e25688e1399766822c0",
+      "timingsNanoseconds": {
+        "collection": 2758939188,
+        "presentationClassOrder": 3713324627,
+        "presentationSquareDeterminant": 3379038357,
+        "presentationSurplusCoordinateSolve": 164448695,
+        "presentationSurplusKernel": 3821639,
+        "kernelReorderAndMetadata": 608010,
+        "logarithmicEmbedding": 240086140,
+        "unitLatticeReconstructionAndReplay": 825919025,
+        "analyticCompletionNestedWithinUnitLattice": 624049078,
+        "totalExternal": 7602536336
+      }
+    },
+    {
+      "receiptSha256": "57f7de0091920927c77b677cdbf16652b32b2e6872fe79fd5d323e1243e55cb4",
+      "timingsNanoseconds": {
+        "collection": 2807331968,
+        "presentationClassOrder": 3708601737,
+        "presentationSquareDeterminant": 3373461968,
+        "presentationSurplusCoordinateSolve": 163398675,
+        "presentationSurplusKernel": 3992650,
+        "kernelReorderAndMetadata": 616310,
+        "logarithmicEmbedding": 239409040,
+        "unitLatticeReconstructionAndReplay": 822511907,
+        "analyticCompletionNestedWithinUnitLattice": 620322289,
+        "totalExternal": 7641846967
+      }
+    }
+  ],
+  "medianRustNanoseconds": 7602536336,
+  "medianRustToPariRatio": 1.9561397378283645,
+  "gate": {
+    "condition": "median Rust total <= 2 * pristine PARI total",
+    "limitNanoseconds": 7772999228,
+    "passed": true
+  }
+}

@@ -1,0 +1,236 @@
+{
+  "schema": "sagejs.rust-class-group-browser-vector/v1",
+  "id": "complex-cubic-discriminant-minus-23-relation-prefix",
+  "request": {
+    "schema": "sagejs.rust-class-group/prepared-relation-prefix-request-v1",
+    "maximumVisitedIdeals": 1,
+    "maximumCandidates": 64,
+    "preparedField": {
+      "schema": "sagejs.rust-class-group.neutral-input/v1",
+      "inputId": "sha256:af787e387ea785421e0359005124e26496fb91ef159524a6962d693fbd43dd81",
+      "fieldId": "complex-cubic-discriminant-minus-23",
+      "field": {
+        "variable": "x",
+        "coefficientsAscending": [
+          "1",
+          "-1",
+          "0",
+          "1"
+        ],
+        "degree": 3,
+        "monic": true,
+        "irreducible": true
+      },
+      "preparation": {
+        "kind": "neutral-prepared-field",
+        "authority": "sagejs-certified-preparation",
+        "maximalOrderCertified": true,
+        "basisNumeratorsRowMajor": [
+          "1",
+          "0",
+          "0",
+          "0",
+          "1",
+          "0",
+          "0",
+          "0",
+          "1"
+        ],
+        "basisDenominator": "1",
+        "discriminant": "-23",
+        "signature": {
+          "realPlaces": 1,
+          "complexPairs": 1
+        },
+        "multiplicationTable": [
+          [
+            [
+              {
+                "numerator": "1",
+                "denominator": "1"
+              },
+              {
+                "numerator": "0",
+                "denominator": "1"
+              },
+              {
+                "numerator": "0",
+                "denominator": "1"
+              }
+            ],
+            [
+              {
+                "numerator": "0",
+                "denominator": "1"
+              },
+              {
+                "numerator": "1",
+                "denominator": "1"
+              },
+              {
+                "numerator": "0",
+                "denominator": "1"
+              }
+            ],
+            [
+              {
+                "numerator": "0",
+                "denominator": "1"
+              },
+              {
+                "numerator": "0",
+                "denominator": "1"
+              },
+              {
+                "numerator": "1",
+                "denominator": "1"
+              }
+            ]
+          ],
+          [
+            [
+              {
+                "numerator": "0",
+                "denominator": "1"
+              },
+              {
+                "numerator": "1",
+                "denominator": "1"
+              },
+              {
+                "numerator": "0",
+                "denominator": "1"
+              }
+            ],
+            [
+              {
+                "numerator": "0",
+                "denominator": "1"
+              },
+              {
+                "numerator": "0",
+                "denominator": "1"
+              },
+              {
+                "numerator": "1",
+                "denominator": "1"
+              }
+            ],
+            [
+              {
+                "numerator": "-1",
+                "denominator": "1"
+              },
+              {
+                "numerator": "1",
+                "denominator": "1"
+              },
+              {
+                "numerator": "0",
+                "denominator": "1"
+              }
+            ]
+          ],
+          [
+            [
+              {
+                "numerator": "0",
+                "denominator": "1"
+              },
+              {
+                "numerator": "0",
+                "denominator": "1"
+              },
+              {
+                "numerator": "1",
+                "denominator": "1"
+              }
+            ],
+            [
+              {
+                "numerator": "-1",
+                "denominator": "1"
+              },
+              {
+                "numerator": "1",
+                "denominator": "1"
+              },
+              {
+                "numerator": "0",
+                "denominator": "1"
+              }
+            ],
+            [
+              {
+                "numerator": "0",
+                "denominator": "1"
+              },
+              {
+                "numerator": "-1",
+                "denominator": "1"
+              },
+              {
+                "numerator": "1",
+                "denominator": "1"
+              }
+            ]
+          ]
+        ],
+        "irreducibilityPrime": 2,
+        "indexPrimes": [],
+        "sourceSha256": "af787e387ea785421e0359005124e26496fb91ef159524a6962d693fbd43dd81"
+      },
+      "request": {
+        "proof": "conditional-grh",
+        "output": "class-and-unit-group",
+        "mapPolicy": "construct-eagerly",
+        "unitPolicy": "compact-complete",
+        "limits": {
+          "wallMilliseconds": "60000",
+          "memoryBytes": "1073741824",
+          "relationCandidates": "1000000",
+          "precisionBits": 192,
+          "continuationPasses": 8
+        }
+      },
+      "randomness": {
+        "algorithm": "none",
+        "seed": null
+      },
+      "containsOracleAnswers": false
+    }
+  },
+  "expected": {
+    "completeRankAndSurplus": false,
+    "counters": {
+      "appendedRelations": 4,
+      "cursorTrials": 18,
+      "positiveCacheStatuses": 4,
+      "primitiveNonscalarCandidates": 8,
+      "randomIdeals": 0,
+      "randomSearchIdeals": 0,
+      "smoothCandidates": 7,
+      "visitedIdeals": 1
+    },
+    "factorBaseIdeals": 3,
+    "fieldId": "complex-cubic-discriminant-minus-23",
+    "inputId": "sha256:af787e387ea785421e0359005124e26496fb91ef159524a6962d693fbd43dd81",
+    "limits": {
+      "maximumCandidates": 64,
+      "maximumVisitedIdeals": 1
+    },
+    "missingRank": 0,
+    "prefixSha256": "47aaf81e633183eb331b730136e4860f371f6162775b8b0607efb56d85a0697f",
+    "relationBound": 11,
+    "residentRelationRows": 4,
+    "schema": "sagejs.rust-class-group/prepared-relation-prefix-v1",
+    "stage": "prepared-cubic-relation-prefix",
+    "status": "bounded-stage",
+    "storage": {
+      "denseRecordsBytes": 1536,
+      "fullDenseRecordsBytes": 3600,
+      "fullRelationCacheCapacity": 150,
+      "relationCacheCapacity": 64
+    }
+  }
+}

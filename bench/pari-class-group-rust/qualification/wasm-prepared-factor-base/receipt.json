@@ -1,0 +1,585 @@
+{
+  "schema": "sagejs.rust-class-group-browser-route/v1",
+  "status": "pass",
+  "observed_at": "2026-09-20T15:14:30.609Z",
+  "repository_revision": "47f9a62c913710fc017276bb3a3ac25d9d5ad806",
+  "artifact": {
+    "path": "bench/pari-class-group-rust/qualification/wasm-prepared-factor-base/build/prepared-factor-base.wasm",
+    "sha256": "8c1b168b6fee3e492da4001546efcbbe9b75d4084ad6c82ed2f7e15f7dfb158e",
+    "bytes": 484212
+  },
+  "vector": {
+    "path": "bench/pari-class-group-rust/qualification/wasm-prepared-factor-base/build/row6.vector.json",
+    "sha256": "3f5cd5862046096d868d975698d55179cc7ef6a8f489ee6f7bb5e2ac31a64304",
+    "id": "row6-prepared-maximal-factor-base",
+    "request": {
+      "schema": "sagejs.rust-class-group.neutral-input/v1",
+      "inputId": "sha256:42ecf93a56de4cc7763d33c8b422e7804582278674c1a6fef41a4799a9930bd5",
+      "fieldId": "row6-x3-minus-2000000000010x-plus-2000000000018",
+      "field": {
+        "variable": "x",
+        "coefficientsAscending": [
+          "2000000000018",
+          "-2000000000010",
+          "0",
+          "1"
+        ],
+        "degree": 3,
+        "monic": true,
+        "irreducible": true
+      },
+      "preparation": {
+        "kind": "neutral-prepared-field",
+        "authority": "independent-oracle",
+        "maximalOrderCertified": true,
+        "basisNumeratorsRowMajor": [
+          "3",
+          "0",
+          "0",
+          "0",
+          "3",
+          "0",
+          "-1333333333340",
+          "1",
+          "1"
+        ],
+        "basisDenominator": "3",
+        "discriminant": "3555555555596888888888939555555555028",
+        "signature": {
+          "realPlaces": 3,
+          "complexPairs": 0
+        },
+        "multiplicationTable": [
+          [
+            [
+              {
+                "numerator": "1",
+                "denominator": "1"
+              },
+              {
+                "numerator": "0",
+                "denominator": "1"
+              },
+              {
+                "numerator": "0",
+                "denominator": "1"
+              }
+            ],
+            [
+              {
+                "numerator": "0",
+                "denominator": "1"
+              },
+              {
+                "numerator": "1",
+                "denominator": "1"
+              },
+              {
+                "numerator": "0",
+                "denominator": "1"
+              }
+            ],
+            [
+              {
+                "numerator": "0",
+                "denominator": "1"
+              },
+              {
+                "numerator": "0",
+                "denominator": "1"
+              },
+              {
+                "numerator": "1",
+                "denominator": "1"
+              }
+            ]
+          ],
+          [
+            [
+              {
+                "numerator": "0",
+                "denominator": "1"
+              },
+              {
+                "numerator": "1",
+                "denominator": "1"
+              },
+              {
+                "numerator": "0",
+                "denominator": "1"
+              }
+            ],
+            [
+              {
+                "numerator": "1333333333340",
+                "denominator": "1"
+              },
+              {
+                "numerator": "-1",
+                "denominator": "1"
+              },
+              {
+                "numerator": "3",
+                "denominator": "1"
+              }
+            ],
+            [
+              {
+                "numerator": "-222222222226",
+                "denominator": "1"
+              },
+              {
+                "numerator": "222222222223",
+                "denominator": "1"
+              },
+              {
+                "numerator": "1",
+                "denominator": "1"
+              }
+            ]
+          ],
+          [
+            [
+              {
+                "numerator": "0",
+                "denominator": "1"
+              },
+              {
+                "numerator": "0",
+                "denominator": "1"
+              },
+              {
+                "numerator": "1",
+                "denominator": "1"
+              }
+            ],
+            [
+              {
+                "numerator": "-222222222226",
+                "denominator": "1"
+              },
+              {
+                "numerator": "222222222223",
+                "denominator": "1"
+              },
+              {
+                "numerator": "1",
+                "denominator": "1"
+              }
+            ],
+            [
+              {
+                "numerator": "98765432099456790123456",
+                "denominator": "1"
+              },
+              {
+                "numerator": "-1",
+                "denominator": "1"
+              },
+              {
+                "numerator": "-222222222223",
+                "denominator": "1"
+              }
+            ]
+          ]
+        ],
+        "irreducibilityPrime": 7,
+        "indexPrimes": [
+          "3"
+        ],
+        "sourceSha256": "91180d1100796b514de61d0e1736521e6e55daadbda851a9f24defc8d3bb70df"
+      },
+      "request": {
+        "proof": "conditional-grh",
+        "output": "class-and-unit-group",
+        "mapPolicy": "construct-eagerly",
+        "unitPolicy": "compact-complete",
+        "limits": {
+          "wallMilliseconds": "60000",
+          "memoryBytes": "1073741824",
+          "relationCandidates": "1000000",
+          "precisionBits": 192,
+          "continuationPasses": 8
+        }
+      },
+      "randomness": {
+        "algorithm": "none",
+        "seed": null
+      },
+      "containsOracleAnswers": false
+    },
+    "expected": {
+      "schema": "sagejs.rust-class-group/prepared-factor-base-v1",
+      "status": "bounded-stage",
+      "stage": "prepared-maximal-cubic-factor-base",
+      "inputId": "sha256:42ecf93a56de4cc7763d33c8b422e7804582278674c1a6fef41a4799a9930bd5",
+      "fieldId": "row6-x3-minus-2000000000010x-plus-2000000000018",
+      "equationOrderIndex": "3",
+      "relationBound": 9196,
+      "checkingBound": 9196,
+      "rationalPrimeCount": 740,
+      "idealCount": 1130,
+      "completeGroupCount": 203,
+      "descriptorSha256": "dc63c73dbc419b05a4a1b907cdd8a60f70247f74a0d477880eb25d19c4356306"
+    }
+  },
+  "requested_engines": [
+    "chromium",
+    "firefox",
+    "webkit"
+  ],
+  "engines": [
+    {
+      "engine": "chromium",
+      "status": "pass",
+      "browser_version": "151.0.7922.34",
+      "user_agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36",
+      "cross_origin_isolated": false,
+      "shared_array_buffer": false,
+      "route": "rust-class-group-wasm-artifact",
+      "artifact_request_count": 1,
+      "imports": [
+        {
+          "module": "wasi_snapshot_preview1",
+          "name": "environ_get",
+          "kind": "function"
+        },
+        {
+          "module": "wasi_snapshot_preview1",
+          "name": "environ_sizes_get",
+          "kind": "function"
+        },
+        {
+          "module": "wasi_snapshot_preview1",
+          "name": "fd_close",
+          "kind": "function"
+        },
+        {
+          "module": "wasi_snapshot_preview1",
+          "name": "fd_prestat_get",
+          "kind": "function"
+        },
+        {
+          "module": "wasi_snapshot_preview1",
+          "name": "fd_prestat_dir_name",
+          "kind": "function"
+        },
+        {
+          "module": "wasi_snapshot_preview1",
+          "name": "fd_seek",
+          "kind": "function"
+        },
+        {
+          "module": "wasi_snapshot_preview1",
+          "name": "fd_write",
+          "kind": "function"
+        },
+        {
+          "module": "wasi_snapshot_preview1",
+          "name": "proc_exit",
+          "kind": "function"
+        }
+      ],
+      "exports": [
+        {
+          "name": "memory",
+          "kind": "memory"
+        },
+        {
+          "name": "sagejs_class_group_abi_version",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_class_group_alloc",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_class_group_dealloc",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_class_group_run_json",
+          "kind": "function"
+        }
+      ],
+      "timings_ms": {
+        "page_load": 64.27669200000003,
+        "fetch": 12,
+        "compile": 10,
+        "instantiate": 0.29999998211860657,
+        "call": 530.7999999821186,
+        "call_samples": [
+          559.4000000059605,
+          531.9000000059605,
+          533.0999999940395,
+          530,
+          530.0999999940395,
+          530,
+          530.6999999880791,
+          529.9000000059605,
+          530,
+          532.3000000119209,
+          535.8000000119209,
+          530.7999999821186,
+          531.5,
+          529.9000000059605,
+          530.9000000059605
+        ]
+      },
+      "memory_pages": {
+        "before_call": 17,
+        "after_call": 33
+      },
+      "result": {
+        "schema": "sagejs.rust-class-group/prepared-factor-base-v1",
+        "status": "bounded-stage",
+        "stage": "prepared-maximal-cubic-factor-base",
+        "inputId": "sha256:42ecf93a56de4cc7763d33c8b422e7804582278674c1a6fef41a4799a9930bd5",
+        "fieldId": "row6-x3-minus-2000000000010x-plus-2000000000018",
+        "equationOrderIndex": "3",
+        "relationBound": 9196,
+        "checkingBound": 9196,
+        "rationalPrimeCount": 740,
+        "idealCount": 1130,
+        "completeGroupCount": 203,
+        "descriptorSha256": "dc63c73dbc419b05a4a1b907cdd8a60f70247f74a0d477880eb25d19c4356306"
+      },
+      "failure": null
+    },
+    {
+      "engine": "firefox",
+      "status": "pass",
+      "browser_version": "153.0",
+      "user_agent": "Mozilla/5.0 (X11; Linux x86_64; rv:153.0) Gecko/20100101 Firefox/153.0",
+      "cross_origin_isolated": false,
+      "shared_array_buffer": false,
+      "route": "rust-class-group-wasm-artifact",
+      "artifact_request_count": 1,
+      "imports": [
+        {
+          "module": "wasi_snapshot_preview1",
+          "name": "environ_get",
+          "kind": "function"
+        },
+        {
+          "module": "wasi_snapshot_preview1",
+          "name": "environ_sizes_get",
+          "kind": "function"
+        },
+        {
+          "module": "wasi_snapshot_preview1",
+          "name": "fd_close",
+          "kind": "function"
+        },
+        {
+          "module": "wasi_snapshot_preview1",
+          "name": "fd_prestat_get",
+          "kind": "function"
+        },
+        {
+          "module": "wasi_snapshot_preview1",
+          "name": "fd_prestat_dir_name",
+          "kind": "function"
+        },
+        {
+          "module": "wasi_snapshot_preview1",
+          "name": "fd_seek",
+          "kind": "function"
+        },
+        {
+          "module": "wasi_snapshot_preview1",
+          "name": "fd_write",
+          "kind": "function"
+        },
+        {
+          "module": "wasi_snapshot_preview1",
+          "name": "proc_exit",
+          "kind": "function"
+        }
+      ],
+      "exports": [
+        {
+          "name": "memory",
+          "kind": "memory"
+        },
+        {
+          "name": "sagejs_class_group_abi_version",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_class_group_alloc",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_class_group_dealloc",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_class_group_run_json",
+          "kind": "function"
+        }
+      ],
+      "timings_ms": {
+        "page_load": 426.72351699999854,
+        "fetch": 35,
+        "compile": 13,
+        "instantiate": 0,
+        "call": 3401,
+        "call_samples": [
+          3402,
+          3409,
+          3398,
+          3404,
+          3411,
+          3402,
+          3397,
+          3404,
+          3398,
+          3395,
+          3401,
+          3396,
+          3403,
+          3398,
+          3397
+        ]
+      },
+      "memory_pages": {
+        "before_call": 17,
+        "after_call": 33
+      },
+      "result": {
+        "schema": "sagejs.rust-class-group/prepared-factor-base-v1",
+        "status": "bounded-stage",
+        "stage": "prepared-maximal-cubic-factor-base",
+        "inputId": "sha256:42ecf93a56de4cc7763d33c8b422e7804582278674c1a6fef41a4799a9930bd5",
+        "fieldId": "row6-x3-minus-2000000000010x-plus-2000000000018",
+        "equationOrderIndex": "3",
+        "relationBound": 9196,
+        "checkingBound": 9196,
+        "rationalPrimeCount": 740,
+        "idealCount": 1130,
+        "completeGroupCount": 203,
+        "descriptorSha256": "dc63c73dbc419b05a4a1b907cdd8a60f70247f74a0d477880eb25d19c4356306"
+      },
+      "failure": null
+    },
+    {
+      "engine": "webkit",
+      "status": "pass",
+      "browser_version": "26.5",
+      "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.5 Safari/605.1.15",
+      "cross_origin_isolated": false,
+      "shared_array_buffer": false,
+      "route": "rust-class-group-wasm-artifact",
+      "artifact_request_count": 1,
+      "imports": [
+        {
+          "module": "wasi_snapshot_preview1",
+          "name": "environ_get",
+          "kind": "function"
+        },
+        {
+          "module": "wasi_snapshot_preview1",
+          "name": "environ_sizes_get",
+          "kind": "function"
+        },
+        {
+          "module": "wasi_snapshot_preview1",
+          "name": "fd_close",
+          "kind": "function"
+        },
+        {
+          "module": "wasi_snapshot_preview1",
+          "name": "fd_prestat_get",
+          "kind": "function"
+        },
+        {
+          "module": "wasi_snapshot_preview1",
+          "name": "fd_prestat_dir_name",
+          "kind": "function"
+        },
+        {
+          "module": "wasi_snapshot_preview1",
+          "name": "fd_seek",
+          "kind": "function"
+        },
+        {
+          "module": "wasi_snapshot_preview1",
+          "name": "fd_write",
+          "kind": "function"
+        },
+        {
+          "module": "wasi_snapshot_preview1",
+          "name": "proc_exit",
+          "kind": "function"
+        }
+      ],
+      "exports": [
+        {
+          "name": "memory",
+          "kind": "memory"
+        },
+        {
+          "name": "sagejs_class_group_abi_version",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_class_group_alloc",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_class_group_dealloc",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_class_group_run_json",
+          "kind": "function"
+        }
+      ],
+      "timings_ms": {
+        "page_load": 43.966856999999436,
+        "fetch": 9,
+        "compile": 11,
+        "instantiate": 0,
+        "call": 419,
+        "call_samples": [
+          452,
+          422,
+          419,
+          418,
+          419,
+          419,
+          421,
+          419,
+          419,
+          419,
+          419,
+          419,
+          418,
+          418,
+          418
+        ]
+      },
+      "memory_pages": {
+        "before_call": 17,
+        "after_call": 33
+      },
+      "result": {
+        "schema": "sagejs.rust-class-group/prepared-factor-base-v1",
+        "status": "bounded-stage",
+        "stage": "prepared-maximal-cubic-factor-base",
+        "inputId": "sha256:42ecf93a56de4cc7763d33c8b422e7804582278674c1a6fef41a4799a9930bd5",
+        "fieldId": "row6-x3-minus-2000000000010x-plus-2000000000018",
+        "equationOrderIndex": "3",
+        "relationBound": 9196,
+        "checkingBound": 9196,
+        "rationalPrimeCount": 740,
+        "idealCount": 1130,
+        "completeGroupCount": 203,
+        "descriptorSha256": "dc63c73dbc419b05a4a1b907cdd8a60f70247f74a0d477880eb25d19c4356306"
+      },
+      "failure": null
+    }
+  ],
+  "failures": []
+}

@@ -27,7 +27,7 @@ const {
   portableKernelIdentity,
 } = require("../tools/native-kernel/portable-identity.cjs");
 
-test("resident fmpz IntegerBuffers declare their target limb requirement", () => {
+test("only resident fmpz IntegerBuffers declare a target limb requirement", () => {
   const affected = {
     functions: [{
       kernelKind: "integer",
@@ -55,6 +55,7 @@ test("resident fmpz IntegerBuffers declare their target limb requirement", () =>
   assert.deepEqual(classifyHostCoreTarget({
     functions: [{
       ...affected.functions[0],
+      locals: [{ name: "matrix", type: "FmpzMatrix" }],
       analysis: { backend: { kind: "gmp" } },
     }],
   }, { flintLimbBits: 32 }), { supported: true });
@@ -265,22 +266,14 @@ test("generated runtime manifests expose bridges and exact unsupported reasons",
       name: fn.name,
       status: fn.status,
       reason: fn.reason,
-      targetRequirement: fn.targetRequirement,
-      targetActual: fn.targetActual,
-      bridge: fn.bridge,
     })), [{
       name: "certified_complex_cubic_class_group_v1",
-      status: "unsupported",
-      reason: "fmpz-integer-buffer-requires-64-bit-flint-limbs",
-      targetRequirement: {
-        integerBufferWordBits: 64,
-        flintLimbBits: 64,
-      },
-      targetActual: { target: "wasm32-wasip1", flintLimbBits: 32 },
-      bridge: undefined,
+      status: "compiled-source",
+      reason: undefined,
     }]);
-    assert.ok(manifest.packs.every((pack) =>
-      !pack.modules.includes(cubic.identityHash)
+    assert.ok(cubic.functions[0].bridge);
+    assert.ok(manifest.packs.some((pack) =>
+      pack.modules.includes(cubic.identityHash)
     ));
     const cubicCore = readFileSync(join(
       outputRoot,
@@ -289,15 +282,11 @@ test("generated runtime manifests expose bridges and exact unsupported reasons",
       "kernel_core.c",
     ), "utf8");
     assert.match(cubicCore, /cubic_class_number_native\.py/);
-    assert.match(
+    assert.doesNotMatch(
       cubicCore,
       /resident fmpz IntegerBuffer views require 64-bit FLINT limbs/,
     );
-    assert.ok(manifest.unsupported.some((fn) =>
-      fn.kernel === cubic.id &&
-      fn.function === "certified_complex_cubic_class_group_v1" &&
-      fn.reason === "fmpz-integer-buffer-requires-64-bit-flint-limbs"
-    ));
+    assert.doesNotMatch(cubicCore, /sagejs_integer_buffer_get_fmpz/);
     assert.ok(manifest.unsupported.every((fn) =>
       fn.fallback === "same-source" && fn.oracles.length > 0 &&
       fn.tests.length > 0
@@ -540,7 +529,7 @@ function words(values) {
   return Array.from(values, String);
 }
 
-test("wasm32 links around the unsupported cubic resident-fmpz core", {
+test("wasm32 links the GMP-backed cubic core with 32-bit FLINT", {
   skip: flintToolchainAvailable
     ? false
     : "set the complete SAGEJS WASI FLINT/GMP/MPFR/MPC toolchain",
@@ -577,9 +566,9 @@ test("wasm32 links around the unsupported cubic resident-fmpz core", {
         mpcPrefix,
       },
     });
-    assert.equal(manifest.compiledKernelCores, 1);
-    assert.equal(manifest.compiledFunctions, 3);
-    assert.equal(manifest.unsupportedFunctions, 1);
+    assert.equal(manifest.compiledKernelCores, 2);
+    assert.equal(manifest.compiledFunctions, 4);
+    assert.equal(manifest.unsupportedFunctions, 0);
     assert.equal(manifest.packs.length, 1);
     assert.equal(manifest.packs[0].status, "built");
     const cubic = manifest.kernels.find((kernel) =>
@@ -590,12 +579,15 @@ test("wasm32 links around the unsupported cubic resident-fmpz core", {
     );
     assert.ok(cubic);
     assert.ok(round4);
-    assert.deepEqual(manifest.packs[0].modules, [round4.identityHash]);
+    assert.deepEqual(
+      new Set(manifest.packs[0].modules),
+      new Set([cubic.identityHash, round4.identityHash]),
+    );
     const runtime = await instantiateKernelRuntime(manifest, outputRoot);
     assert.equal(runtime.available(
       cubic.logicalSource,
       "certified_complex_cubic_class_group_v1",
-    ), false);
+    ), true);
     assert.equal(runtime.available(
       round4.logicalSource,
       "packed_round4_padic_characteristic",

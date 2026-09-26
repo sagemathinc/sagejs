@@ -1,0 +1,116 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "field3-relation-replay-map",
+  "title": "Field3 exact relation replay and arbitrary ideal map",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Replay the authenticated 301 relation owners and 288 factor-base ideals exactly, align the full presentation to the published [2,2] suffix, and publish one exact arbitrary-ideal map receipt or an honest blocker",
+  "base_commit": "9d9f3e1616031fd8a32decc6ab6ff9e976a4f668",
+  "claims": [
+    "bench/pari-class-group-port/field3_relation_replay_map.py",
+    "bench/pari-class-group-port/check_field3_relation_replay_map.cjs",
+    "bench/pari-class-group-port/field3_relation_replay_map_audit.md"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "not-applicable",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "exact-owner-cold-replay"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "fallback",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native",
+    "node --check bench/pari-class-group-port/check_field3_relation_replay_map.cjs",
+    "python3 -m py_compile bench/pari-class-group-port/field3_relation_replay_map.py"
+  ],
+  "runs": [
+    {
+      "command": "node --check bench/pari-class-group-port/check_field3_relation_replay_map.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.036,
+      "started_at": "2026-09-17T09:23:12.018Z",
+      "commit": "9d9f3e1616031fd8a32decc6ab6ff9e976a4f668",
+      "workspace_fingerprint": "6b0d26bc1f158e961671300b25aa0d14483c6cd139b40164b6a337f532da23e2",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "python3 -m py_compile bench/pari-class-group-port/field3_relation_replay_map.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.071,
+      "started_at": "2026-09-17T09:23:12.734Z",
+      "commit": "9d9f3e1616031fd8a32decc6ab6ff9e976a4f668",
+      "workspace_fingerprint": "6b0d26bc1f158e961671300b25aa0d14483c6cd139b40164b6a337f532da23e2",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 9.303,
+      "started_at": "2026-09-17T09:25:59.274Z",
+      "commit": "9d9f3e1616031fd8a32decc6ab6ff9e976a4f668",
+      "workspace_fingerprint": "6b0d26bc1f158e961671300b25aa0d14483c6cd139b40164b6a337f532da23e2",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "python3 -m py_compile bench/pari-class-group-port/field3_relation_replay_map.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.067,
+      "started_at": "2026-09-17T09:26:14.453Z",
+      "commit": "9d9f3e1616031fd8a32decc6ab6ff9e976a4f668",
+      "workspace_fingerprint": "6b0d26bc1f158e961671300b25aa0d14483c6cd139b40164b6a337f532da23e2",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --check bench/pari-class-group-port/check_field3_relation_replay_map.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.038,
+      "started_at": "2026-09-17T09:26:33.697Z",
+      "commit": "9d9f3e1616031fd8a32decc6ab6ff9e976a4f668",
+      "workspace_fingerprint": "6b0d26bc1f158e961671300b25aa0d14483c6cd139b40164b6a337f532da23e2",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "python3 -m py_compile bench/pari-class-group-port/field3_relation_replay_map.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.061,
+      "started_at": "2026-09-17T09:26:34.404Z",
+      "commit": "9d9f3e1616031fd8a32decc6ab6ff9e976a4f668",
+      "workspace_fingerprint": "6b0d26bc1f158e961671300b25aa0d14483c6cd139b40164b6a337f532da23e2",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Exact replay validates all 301 retained principal relations against 288 packet ideals. A bounded canonical-HNF path constructs the full rank-288 RelationPresentation with invariants [2,2], aligns suffix packets 11 and 2, and verifies an arbitrary ideal quotient witness without PARI.",
+    "risks": [
+      "The direct 301-row generic presentation exceeded 7 GiB RSS and is intentionally replaced by an exact canonical-HNF compression.",
+      "The raw-relation to accepted-unit 301-by-13 transform is not retained and cannot be reconstructed from this bounded class presentation.",
+      "The required broad native gate was not rerun in this lane because concurrent native builds already occupy the host and the coordinator explicitly prohibited another heavy build; focused exact replay and negative-mutation checks passed.",
+      "The broad changed-file plan is presently blocked by the unrelated baseline native file bench/pari-class-group-port/pari-stage-clock/pari_stage_clock_driver.c lacking an architecture classification.",
+      "The strict-baselib gate presently stops on pre-existing reStructuredText docstrings in bench/pari-class-group-port/field3_full_owner_authority.py, which is outside this lane's claim."
+    ],
+    "next_steps": [
+      "Retain or derive a bounded 301-by-13 hnfspec/hnfadd unit transform in the live root.",
+      "Integrate this exact class-coordinate materialization into the field-3 final composer."
+    ]
+  }
+}

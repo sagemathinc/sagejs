@@ -1,0 +1,382 @@
+"use strict";
+
+const assert = require("node:assert/strict");
+const { mkdtempSync, readFileSync, rmSync } = require("node:fs");
+const { tmpdir } = require("node:os");
+const { join } = require("node:path");
+const test = require("node:test");
+
+const {
+  isVerifiedFixedSpanAccess,
+  verifyCheckedBoundsProofs,
+} = require("../checked-bounds-proofs.cjs");
+const { generateHostCore } = require("../c-backend.cjs");
+const { compileKernel } = require("../compiler.cjs");
+const { lowerSource } = require("../ir.cjs");
+
+const witnessPath = join(__dirname, "checked_fixed_span_witness.py");
+const witnessSource = readFileSync(witnessPath, "utf8");
+
+function operations(body) {
+  const result = [];
+  function visit(items) {
+    for (const operation of items || []) {
+      result.push(operation);
+      visit(operation.body);
+      visit(operation.alternative);
+      visit(operation.condition?.operations);
+      visit(operation.right?.operations);
+    }
+  }
+  visit(body);
+  return result;
+}
+
+function functionOperations(ir, name) {
+  const fn = ir.functions.find((candidate) => candidate.name === name);
+  assert.ok(fn, `missing IR function ${name}`);
+  return operations(fn.body);
+}
+
+function accesses(ir, name) {
+  return functionOperations(ir, name).filter((operation) =>
+    ["uint64.buffer.get", "uint64.buffer.set"].includes(operation.kind)
+  );
+}
+
+function emittedFunction(source, name) {
+  const marker = `static int native_${name}(`;
+  let start = source.indexOf(marker);
+  while (start !== -1 &&
+      source.slice(start, source.indexOf("\n", start)).endsWith(";")) {
+    start = source.indexOf(marker, start + marker.length);
+  }
+  assert.notEqual(start, -1, `missing emitted function ${name}`);
+  const stop = source.indexOf("\n}\n", start);
+  assert.notEqual(stop, -1, `unterminated emitted function ${name}`);
+  return source.slice(start, stop + 3);
+}
+
+test("fixed checked views receive stable independently verified bounds proofs", async () => {
+  const ir = await lowerSource(witnessSource, witnessPath);
+  const fixed = accesses(ir, "fixed_span_sum");
+  assert.equal(fixed.length, 1);
+  assert.deepEqual(fixed[0].boundsProof, {
+    authority: "checked-uint64-fixed-span-range-v1",
+    accessOperation: fixed[0].id,
+    viewOperation: "fixed_span_sum:3",
+    rangeOperation: "fixed_span_sum:15",
+    buffer: "view",
+    index: "index",
+    indexType: "int64",
+    viewLength: "9",
+    start: "0",
+    stop: "9",
+    step: "1",
+    iterations: "9",
+    minimum: "0",
+    maximum: "8",
+  });
+  assert.equal(isVerifiedFixedSpanAccess(fixed[0]), true);
+  const updated = accesses(ir, "fixed_span_update");
+  assert.equal(updated.filter(isVerifiedFixedSpanAccess).length, 2);
+  assert.equal(updated.filter((operation) =>
+    !isVerifiedFixedSpanAccess(operation)).length, 1);
+  const dynamic = accesses(ir, "dynamic_exact_span");
+  assert.equal(dynamic.length, 1);
+  assert.deepEqual(dynamic[0].boundsProof, {
+    authority: "checked-uint64-span-stop-range-v1",
+    accessOperation: dynamic[0].id,
+    viewOperation: "dynamic_exact_span:3",
+    rangeOperation: "dynamic_exact_span:14",
+    buffer: "view",
+    index: "index",
+    indexType: "int64",
+    viewLengthValue: "parameter:length",
+    rangeStopValue: "parameter:length",
+    start: "0",
+    step: "1",
+    relation: "0 <= index < checked-view-length",
+  });
+  assert.equal(isVerifiedFixedSpanAccess(dynamic[0]), true);
+  const computedDynamic = accesses(ir, "dynamic_computed_span");
+  assert.equal(computedDynamic.length, 1);
+  assert.equal(
+    computedDynamic[0].boundsProof.authority,
+    "checked-uint64-span-stop-range-v1",
+  );
+  assert.equal(
+    computedDynamic[0].boundsProof.viewLengthValue,
+    computedDynamic[0].boundsProof.rangeStopValue,
+  );
+  assert.match(
+    computedDynamic[0].boundsProof.viewLengthValue,
+    /^operation:dynamic_computed_span:/,
+  );
+  assert.equal(isVerifiedFixedSpanAccess(computedDynamic[0]), true);
+  const dynamicUpdated = accesses(ir, "dynamic_exact_span_update");
+  assert.equal(dynamicUpdated.length, 2);
+  assert.ok(dynamicUpdated.every(isVerifiedFixedSpanAccess));
+  const reversed = accesses(ir, "dynamic_reversed_span");
+  assert.equal(reversed.length, 1);
+  assert.deepEqual(reversed[0].boundsProof, {
+    authority: "checked-uint64-reversed-span-range-v1",
+    accessOperation: reversed[0].id,
+    viewOperation: "dynamic_reversed_span:3",
+    rangeOperation: "dynamic_reversed_span:17",
+    buffer: "view",
+    index: reversed[0].index,
+    indexType: "int64",
+    viewLengthValue: "parameter:length",
+    rangeStopValue: "parameter:length",
+    rangeIndex: "index",
+    start: "0",
+    step: "1",
+    relation: "index = checked-view-length - 1 - range-index",
+  });
+  assert.equal(isVerifiedFixedSpanAccess(reversed[0]), true);
+  for (const name of [
+    "too_wide",
+    "dynamic_stop",
+    "dynamic_span",
+    "dynamic_mismatched_stop",
+    "dynamic_overshoot",
+    "dynamic_nonzero_start",
+    "dynamic_nonunit_step",
+    "dynamic_rebound_length",
+    "dynamic_reversed_mismatched_base",
+    "dynamic_reversed_mismatched_iterator",
+    "negative_range",
+    "affine_index",
+    "rebound_view",
+    "rebound_index",
+    "loop_carried_view",
+    "nested_index_write",
+    "scoped_view_write",
+  ]) {
+    assert.ok(accesses(ir, name).every((operation) =>
+      operation.boundsProof === undefined &&
+      !isVerifiedFixedSpanAccess(operation)
+    ), `${name} unexpectedly received a proof`);
+  }
+
+  const core = generateHostCore(ir, { moduleIdentity: "0123456789abcdef" }).source;
+  const fixedBody = emittedFunction(core, "fixed_span_sum");
+  assert.doesNotMatch(fixedBody, /sagejs_signed_buffer_index/);
+  assert.match(fixedBody, /\.data\[\(size_t\) /);
+  assert.match(emittedFunction(core, "too_wide"), /sagejs_signed_buffer_index/);
+  assert.doesNotMatch(
+    emittedFunction(core, "dynamic_exact_span"),
+    /sagejs_signed_buffer_index/,
+  );
+  assert.doesNotMatch(
+    emittedFunction(core, "dynamic_computed_span"),
+    /sagejs_signed_buffer_index/,
+  );
+  assert.doesNotMatch(
+    emittedFunction(core, "dynamic_reversed_span"),
+    /sagejs_signed_buffer_index/,
+  );
+  for (const name of [
+    "dynamic_mismatched_stop",
+    "dynamic_overshoot",
+    "dynamic_nonzero_start",
+    "dynamic_nonunit_step",
+    "dynamic_rebound_length",
+    "dynamic_reversed_mismatched_base",
+    "dynamic_reversed_mismatched_iterator",
+  ]) {
+    assert.match(
+      emittedFunction(core, name),
+      /sagejs_signed_buffer_index/,
+      `${name} unexpectedly omitted its element bounds check`,
+    );
+  }
+
+  const serialized = JSON.stringify(ir);
+  const repeated = await lowerSource(witnessSource, witnessPath);
+  assert.equal(JSON.stringify(repeated), serialized);
+  const parsedWithoutClaim = JSON.parse(serialized);
+  const unclaimedAccess = accesses(parsedWithoutClaim, "fixed_span_sum")[0];
+  delete unclaimedAccess.boundsProof;
+  assert.equal(isVerifiedFixedSpanAccess(unclaimedAccess), false);
+  const unverifiedCore = generateHostCore(parsedWithoutClaim, {
+    moduleIdentity: "0123456789abcdef",
+  }).source;
+  assert.match(
+    emittedFunction(unverifiedCore, "fixed_span_sum"),
+    /sagejs_signed_buffer_index/,
+  );
+  assert.equal(isVerifiedFixedSpanAccess(unclaimedAccess), false);
+
+  const parsed = JSON.parse(serialized);
+  const parsedAccess = accesses(parsed, "fixed_span_sum")[0];
+  assert.equal(isVerifiedFixedSpanAccess(parsedAccess), false);
+  const reverifiedCore = generateHostCore(parsed, {
+    moduleIdentity: "0123456789abcdef",
+  }).source;
+  assert.doesNotMatch(
+    emittedFunction(reverifiedCore, "fixed_span_sum"),
+    /sagejs_signed_buffer_index/,
+  );
+  assert.equal(isVerifiedFixedSpanAccess(parsedAccess), true);
+  delete parsedAccess.boundsProof;
+  verifyCheckedBoundsProofs(parsed.functions);
+  assert.equal(isVerifiedFixedSpanAccess(parsedAccess), false);
+
+  for (const field of [
+    "authority",
+    "accessOperation",
+    "viewOperation",
+    "rangeOperation",
+    "viewLength",
+    "maximum",
+  ]) {
+    const forged = JSON.parse(serialized);
+    accesses(forged, "fixed_span_sum")[0].boundsProof[field] = "forged";
+    assert.throws(
+      () => verifyCheckedBoundsProofs(forged.functions),
+      /invalid checked bounds proof/,
+    );
+  }
+
+  const mutatedReverse = JSON.parse(serialized);
+  const mutatedReverseAccess = accesses(
+    mutatedReverse,
+    "dynamic_reversed_span",
+  )[0];
+  const mutatedIndexProducer = functionOperations(
+    mutatedReverse,
+    "dynamic_reversed_span",
+  ).find((operation) => operation.target === mutatedReverseAccess.index);
+  assert.ok(mutatedIndexProducer);
+  mutatedIndexProducer.operation = "add";
+  assert.throws(
+    () => verifyCheckedBoundsProofs(mutatedReverse.functions),
+    /invalid checked bounds proof/,
+  );
+
+  for (const field of [
+    "authority",
+    "accessOperation",
+    "viewOperation",
+    "rangeOperation",
+    "viewLengthValue",
+    "rangeStopValue",
+    "rangeIndex",
+    "relation",
+  ]) {
+    const forged = JSON.parse(serialized);
+    accesses(forged, "dynamic_reversed_span")[0].boundsProof[field] = "forged";
+    assert.throws(
+      () => verifyCheckedBoundsProofs(forged.functions),
+      /invalid checked bounds proof/,
+    );
+  }
+
+  const mutated = JSON.parse(serialized);
+  accesses(mutated, "fixed_span_sum")[0].index = "start";
+  assert.throws(
+    () => generateHostCore(mutated, { moduleIdentity: "0123456789abcdef" }),
+    /invalid checked bounds proof/,
+  );
+
+  for (const field of [
+    "authority",
+    "accessOperation",
+    "viewOperation",
+    "rangeOperation",
+    "viewLengthValue",
+    "rangeStopValue",
+    "relation",
+  ]) {
+    const forged = JSON.parse(serialized);
+    accesses(forged, "dynamic_exact_span")[0].boundsProof[field] = "forged";
+    assert.throws(
+      () => verifyCheckedBoundsProofs(forged.functions),
+      /invalid checked bounds proof/,
+    );
+  }
+});
+
+test("fixed-span optimization preserves checked public behavior", async () => {
+  const cacheDirectory = mkdtempSync(join(tmpdir(), "sagejs-fixed-span-"));
+  try {
+    const built = await compileKernel({ sourcePath: witnessPath, cacheDirectory });
+    const module = require(built.modulePath);
+    for (const backend of ["javascript", "gmp", "tagged"]) {
+      const sum = module.fixed_span_sum;
+      const values = sum.createUInt64Buffer([
+        100n, 1n, 2n, 3n, 4n, 5n, 6n, 7n, 8n, 9n, 200n,
+      ]);
+      assert.equal(sum[backend](values, 1n), 45n);
+      assert.deepEqual(Array.from(values), [
+        100n, 1n, 2n, 3n, 4n, 5n, 6n, 7n, 8n, 9n, 200n,
+      ]);
+
+      const update = module.fixed_span_update;
+      const mutable = update.createUInt64Buffer([
+        100n, 1n, 2n, 3n, 4n, 5n, 6n, 7n, 8n, 9n, 200n,
+      ]);
+      assert.equal(update[backend](mutable, 1n), 10n);
+      assert.deepEqual(Array.from(mutable), [
+        100n, 2n, 3n, 4n, 5n, 6n, 7n, 8n, 9n, 10n, 200n,
+      ]);
+
+      const short = sum.createUInt64Buffer([1n, 2n, 3n]);
+      assert.throws(
+        () => sum[backend](short, 0n),
+        /UInt64Buffer view is outside its buffer/,
+      );
+      assert.deepEqual(Array.from(short), [1n, 2n, 3n]);
+
+      const dynamic = module.dynamic_exact_span;
+      const dynamicValues = dynamic.createUInt64Buffer([
+        100n, 1n, 2n, 3n, 4n, 5n, 200n,
+      ]);
+      assert.equal(dynamic[backend](dynamicValues, 1n, 5n), 15n);
+      assert.equal(dynamic[backend](dynamicValues, 2n, 0n), 0n);
+      assert.throws(
+        () => dynamic[backend](dynamicValues, 3n, 5n),
+        /UInt64Buffer view is outside its buffer/,
+      );
+      assert.throws(
+        () => dynamic[backend](dynamicValues, 0n, -1n),
+        /UInt64Buffer view is outside its buffer/,
+      );
+      assert.deepEqual(Array.from(dynamicValues), [
+        100n, 1n, 2n, 3n, 4n, 5n, 200n,
+      ]);
+
+      const computedDynamic = module.dynamic_computed_span;
+      assert.equal(computedDynamic[backend](dynamicValues, 1n, 6n), 15n);
+      assert.throws(
+        () => computedDynamic[backend](dynamicValues, 5n, 3n),
+        /UInt64Buffer view is outside its buffer/,
+      );
+
+      const dynamicUpdate = module.dynamic_exact_span_update;
+      const dynamicMutable = dynamicUpdate.createUInt64Buffer([
+        100n, 1n, 2n, 3n, 4n, 5n, 200n,
+      ]);
+      assert.equal(dynamicUpdate[backend](dynamicMutable, 1n, 5n), 0n);
+      assert.deepEqual(Array.from(dynamicMutable), [
+        100n, 2n, 3n, 4n, 5n, 6n, 200n,
+      ]);
+
+      const reversed = module.dynamic_reversed_span;
+      assert.equal(reversed[backend](dynamicValues, 1n, 5n), 15n);
+      assert.equal(reversed[backend](dynamicValues, 2n, 0n), 0n);
+      assert.throws(
+        () => reversed[backend](dynamicValues, 0n, -1n),
+        /UInt64Buffer view is outside its buffer/,
+      );
+      assert.throws(
+        () => reversed[backend](dynamicValues, 3n, 5n),
+        /UInt64Buffer view is outside its buffer/,
+      );
+    }
+  } finally {
+    rmSync(cacheDirectory, { recursive: true, force: true });
+  }
+});

@@ -1,0 +1,91 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "c6-exp-range-fix",
+  "title": "C6 Exp Range Fix",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Qualify and narrowly extend prepared exponential arithmetic for the authentic field-3 C6 153152-bit input, with PARI/CPython/JS/GMP differential and mutation evidence",
+  "base_commit": "a5ec388eb36874dfb0d251de98d0a1c290708ee1",
+  "claims": [
+    "bench/pari-class-group-port/exponential_entry.py",
+    "bench/pari-class-group-port/check_compiled_exponential_entry.cjs",
+    "bench/pari-class-group-port/exponential_entry_audit.md"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "PARI 2.17.4 mpexp",
+      "gmp"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "fallback",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "node bench/pari-class-group-port/check_compiled_exponential_entry.cjs /home/user/upstream/pari-2.17.4",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 7.961,
+      "started_at": "2026-09-17T17:36:48.047Z",
+      "commit": "a5ec388eb36874dfb0d251de98d0a1c290708ee1",
+      "workspace_fingerprint": "531db33d23174c47095c55b7112a3634c9b3e3de9c010db5b0ad83e79e401030",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/pari-class-group-port/check_compiled_exponential_entry.cjs /home/user/upstream/pari-2.17.4",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 4.857,
+      "started_at": "2026-09-17T17:41:22.765Z",
+      "commit": "a5ec388eb36874dfb0d251de98d0a1c290708ee1",
+      "workspace_fingerprint": "60555d066d4eb3ccb3dba07a01cc9305be34fcf88f9a6978e0fd9b8c8b75bee8",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/pari-class-group-port/check_compiled_exponential_entry.cjs /home/user/upstream/pari-2.17.4",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 113.316,
+      "started_at": "2026-09-17T17:42:23.015Z",
+      "commit": "a5ec388eb36874dfb0d251de98d0a1c290708ee1",
+      "workspace_fingerprint": "c3ac5cae1eaec40c0230905ae71bebf93b529adac3d9d1199235e819faa406b0",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 62.037,
+      "started_at": "2026-09-17T17:45:17.303Z",
+      "commit": "a5ec388eb36874dfb0d251de98d0a1c290708ee1",
+      "workspace_fingerprint": "c3ac5cae1eaec40c0230905ae71bebf93b529adac3d9d1199235e819faa406b0",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Admit PARI's one retained 64-bit guard limb at the prepared exponential boundary. Exact pristine-PARI differential covers dense positive p153152/e16 and negative p153152/e17 inputs through CPython and generated GMP; generated JavaScript exercises the new p153152 range-reduction entry; p153216 rejects without cache mutation.",
+    "risks": [
+      "The complete 153k-bit JavaScript transcendental path is intentionally not exercised because it is not a performance target; the same-source CPython path and generated GMP path provide the exact high-precision differential.",
+      "The broad native suite was stopped after it began rebuilding unrelated FFLAS dependencies; the relevant generated GMP backend is exercised directly by the focused checker. The full build, strict baselib suite, architecture check, focused checker, formatter, and parallel contract check passed."
+    ],
+    "next_steps": [
+      "Cherry-pick this commit, rebuild the field3_high_precision_getfu native module because the transitive source graph changed, and then resume the separately budgeted authentic C6 attempt."
+    ]
+  }
+}

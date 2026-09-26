@@ -1,3 +1,41 @@
+# Sage.js 0.9.0
+
+Sage.js 0.9.0 is an early alpha release for developers, educators, agents, and
+researchers who want a portable numerical and exact-mathematics system in
+native executables, Node.js, Jupyter, and the browser. It builds on the 0.8.0
+numerical, interactive, and WebAssembly foundations with focused Python runtime
+and exact-number-theory work.
+
+Highlights:
+
+- Python execution gains optimized paths for exact integer arithmetic,
+  attribute access and assignment, argument binding, and object construction.
+  These paths retain explicit semantic checks and dynamic fallback behavior.
+- The source tree contains experimental Rust-backed cubic class-group work,
+  but 0.9.0 packages do not include its native service or WebAssembly reactor.
+  This capability remains in development pending corresponding-source and
+  relinking evidence for distributable artifacts.
+
+Sage.js remains early alpha software. APIs and coverage continue to evolve, and
+the release includes only capabilities that pass the platform and distribution
+gates documented in `RELEASE.md`.
+
+Install the command line globally:
+
+```sh
+pnpm add -g @sagemath/sagejs@0.9.0
+```
+
+Or embed Sage.js in a Node application:
+
+```sh
+pnpm add @sagemath/sagejs@0.9.0
+```
+
+Try Sage.js in a browser at <https://app.sagejs.org/> or embed it in your own
+website. Installation and mathematical bug reports are welcome at
+<https://github.com/sagemathinc/sagejs/issues>.
+
 # Sage.js 0.8.0
 
 Sage.js 0.8.0 is an **early alpha release** for developers, educators, agents,

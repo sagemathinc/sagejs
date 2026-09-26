@@ -1,0 +1,79 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "phase0-single-commit-evidence",
+  "title": "Phase0 Single Commit Evidence",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Record the fresh single-commit Phase-0 qualification evidence at 44807189a",
+  "base_commit": "44807189a4eb8f8c58d9f46519ab9e60dde21a99",
+  "claims": [
+    "bench/pari-class-group-port/phase0_integration_replay.md"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "external-library",
+    "fallback": "tested-capability",
+    "oracles": [
+      "Durable recursive receipt verification for all 25 Phase-0 stages"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "not-applicable",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native",
+    "node bench/pari-class-group-port/test_phase0_replay_stage_contract.cjs",
+    "node --check bench/pari-class-group-port/run_phase0_integration_replay.cjs",
+    "git diff --check"
+  ],
+  "runs": [
+    {
+      "command": "node bench/pari-class-group-port/test_phase0_replay_stage_contract.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.127,
+      "started_at": "2026-09-17T14:43:14.846Z",
+      "commit": "44807189a4eb8f8c58d9f46519ab9e60dde21a99",
+      "workspace_fingerprint": "d5835f8467b9cf2cfaa513dca0c27412e765486a6af62b7b80c3bc57deccc697",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --check bench/pari-class-group-port/run_phase0_integration_replay.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.031,
+      "started_at": "2026-09-17T14:43:15.729Z",
+      "commit": "44807189a4eb8f8c58d9f46519ab9e60dde21a99",
+      "workspace_fingerprint": "d5835f8467b9cf2cfaa513dca0c27412e765486a6af62b7b80c3bc57deccc697",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "git diff --check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.657,
+      "started_at": "2026-09-17T14:43:16.552Z",
+      "commit": "44807189a4eb8f8c58d9f46519ab9e60dde21a99",
+      "workspace_fingerprint": "d5835f8467b9cf2cfaa513dca0c27412e765486a6af62b7b80c3bc57deccc697",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Records the successful fresh 25-stage single-commit Phase-0 qualification at 44807189a, including the exact build exception, immutable manifest and ledger hashes, selected stage identities, resource bounds, and scope caveats.",
+    "risks": [
+      "One-second RSS sampling covers the launcher's primary process group; detached native compiler process groups are excluded, although every process inherited the 4-GiB address-space limit.",
+      "The exact-commit build required the plan's authorized 1800-second build-only stress tier, completing in 624.570 seconds after the normal 600-second attempt expired during production-pack publication."
+    ],
+    "next_steps": [
+      "Integrate the evidence-only commit and retain the immutable scratch root until the campaign checkpoint is archived."
+    ]
+  }
+}

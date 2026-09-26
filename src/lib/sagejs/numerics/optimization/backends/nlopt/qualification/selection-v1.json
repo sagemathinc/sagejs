@@ -62,7 +62,7 @@
   },
   "browser_evidence": {
     "engine": "chromium",
-    "version": "149.0.7827.196",
+    "version": "151.0.7922.34",
     "result_case_ids": [
       "nelder-rosenbrock-2",
       "nelder-beale-2",

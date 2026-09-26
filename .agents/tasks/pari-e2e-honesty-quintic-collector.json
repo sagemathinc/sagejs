@@ -1,0 +1,101 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "pari-e2e-honesty-quintic-collector",
+  "title": "Quintic honesty collector connection",
+  "lane": "arithmetic-algebra",
+  "status": "review",
+  "owner": "user",
+  "objective": "Generalize prepared collector input export for frozen quintic panel row 21 and drive all six successful honesty scheduler decisions from actual Sage.js no-cache collector outputs",
+  "base_commit": "d9316e3d721c72e3788890d805048a20d0ab4355",
+  "claims": [
+    "bench/pari-class-group-port/honesty_success_audit.md",
+    "bench/pari-class-group-port/check_quintic_collector_fixture.cjs"
+  ],
+  "dependencies": [],
+  "references": [
+    "PARI 2.17.4 src/basemath/buch2.c be_honest and Fincke_Pohst_ideal"
+  ],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "Pristine PARI 2.17.4 quintic be_honest trace",
+      "cpython"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "fallback",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "node bench/pari-class-group-port/check_quintic_collector_fixture.cjs",
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "node bench/pari-class-group-port/check_quintic_collector_fixture.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.7,
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "pass",
+      "exit_code": 0,
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/pari-class-group-port/check_quintic_collector_fixture.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.546,
+      "started_at": "2026-09-17T01:56:32.620Z",
+      "commit": "d9316e3d721c72e3788890d805048a20d0ab4355",
+      "workspace_fingerprint": "3125112d10adc61fafea5f371868be26b12e291936376921e5bfd2e0f4fe941f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 56.949,
+      "started_at": "2026-09-17T01:56:36.816Z",
+      "commit": "d9316e3d721c72e3788890d805048a20d0ab4355",
+      "workspace_fingerprint": "3125112d10adc61fafea5f371868be26b12e291936376921e5bfd2e0f4fe941f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 772.872,
+      "started_at": "2026-09-17T01:57:39.391Z",
+      "commit": "d9316e3d721c72e3788890d805048a20d0ab4355",
+      "workspace_fingerprint": "3125112d10adc61fafea5f371868be26b12e291936376921e5bfd2e0f4fe941f",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Completed and authenticated a pristine PARI 2.17.4 exporter for frozen quintic panel row 21. It exports the complete prepared-number-field and factor-base inputs for all six successful honesty ideals. Fresh actual CPython collector calls are transactional but execute zero probes because the connected ranked-LLL graph rejects degree five before collection; therefore no PARI-derived answers were connected to the scheduler.",
+    "risks": [
+      "The honesty success fixture still uses frozen oracle observations because Sage.js cannot yet produce a degree-5 collector probe.",
+      "Removing only the first n > 4 check would be unsound: integer rank, LLL selection, and FLATTER retain connected degree limits."
+    ],
+    "next_steps": [
+      "Generalize the ranked integer-rank, LLL selection, FLATTER, and ranked-basis primitive graph to degree five against the exported row-21 input.",
+      "Rerun all six fresh collector calls through CPython and native backends, then connect their actual observations to the honesty scheduler."
+    ]
+  }
+}

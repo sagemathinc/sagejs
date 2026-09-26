@@ -24,6 +24,7 @@ interface NativeCompileResult {
   addonPath: string;
   cacheKey: string;
   cached: boolean;
+  integerBackends: Array<"tagged" | "gmp">;
   ir: NativeIR;
   modulePath: string;
   outputPath: string;
@@ -72,6 +73,7 @@ interface NativeOptions {
   sourcePath: string;
   cacheRoot?: string;
   functions?: string[];
+  integerBackends?: Array<"tagged" | "gmp">;
 }
 
 interface NativeCliArguments {

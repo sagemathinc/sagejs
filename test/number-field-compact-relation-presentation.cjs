@@ -1,0 +1,280 @@
+#!/usr/bin/env node
+// sagejs-test-tier: integration
+"use strict";
+
+const assert = require("node:assert/strict");
+const { mkdtempSync, rmSync, writeFileSync } = require("node:fs");
+const { tmpdir } = require("node:os");
+const { join, resolve } = require("node:path");
+const { spawnSync } = require("node:child_process");
+
+const root = resolve(__dirname, "..");
+const directory = mkdtempSync(join(tmpdir(), "sagejs-compact-presentation-"));
+
+try {
+  const script = join(directory, "check.py");
+  writeFileSync(
+    script,
+    String.raw`
+import copy
+
+from sagejs.number_fields.class_group_matrix import RelationMatrixError, SparseRelationRow
+from sagejs.number_fields.compact_relation_presentation import (
+    CompactRelationPresentation,
+)
+
+
+def rejected(payload):
+    try:
+        CompactRelationPresentation.from_dict(payload)
+    except (ArithmeticError, RelationMatrixError):
+        return
+    raise AssertionError("counterfeit compact presentation was accepted")
+
+
+cyclic = CompactRelationPresentation(
+    1,
+    (SparseRelationRow(1, (12,)), SparseRelationRow(1, (18,))),
+    (6,),
+    ((1,),),
+    ((1,),),
+    (((0,), 12), ((1,), 18)),
+)
+assert cyclic.verify()
+assert cyclic.rank == 1 and cyclic.free_rank == 0 and cyclic.order == 6
+assert cyclic.class_coordinates((17,)) == (5,)
+assert cyclic.lift_class_coordinates((8,)) == (2,)
+assert cyclic.reduce_ambient((17,)) == (5,)
+cyclic_payload = cyclic.to_dict()
+assert CompactRelationPresentation.from_dict(cyclic_payload).to_dict() == cyclic_payload
+assert [
+    minor["absolute_determinant"]
+    for minor in cyclic_payload["index_certificate"]["minors"]
+] == ["12", "18"]
+for left in range(-4, 5):
+    for right in range(-4, 5):
+        assert cyclic.class_coordinates((12 * left + 18 * right,)) == (0,)
+
+for unsupported in (
+    lambda: cyclic.smith_coordinates((1,)),
+    lambda: cyclic.relation_combination(0),
+    lambda: cyclic.dependency_combination(0),
+):
+    try:
+        unsupported()
+    except RelationMatrixError:
+        pass
+    else:
+        raise AssertionError("compact presentation manufactured a dense witness")
+
+noncyclic = CompactRelationPresentation(
+    2,
+    (
+        SparseRelationRow(2, (2, 0)),
+        SparseRelationRow(2, (0, 2)),
+        SparseRelationRow(2, (4, 0)),
+    ),
+    (2, 2),
+    ((1, 0), (0, 1)),
+    ((1, 0), (0, 1)),
+    (((0, 1), 4),),
+)
+assert noncyclic.verify()
+assert noncyclic.class_coordinates((7, -3)) == (1, 1)
+assert noncyclic.class_coordinates(noncyclic.lift_class_coordinates((5, 6))) == (
+    1,
+    0,
+)
+assert CompactRelationPresentation.from_dict(noncyclic.to_dict()).verify()
+
+# Every component of the compact proof is independently replayed.
+changed_relation = copy.deepcopy(cyclic_payload)
+changed_relation["rows"][0]["entries"] = [[0, 5]]
+rejected(changed_relation)
+
+changed_map = copy.deepcopy(cyclic_payload)
+changed_map["class_map_rows"][0][0] = 2
+rejected(changed_map)
+
+changed_generator = copy.deepcopy(cyclic_payload)
+changed_generator["generator_transforms"][0][0] = 2
+rejected(changed_generator)
+
+changed_determinant = copy.deepcopy(cyclic_payload)
+changed_determinant["index_certificate"]["minors"][0][
+    "absolute_determinant"
+] = "24"
+rejected(changed_determinant)
+
+noncanonical_determinant = copy.deepcopy(cyclic_payload)
+noncanonical_determinant["index_certificate"]["minors"][0][
+    "absolute_determinant"
+] = "06"
+rejected(noncanonical_determinant)
+
+unknown_field = copy.deepcopy(cyclic_payload)
+unknown_field["trusted"] = True
+rejected(unknown_field)
+
+# A genuine selected minor can still be an insufficient index certificate.
+# Rows 1 and 2 below have determinant 8, but the asserted group has order 4.
+insufficient_gcd = copy.deepcopy(noncyclic.to_dict())
+insufficient_gcd["index_certificate"]["minors"][0] = {
+    "row_indices": [1, 2],
+    "absolute_determinant": "8",
+}
+rejected(insufficient_gcd)
+
+# Coefficients, invariant factors, determinants, and coordinate arithmetic are
+# exact beyond machine-word and JavaScript-safe integer ranges.
+huge = 2**100 + 267
+large = CompactRelationPresentation(
+    1,
+    (SparseRelationRow(1, (huge,)),),
+    (huge,),
+    ((1,),),
+    ((1,),),
+    (((0,), huge),),
+)
+assert large.verify()
+assert large.order == huge
+assert large.class_coordinates((huge * huge + 41,)) == (41,)
+large_payload = large.to_dict()
+assert large_payload["index_certificate"]["minors"][0][
+    "absolute_determinant"
+] == str(huge)
+assert CompactRelationPresentation.from_dict(large_payload).verify()
+
+# The rigorous small-surplus variant proves the full relation-lattice index
+# from a primitive exact left kernel without constructing dense m-by-m
+# transforms.  The square/surplus partition is deliberately interleaved and
+# two dependency minors are needed to prove gcd one.  Here D=12, K=2, and the
+# quotient is cyclic of order 6.
+small_surplus = CompactRelationPresentation.from_small_surplus(
+    2,
+    (
+        SparseRelationRow(2, (2, 0)),
+        SparseRelationRow(2, (0, 3)),
+        SparseRelationRow(2, (0, 6)),
+    ),
+    (6,),
+    ((3,), (2,)),
+    ((1, 2),),
+    ((0, -2, 1),),
+    (0, 2),
+    (1,),
+    12,
+    2,
+    (((1,), 2), ((2,), 1)),
+)
+assert small_surplus.verify()
+assert small_surplus.dependency_combination(0) == (0, -2, 1)
+assert small_surplus.class_coordinates((1, 2)) == (1,)
+small_payload = small_surplus.to_dict()
+assert small_payload["index_certificate"]["method"] == "small-surplus-kernel-gcd"
+assert CompactRelationPresentation.from_dict(small_payload).to_dict() == small_payload
+
+counterfeit_dependency = copy.deepcopy(small_payload)
+counterfeit_dependency["index_certificate"]["dependency_transforms"][0][0] = 1
+rejected(counterfeit_dependency)
+
+counterfeit_square = copy.deepcopy(small_payload)
+counterfeit_square["index_certificate"]["square_determinant"] = "24"
+rejected(counterfeit_square)
+
+counterfeit_projection = copy.deepcopy(small_payload)
+counterfeit_projection["index_certificate"][
+    "projected_dependency_determinant"
+] = "4"
+rejected(counterfeit_projection)
+
+counterfeit_minor = copy.deepcopy(small_payload)
+counterfeit_minor["index_certificate"]["dependency_minors"][0][
+    "absolute_determinant"
+] = "3"
+rejected(counterfeit_minor)
+
+nonsaturated = copy.deepcopy(small_payload)
+nonsaturated["index_certificate"]["dependency_minors"][0][
+    "relation_row_indices"
+] = [2]
+rejected(nonsaturated)
+
+counterfeit_partition = copy.deepcopy(small_payload)
+counterfeit_partition["index_certificate"]["surplus_row_indices"][0] = 0
+rejected(counterfeit_partition)
+
+noncanonical_square_order = copy.deepcopy(small_payload)
+noncanonical_square_order["index_certificate"]["square_row_indices"] = [2, 0]
+rejected(noncanonical_square_order)
+
+# A simultaneous row permutation and corresponding witness permutation leaves
+# the certificate valid; row positions themselves have no hidden semantics.
+permuted = CompactRelationPresentation.from_small_surplus(
+    2,
+    (
+        SparseRelationRow(2, (0, 6)),
+        SparseRelationRow(2, (2, 0)),
+        SparseRelationRow(2, (0, 3)),
+    ),
+    (6,),
+    ((3,), (2,)),
+    ((1, 2),),
+    ((1, 0, -2),),
+    (0, 1),
+    (2,),
+    12,
+    2,
+    (((0,), 1), ((2,), 2)),
+)
+assert permuted.verify()
+
+for bad_dependency_index in (-1, 1, True):
+    try:
+        small_surplus.dependency_combination(bad_dependency_index)
+    except RelationMatrixError:
+        pass
+    else:
+        raise AssertionError("invalid dependency index was accepted")
+
+# Arbitrary precision is retained in D, the relation rows, and serialization.
+huge_surplus_order = 2**100 + 643
+huge_surplus = CompactRelationPresentation.from_small_surplus(
+    1,
+    (
+        SparseRelationRow(1, (2 * huge_surplus_order,)),
+        SparseRelationRow(1, (huge_surplus_order,)),
+    ),
+    (huge_surplus_order,),
+    ((1,),),
+    ((1,),),
+    ((-1, 2),),
+    (0,),
+    (1,),
+    2 * huge_surplus_order,
+    2,
+    (((0,), 1),),
+)
+assert huge_surplus.verify()
+huge_surplus_payload = huge_surplus.to_dict()
+assert huge_surplus_payload["index_certificate"]["square_determinant"] == str(
+    2 * huge_surplus_order
+)
+assert CompactRelationPresentation.from_dict(huge_surplus_payload).verify()
+
+print("compact relation presentation tests passed")
+`,
+  );
+  const result = spawnSync(
+    process.execPath,
+    [join(root, "bin", "sagejs"), "--python", script],
+    { cwd: root, encoding: "utf8", timeout: 60_000 },
+  );
+  if (result.error) throw result.error;
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+  assert.match(result.stdout, /compact relation presentation tests passed/);
+} finally {
+  rmSync(directory, { recursive: true, force: true });
+}
+
+console.log("compact relation presentation integration test passed");

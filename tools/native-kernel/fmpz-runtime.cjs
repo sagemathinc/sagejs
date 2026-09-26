@@ -43,6 +43,36 @@ static int sagejs_fmpz_to_uint64_checked(
     return 1;
 }
 
+static int sagejs_fmpz_to_int64_checked(
+    const fmpz_t value,
+    int64_t *result)
+{
+    const int negative = fmpz_sgn(value) < 0;
+    ulong high = 0, low = 0;
+    uint64_t words, magnitude;
+    if (fmpz_bits(value) > 64)
+        return 0;
+    fmpz_get_signed_uiui(&high, &low, value);
+#if FLINT_BITS == 64
+    words = (uint64_t) low;
+#else
+    words = ((uint64_t) high << 32) | (uint64_t) low;
+#endif
+    if (!negative)
+    {
+        if (words > (uint64_t) INT64_MAX)
+            return 0;
+        *result = (int64_t) words;
+        return 1;
+    }
+    magnitude = UINT64_C(0) - words;
+    if (magnitude > (UINT64_C(1) << 63))
+        return 0;
+    *result = magnitude == (UINT64_C(1) << 63)
+        ? INT64_MIN : -(int64_t) magnitude;
+    return 1;
+}
+
 /* Add two reduced residues without overflowing uint64_t. */
 static uint64_t sagejs_uint64_addmod(
     uint64_t left,

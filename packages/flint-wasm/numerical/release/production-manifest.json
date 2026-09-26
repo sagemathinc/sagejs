@@ -10,7 +10,7 @@
     "sha256": "9ab1162ed190ffe731c2f9ce78848045b59f0a9904e34b767746b063e7cb8d8e"
   },
   "toolchain": {
-    "identity": "241aebde980ebece5038c787b7efd947d3beed73ea5459b3976848121be5d973",
+    "identity": "1e306620de0571d34f6fc1bf0010aaf164e9b328d304bcd3cfd0d86f945634ba",
     "target": "wasm32-wasip1",
     "floating_point_contract": "off"
   },

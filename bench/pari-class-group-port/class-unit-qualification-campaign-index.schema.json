@@ -1,0 +1,107 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sagejs.org/schemas/pari-class-unit-qualification-campaign-index-v1.json",
+  "title": "Sage.js/PARI class-unit qualification campaign index",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema", "campaignId", "qualifiedTiming", "createdAt", "qualificationPolicy",
+    "identity", "journals", "resources", "authoritySha256", "indexSha256"
+  ],
+  "properties": {
+    "schema": {"const": "sagejs.pari-class-group/qualification-campaign-index-v1"},
+    "campaignId": {"type": "string", "pattern": "^[0-9a-f-]{36}$"},
+    "qualifiedTiming": {"const": true},
+    "createdAt": {"type": "string", "minLength": 1},
+    "qualificationPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["executionEnabled", "reserveOpeningEnabled", "frozenCandidate"],
+      "properties": {
+        "executionEnabled": {"const": true},
+        "reserveOpeningEnabled": {"const": true},
+        "frozenCandidate": {"const": true}
+      }
+    },
+    "identity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "candidateCommit", "panelSha256", "qualificationManifestSha256", "hostSha256",
+        "toolchainArtifacts", "sagejsArtifacts", "pariArtifacts"
+      ],
+      "properties": {
+        "candidateCommit": {"$ref": "#/$defs/commit"},
+        "panelSha256": {"$ref": "#/$defs/digest"},
+        "qualificationManifestSha256": {"$ref": "#/$defs/digest"},
+        "hostSha256": {"$ref": "#/$defs/digest"},
+        "toolchainArtifacts": {"$ref": "#/$defs/artifacts"},
+        "sagejsArtifacts": {"$ref": "#/$defs/artifacts"},
+        "pariArtifacts": {"$ref": "#/$defs/artifacts"}
+      }
+    },
+    "journals": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["preparedKernel", "stageDiagnostics", "compactFlagOne"],
+      "properties": {
+        "preparedKernel": {
+          "type": "array", "minItems": 24, "maxItems": 24,
+          "items": {"$ref": "#/$defs/journalReference"}
+        },
+        "stageDiagnostics": {
+          "type": "array", "minItems": 1,
+          "items": {"$ref": "#/$defs/journalReference"}
+        },
+        "compactFlagOne": {
+          "type": "array", "minItems": 1,
+          "items": {"$ref": "#/$defs/journalReference"}
+        }
+      }
+    },
+    "resources": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "generatedSourceBytes", "objectBytes", "compilationNanoseconds",
+        "compilationPeakRssKiB", "ownerLiveHighWaterBytes", "wholeProcessPeakRssKiB",
+        "ownerCount", "allocations", "copies", "precisionEscalations", "relationRetries"
+      ],
+      "properties": {
+        "generatedSourceBytes": {"$ref": "#/$defs/nonnegativeIntegerString"},
+        "objectBytes": {"$ref": "#/$defs/nonnegativeIntegerString"},
+        "compilationNanoseconds": {"$ref": "#/$defs/nonnegativeIntegerString"},
+        "compilationPeakRssKiB": {"$ref": "#/$defs/nonnegativeIntegerString"},
+        "ownerLiveHighWaterBytes": {"$ref": "#/$defs/nonnegativeIntegerString"},
+        "wholeProcessPeakRssKiB": {"$ref": "#/$defs/nonnegativeIntegerString"},
+        "ownerCount": {"$ref": "#/$defs/nonnegativeIntegerString"},
+        "allocations": {"$ref": "#/$defs/nonnegativeIntegerString"},
+        "copies": {"$ref": "#/$defs/nonnegativeIntegerString"},
+        "precisionEscalations": {"$ref": "#/$defs/nonnegativeIntegerString"},
+        "relationRetries": {"$ref": "#/$defs/nonnegativeIntegerString"}
+      }
+    },
+    "authoritySha256": {"$ref": "#/$defs/digest"},
+    "indexSha256": {"$ref": "#/$defs/digest"}
+  },
+  "$defs": {
+    "digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "commit": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+    "nonnegativeIntegerString": {"type": "string", "pattern": "^(0|[1-9][0-9]*)$"},
+    "artifacts": {
+      "type": "object", "minProperties": 1,
+      "additionalProperties": {"$ref": "#/$defs/digest"}
+    },
+    "journalReference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["fieldId", "runId", "path", "sha256"],
+      "properties": {
+        "fieldId": {"type": "string", "minLength": 1},
+        "runId": {"type": "string", "pattern": "^[0-9a-f-]{36}$"},
+        "path": {"type": "string", "minLength": 1},
+        "sha256": {"$ref": "#/$defs/digest"}
+      }
+    }
+  }
+}

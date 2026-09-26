@@ -1,0 +1,802 @@
+{
+  "schema": "sagejs.pari-class-group/development-default-driver-manifest-v1",
+  "diagnosticOnly": true,
+  "qualificationExecutionEnabled": false,
+  "reserveOpened": false,
+  "panelOrder": true,
+  "sources": {
+    "panel": {
+      "path": "bench/pari-class-group-port/panel.json",
+      "sha256": "7c6515240940db971cff3bc28819f9e6547adae9305643b0f6274eeafe6ec3a5"
+    },
+    "qualification": {
+      "path": "bench/pari-class-group-port/class-unit-qualification-manifest.json",
+      "sha256": "fb3b5d16a03ab348b7d8f495dddb6d2716dda45c0486213246298222a9a3cb90"
+    },
+    "checker": {
+      "path": "bench/pari-class-group-port/check_default_driver_trace.cjs",
+      "sha256": "1767daaa24fbfd1633cae0bacd0040a31233112111d9839bc91e0946dee97b5a"
+    },
+    "pari": {
+      "version": "2.17.4",
+      "archiveSha256": "02651d99c391007d384b3fadbc20abc6916b77036f9e496c99e9ce8688ca4b53",
+      "buch2Path": "pari-2.17.4/src/basemath/buch2.c",
+      "buch2Sha256": "904ced8034732c7fcfe1da393e23950aac0862b085150fdc24ce1e31beb7d1ac"
+    }
+  },
+  "policy": {
+    "selectedPhase": "tuning",
+    "expectedRows": 16,
+    "forbiddenPhase": "final-reserve",
+    "answerDerivedRuntimeFields": false,
+    "payloadStorage": "external /scratch artifacts authenticated by this compact manifest"
+  },
+  "records": [
+    {
+      "panelIndex": 0,
+      "id": "generated-sha256-0e970fdb1b4f043d042bd6093172638086e293ad03749215f71f7510a6622ba0",
+      "filename": "panel-00-2d0fa668fad6c929.json",
+      "bytes": 968365,
+      "sha256": "f8358c9d5bcd3047a3516856897a84b59798c97ddde7ed40e8f3d1554ce67c88",
+      "preparedSha256": "8c476a4dd1fd7701685b4646c3e51c0553168cf7a35054810a259af8c5662a0b",
+      "eventsSha256": "db0a17fbe8f8b738b3868ccb9ab347dd9ee01c75d6b9bd6a748c906d2a226726",
+      "terminalResultSha256": "94ea3b7b03ddabee367ab3e0442ca6190838ec1c0e5dc36075f32c70e6d858aa",
+      "eventCount": 129,
+      "eventCounts": {
+        "prepared": 1,
+        "factor_base_start": 1,
+        "factor_base": 1,
+        "initialized": 1,
+        "driver_pass": 1,
+        "collection_pass": 1,
+        "small_norm_before": 1,
+        "ideal_probe": 16,
+        "relation_candidate": 96,
+        "small_norm_after": 1,
+        "hnf": 1,
+        "regulator_multiple": 1,
+        "acceptance": 1,
+        "honesty_complete": 1,
+        "fundamental_units": 1,
+        "class_group_input": 1,
+        "class_group_output": 1,
+        "final_state": 1,
+        "result": 1
+      },
+      "decisionSummary": {
+        "factorBaseAttempts": [
+          1
+        ],
+        "driverPrecisions": [
+          192
+        ],
+        "acceptanceCodes": [
+          0
+        ],
+        "naturalRandomRelationPasses": 0,
+        "honestyExtraRequired": [
+          false
+        ]
+      }
+    },
+    {
+      "panelIndex": 1,
+      "id": "generated-sha256-dec56e7e41f5f60071249da2e66871ed837a3c6e65d821c328e7b4c57adaff3f",
+      "filename": "panel-01-394cce5d99f0e9f8.json",
+      "bytes": 744401,
+      "sha256": "f043f34a7c732269791a3c8c16cb3b30767b84ecec3c340659433d53f05aeb72",
+      "preparedSha256": "1347d65d59f510af27866af2096cbc70157304de9569625612c87cf537c445d3",
+      "eventsSha256": "c3798e75a3eada4441bcc69b4002945eb1d61647788ac6bd0e01b9fcea020ba1",
+      "terminalResultSha256": "bc7ca674d0e2c58e1d0b9ececc0cc2fd037163883137df9dfdcaa83b80a68157",
+      "eventCount": 83,
+      "eventCounts": {
+        "prepared": 1,
+        "factor_base_start": 1,
+        "factor_base": 1,
+        "initialized": 1,
+        "driver_pass": 1,
+        "collection_pass": 1,
+        "small_norm_before": 1,
+        "ideal_probe": 12,
+        "relation_candidate": 54,
+        "small_norm_after": 1,
+        "hnf": 1,
+        "regulator_multiple": 1,
+        "acceptance": 1,
+        "honesty_complete": 1,
+        "fundamental_units": 1,
+        "class_group_input": 1,
+        "class_group_output": 1,
+        "final_state": 1,
+        "result": 1
+      },
+      "decisionSummary": {
+        "factorBaseAttempts": [
+          1
+        ],
+        "driverPrecisions": [
+          192
+        ],
+        "acceptanceCodes": [
+          0
+        ],
+        "naturalRandomRelationPasses": 0,
+        "honestyExtraRequired": [
+          false
+        ]
+      }
+    },
+    {
+      "panelIndex": 3,
+      "id": "generated-sha256-11997528676ebeb1c0636be2cb828b5ed5a527ea18eb3a4ace953984da507de9",
+      "filename": "panel-03-aae73048ee765ce3.json",
+      "bytes": 22894674,
+      "sha256": "8ef5cd64a3baaf0ff6f3e57951cdb0d1a7549879aef6dd089d5a69b39da970b9",
+      "preparedSha256": "477fb1b9ec32f5ca892260d78b1e9a2249445806876413d72e6aaf8577576918",
+      "eventsSha256": "f25af554158f33ae150701487642df095af52413529217361e7d4bebe94bb0e2",
+      "terminalResultSha256": "ae9e954d04405940f9d5d795ac81e72780c2c786549054d4ed72080c522618d0",
+      "eventCount": 2126,
+      "eventCounts": {
+        "prepared": 1,
+        "factor_base_start": 1,
+        "factor_base": 1,
+        "initialized": 1,
+        "driver_pass": 1,
+        "collection_pass": 1,
+        "small_norm_before": 1,
+        "ideal_probe": 311,
+        "relation_candidate": 1798,
+        "small_norm_after": 1,
+        "hnf": 1,
+        "regulator_multiple": 1,
+        "acceptance": 1,
+        "honesty_complete": 1,
+        "fundamental_units": 1,
+        "class_group_input": 1,
+        "class_group_output": 1,
+        "final_state": 1,
+        "result": 1
+      },
+      "decisionSummary": {
+        "factorBaseAttempts": [
+          1
+        ],
+        "driverPrecisions": [
+          192
+        ],
+        "acceptanceCodes": [
+          0
+        ],
+        "naturalRandomRelationPasses": 0,
+        "honestyExtraRequired": [
+          false
+        ]
+      }
+    },
+    {
+      "panelIndex": 4,
+      "id": "generated-sha256-806defcf929c9cfff7467b8e7ea7b9f939cdd042bce8c1f5a310f5688904e3b9",
+      "filename": "panel-04-beb19c9584069e83.json",
+      "bytes": 19575359,
+      "sha256": "acebe2f9f4bdfc0c3da76ab6d9ad1aa409a1fb0bfd4113ebec9b825c432e2cb8",
+      "preparedSha256": "7e97f5b4c8453f48a96592eb554e1ef7b79c7ed347dd4de5414bd7a682ca736e",
+      "eventsSha256": "0bf1cd2f16736ba2604c2b7763e3d29fd2f708ac65412ed77c9ab486b2e6008b",
+      "terminalResultSha256": "0db91b0a30ec4c14dabb6ba787bd92420d62b7b038e1c63b8f5a1725303c0209",
+      "eventCount": 2378,
+      "eventCounts": {
+        "prepared": 1,
+        "factor_base_start": 1,
+        "factor_base": 1,
+        "initialized": 1,
+        "driver_pass": 1,
+        "collection_pass": 1,
+        "small_norm_before": 1,
+        "ideal_probe": 306,
+        "relation_candidate": 2055,
+        "small_norm_after": 1,
+        "hnf": 1,
+        "regulator_multiple": 1,
+        "acceptance": 1,
+        "honesty_complete": 1,
+        "fundamental_units": 1,
+        "class_group_input": 1,
+        "class_group_output": 1,
+        "final_state": 1,
+        "result": 1
+      },
+      "decisionSummary": {
+        "factorBaseAttempts": [
+          1
+        ],
+        "driverPrecisions": [
+          192
+        ],
+        "acceptanceCodes": [
+          0
+        ],
+        "naturalRandomRelationPasses": 0,
+        "honestyExtraRequired": [
+          false
+        ]
+      }
+    },
+    {
+      "panelIndex": 6,
+      "id": "generated-sha256-55ba15494f03f38bf8f687ff4d2813e81184d71c84dbed9e1adc6af7ba62f0eb",
+      "filename": "panel-06-26fed17015f6479f.json",
+      "bytes": 212623373,
+      "sha256": "2736e19b166c11a5997a6825cd99b612ae23cf6740d2248ac3dd91bc883286a5",
+      "preparedSha256": "851979721cd098271103588af037b2744b99d84ca4752161efc6ab3dd1974a08",
+      "eventsSha256": "a9e210f4a102992c6f188cfa935fd1335811b8edc7b72df27469edae28462209",
+      "terminalResultSha256": "a8b1b0dae25c4b0f24068ad9e499f7b75a7edb7621130319593c4ff01144fab9",
+      "eventCount": 4896,
+      "eventCounts": {
+        "prepared": 1,
+        "factor_base_start": 1,
+        "factor_base": 1,
+        "initialized": 1,
+        "driver_pass": 1,
+        "collection_pass": 14,
+        "small_norm_before": 14,
+        "ideal_probe": 1149,
+        "relation_candidate": 3689,
+        "small_norm_after": 14,
+        "hnf": 3,
+        "regulator_multiple": 1,
+        "acceptance": 1,
+        "honesty_complete": 1,
+        "fundamental_units": 1,
+        "class_group_input": 1,
+        "class_group_output": 1,
+        "final_state": 1,
+        "result": 1
+      },
+      "decisionSummary": {
+        "factorBaseAttempts": [
+          1
+        ],
+        "driverPrecisions": [
+          192
+        ],
+        "acceptanceCodes": [
+          0
+        ],
+        "naturalRandomRelationPasses": 0,
+        "honestyExtraRequired": [
+          false
+        ]
+      }
+    },
+    {
+      "panelIndex": 8,
+      "id": "generated-sha256-0857fab7114ab0045f1b91601101549c7b8d854c5c999b91afcb190cd2863363",
+      "filename": "panel-08-4184b3a9e86b3cc2.json",
+      "bytes": 4067246,
+      "sha256": "4f7535622072f1350787ca8caab417cce4023aea4ef68c67c3fb20ef65d01ca1",
+      "preparedSha256": "40779de74b039438a0d18ba4f58f6001360a2e9eeff4f24a8eed2443403fc5a6",
+      "eventsSha256": "f1a1d3db585cc0a09b45d30f18f67cf3af2d0ec106469798225c8f738199eda9",
+      "terminalResultSha256": "06a6621e7b51f88412e7f264f20bacb1ab02bdca80afb1ecf41acf937e2d8637",
+      "eventCount": 494,
+      "eventCounts": {
+        "prepared": 1,
+        "factor_base_start": 1,
+        "factor_base": 1,
+        "initialized": 1,
+        "driver_pass": 3,
+        "collection_pass": 3,
+        "small_norm_before": 3,
+        "ideal_probe": 44,
+        "relation_candidate": 419,
+        "small_norm_after": 3,
+        "hnf": 3,
+        "regulator_multiple": 3,
+        "acceptance": 3,
+        "honesty_complete": 1,
+        "fundamental_units": 1,
+        "class_group_input": 1,
+        "class_group_output": 1,
+        "final_state": 1,
+        "result": 1
+      },
+      "decisionSummary": {
+        "factorBaseAttempts": [
+          1
+        ],
+        "driverPrecisions": [
+          192,
+          192,
+          192
+        ],
+        "acceptanceCodes": [
+          1,
+          1,
+          0
+        ],
+        "naturalRandomRelationPasses": 0,
+        "honestyExtraRequired": [
+          false
+        ]
+      }
+    },
+    {
+      "panelIndex": 10,
+      "id": "generated-sha256-984793770b4a15a79fbc9984fe352fbc867491917733c78bdba3b1856c18e3a7",
+      "filename": "panel-10-205cea0cc9446e95.json",
+      "bytes": 19523376,
+      "sha256": "67d29d2d9088506de478140bc4c7393ce81b12d0809a4412e3e6a2fdcc1b443b",
+      "preparedSha256": "a5166ed810211288d37d442d9e8cc415fe1a86e66da9c38f524371670d23d781",
+      "eventsSha256": "96b6afd21bbd7b5d8a1b02fd4c90251b04f2709114e53906add381d942c2194d",
+      "terminalResultSha256": "76ae83e545270505bab06d3047a3d08f43255333ae17ada592b383edd8b9ef6f",
+      "eventCount": 2492,
+      "eventCounts": {
+        "prepared": 1,
+        "factor_base_start": 1,
+        "factor_base": 1,
+        "initialized": 1,
+        "driver_pass": 4,
+        "collection_pass": 6,
+        "small_norm_before": 6,
+        "ideal_probe": 301,
+        "relation_candidate": 2146,
+        "small_norm_after": 6,
+        "hnf": 5,
+        "regulator_multiple": 4,
+        "acceptance": 4,
+        "honesty_complete": 1,
+        "fundamental_units": 1,
+        "class_group_input": 1,
+        "class_group_output": 1,
+        "final_state": 1,
+        "result": 1
+      },
+      "decisionSummary": {
+        "factorBaseAttempts": [
+          1
+        ],
+        "driverPrecisions": [
+          192,
+          192,
+          192,
+          192
+        ],
+        "acceptanceCodes": [
+          1,
+          1,
+          1,
+          0
+        ],
+        "naturalRandomRelationPasses": 0,
+        "honestyExtraRequired": [
+          false
+        ]
+      }
+    },
+    {
+      "panelIndex": 11,
+      "id": "generated-sha256-147ddd296edb3764954d6142a499d17edcfecc635aec0181d4beda65d97ad4ab",
+      "filename": "panel-11-ce2bfa61425aa681.json",
+      "bytes": 28073554,
+      "sha256": "6444c0501657bf0109b96fff44c50e7684b80dcb1cfa4587951d1ae4abe04165",
+      "preparedSha256": "2eaf7d274d3683d64f07e55b1cec58aff303ee0b298bba6f645bba7efaa54889",
+      "eventsSha256": "6ab27463359cf2bef06615ea6733e8af97aba236ff4dde4ebad0f7bc94d0a7fb",
+      "terminalResultSha256": "b4471ecc3e00a6dae241c7b3c57eafc0c0d7346869f12ab9249df3fe0f8d1b3a",
+      "eventCount": 3682,
+      "eventCounts": {
+        "prepared": 1,
+        "factor_base_start": 1,
+        "factor_base": 1,
+        "initialized": 1,
+        "driver_pass": 2,
+        "collection_pass": 4,
+        "small_norm_before": 4,
+        "ideal_probe": 426,
+        "relation_candidate": 3225,
+        "small_norm_after": 4,
+        "hnf": 3,
+        "regulator_multiple": 2,
+        "acceptance": 2,
+        "honesty_complete": 1,
+        "fundamental_units": 1,
+        "class_group_input": 1,
+        "class_group_output": 1,
+        "final_state": 1,
+        "result": 1
+      },
+      "decisionSummary": {
+        "factorBaseAttempts": [
+          1
+        ],
+        "driverPrecisions": [
+          192,
+          192
+        ],
+        "acceptanceCodes": [
+          1,
+          0
+        ],
+        "naturalRandomRelationPasses": 0,
+        "honestyExtraRequired": [
+          false
+        ]
+      }
+    },
+    {
+      "panelIndex": 13,
+      "id": "generated-sha256-353468f1887e96f5a2f66e3121564636ed8cdbd75bde6571609627bbe8586e33",
+      "filename": "panel-13-a0f7253a51b3045a.json",
+      "bytes": 185236626,
+      "sha256": "50df5fa8a7b676b5216fecf2f57f3c9c60564c420a31bd0f5524447999694589",
+      "preparedSha256": "e72a7a44c9fc0d45d2d0e7c4902086f41cacfea9c449afb9d1d017bcec7738a3",
+      "eventsSha256": "4172b8907d280eb6bf1e703f078e46b71e02df2062240d9708316c8b728525f6",
+      "terminalResultSha256": "2d5946c1b91986d3bd71502c0defd3b3906bb4eb1eebc20da3b4093e3c5543f5",
+      "eventCount": 6609,
+      "eventCounts": {
+        "prepared": 1,
+        "factor_base_start": 1,
+        "factor_base": 1,
+        "initialized": 1,
+        "driver_pass": 1,
+        "collection_pass": 10,
+        "small_norm_before": 10,
+        "ideal_probe": 1055,
+        "relation_candidate": 5503,
+        "small_norm_after": 10,
+        "hnf": 8,
+        "regulator_multiple": 1,
+        "acceptance": 1,
+        "honesty_complete": 1,
+        "fundamental_units": 1,
+        "class_group_input": 1,
+        "class_group_output": 1,
+        "final_state": 1,
+        "result": 1
+      },
+      "decisionSummary": {
+        "factorBaseAttempts": [
+          1
+        ],
+        "driverPrecisions": [
+          256
+        ],
+        "acceptanceCodes": [
+          0
+        ],
+        "naturalRandomRelationPasses": 0,
+        "honestyExtraRequired": [
+          false
+        ]
+      }
+    },
+    {
+      "panelIndex": 14,
+      "id": "generated-sha256-e1d4643ab62bde9546d63340545e5302c2cef517222d569e634fb5e2093f6413",
+      "filename": "panel-14-aa0aa6152d8cf26c.json",
+      "bytes": 96797505,
+      "sha256": "13f7e37fe4ba3c610e2c4340c243fa9da398b8d32a272b3c450525c287afe18a",
+      "preparedSha256": "66acb1a0be37d798bbf4d72459505b52a2d59ced3914246617d775359fc419cb",
+      "eventsSha256": "ed6426cbb8e8525864ff4910f3a6e1c7abecd406f9a53464bc7e1e1042305ad3",
+      "terminalResultSha256": "77192dc76e34f30ad3c61eeb89b3f243fb0bfa17f96c3037d8bde374f1579920",
+      "eventCount": 5397,
+      "eventCounts": {
+        "prepared": 1,
+        "factor_base_start": 1,
+        "factor_base": 1,
+        "initialized": 1,
+        "driver_pass": 1,
+        "collection_pass": 8,
+        "small_norm_before": 8,
+        "ideal_probe": 810,
+        "relation_candidate": 4546,
+        "small_norm_after": 8,
+        "hnf": 4,
+        "regulator_multiple": 1,
+        "acceptance": 1,
+        "honesty_complete": 1,
+        "fundamental_units": 1,
+        "class_group_input": 1,
+        "class_group_output": 1,
+        "final_state": 1,
+        "result": 1
+      },
+      "decisionSummary": {
+        "factorBaseAttempts": [
+          1
+        ],
+        "driverPrecisions": [
+          192
+        ],
+        "acceptanceCodes": [
+          0
+        ],
+        "naturalRandomRelationPasses": 0,
+        "honestyExtraRequired": [
+          false
+        ]
+      }
+    },
+    {
+      "panelIndex": 16,
+      "id": "3.1.1002718428660.2",
+      "filename": "panel-16-aabb93f0d6139f93.json",
+      "bytes": 813876,
+      "sha256": "8ec0387525e4e3f34eb6431ede35b7438b19c4a8f208dc76da682821a14756ce",
+      "preparedSha256": "244f880d93daa82051b1b4e92dd9e69a781cdbd67e2e941745cb3ae93e4e0dea",
+      "eventsSha256": "2716bb47098c45f61660bae0352dca093c17f62746c45d6ccb2ab88c865e6fe5",
+      "terminalResultSha256": "35d8813accf5df518ce02d88067eeb4e79bd83b608958e010bd0a84dca60de09",
+      "eventCount": 150,
+      "eventCounts": {
+        "prepared": 1,
+        "factor_base_start": 1,
+        "factor_base": 1,
+        "initialized": 1,
+        "driver_pass": 1,
+        "collection_pass": 1,
+        "small_norm_before": 1,
+        "ideal_probe": 13,
+        "relation_candidate": 120,
+        "small_norm_after": 1,
+        "hnf": 1,
+        "regulator_multiple": 1,
+        "acceptance": 1,
+        "honesty_complete": 1,
+        "fundamental_units": 1,
+        "class_group_input": 1,
+        "class_group_output": 1,
+        "final_state": 1,
+        "result": 1
+      },
+      "decisionSummary": {
+        "factorBaseAttempts": [
+          1
+        ],
+        "driverPrecisions": [
+          192
+        ],
+        "acceptanceCodes": [
+          0
+        ],
+        "naturalRandomRelationPasses": 0,
+        "honestyExtraRequired": [
+          false
+        ]
+      }
+    },
+    {
+      "panelIndex": 18,
+      "id": "3.1.1005907102200.3",
+      "filename": "panel-18-d48b43b95d82e5e1.json",
+      "bytes": 711408,
+      "sha256": "6e872fc1cf4765b30782ac32f2a0d7db5fc21c8b22721a976276708ddb084d92",
+      "preparedSha256": "5dadec46888e856290b6f54ac3bd13058496ce4ff32c4b83a50ce9ffebb6e2cc",
+      "eventsSha256": "f51a3747b293f169dea8abb6ddd9165b46867943718c6c07d5e40056cbd63288",
+      "terminalResultSha256": "56cd75d21f26950837eb3f8f7c5b8dc8180dbd98e879e7f39d6bc16504c42368",
+      "eventCount": 80,
+      "eventCounts": {
+        "prepared": 1,
+        "factor_base_start": 1,
+        "factor_base": 1,
+        "initialized": 1,
+        "driver_pass": 2,
+        "collection_pass": 2,
+        "small_norm_before": 2,
+        "ideal_probe": 10,
+        "relation_candidate": 46,
+        "small_norm_after": 2,
+        "hnf": 2,
+        "regulator_multiple": 2,
+        "acceptance": 2,
+        "honesty_complete": 1,
+        "fundamental_units": 1,
+        "class_group_input": 1,
+        "class_group_output": 1,
+        "final_state": 1,
+        "result": 1
+      },
+      "decisionSummary": {
+        "factorBaseAttempts": [
+          1
+        ],
+        "driverPrecisions": [
+          192,
+          192
+        ],
+        "acceptanceCodes": [
+          1,
+          0
+        ],
+        "naturalRandomRelationPasses": 0,
+        "honestyExtraRequired": [
+          false
+        ]
+      }
+    },
+    {
+      "panelIndex": 19,
+      "id": "3.1.1086061775432017340256300.107",
+      "filename": "panel-19-0aab4dadcd4bc7c7.json",
+      "bytes": 14580214,
+      "sha256": "0be835c418ce9b2055cf79051db7220248299c6d53e56a84ae47b0d1ec747ad9",
+      "preparedSha256": "853f21ccea8093bf4921cb35bfb3d21d78225a12a9be2d50b52e26dfaf65b87d",
+      "eventsSha256": "5abdb2df4f98a3d0115ac18471543ab4c5121ad63dba63f7c1f0e18d86e906f1",
+      "terminalResultSha256": "536b3fda6d0ba7a861f179bfa1b3c5d5cd180169623434f324d85b8384fd97b5",
+      "eventCount": 1507,
+      "eventCounts": {
+        "prepared": 1,
+        "factor_base_start": 1,
+        "factor_base": 1,
+        "initialized": 1,
+        "driver_pass": 1,
+        "collection_pass": 2,
+        "small_norm_before": 2,
+        "ideal_probe": 431,
+        "relation_candidate": 1055,
+        "small_norm_after": 2,
+        "hnf": 2,
+        "regulator_multiple": 1,
+        "acceptance": 1,
+        "honesty_complete": 1,
+        "fundamental_units": 1,
+        "class_group_input": 1,
+        "class_group_output": 1,
+        "final_state": 1,
+        "result": 1
+      },
+      "decisionSummary": {
+        "factorBaseAttempts": [
+          1
+        ],
+        "driverPrecisions": [
+          192
+        ],
+        "acceptanceCodes": [
+          0
+        ],
+        "naturalRandomRelationPasses": 0,
+        "honestyExtraRequired": [
+          false
+        ]
+      }
+    },
+    {
+      "panelIndex": 20,
+      "id": "5.1.1000000.1",
+      "filename": "panel-20-36db16a4e174ca1a.json",
+      "bytes": 360844,
+      "sha256": "6ea7098d80c586a7fbf050f9f650f4a3bff258cd84dd7a2a3c7dab210d1bf468",
+      "preparedSha256": "3699e736a24047cbdca1881575fb37c6728f21a5e9ce69e20a78f7bf9aefb1e4",
+      "eventsSha256": "87f145a9c4fd35bd8cc2f45559f0d1a6528aa663d854145cc8cf0a32a769bc25",
+      "terminalResultSha256": "5d24fb22708d60049e2bfda6c035922836775ecc105f9922cb1c59abd1acc210",
+      "eventCount": 31,
+      "eventCounts": {
+        "prepared": 1,
+        "factor_base_start": 1,
+        "factor_base": 1,
+        "initialized": 1,
+        "driver_pass": 1,
+        "collection_pass": 1,
+        "small_norm_before": 1,
+        "ideal_probe": 3,
+        "relation_candidate": 11,
+        "small_norm_after": 1,
+        "hnf": 1,
+        "regulator_multiple": 1,
+        "acceptance": 1,
+        "honesty_complete": 1,
+        "fundamental_units": 1,
+        "class_group_input": 1,
+        "class_group_output": 1,
+        "final_state": 1,
+        "result": 1
+      },
+      "decisionSummary": {
+        "factorBaseAttempts": [
+          1
+        ],
+        "driverPrecisions": [
+          192
+        ],
+        "acceptanceCodes": [
+          0
+        ],
+        "naturalRandomRelationPasses": 0,
+        "honestyExtraRequired": [
+          false
+        ]
+      }
+    },
+    {
+      "panelIndex": 21,
+      "id": "5.3.1009349859375.3",
+      "filename": "panel-21-6966124ec38a3af1.json",
+      "bytes": 600638,
+      "sha256": "45087efb874a7c756e0695ea8c79873cdfc22cfe5702c24df18619d368622b5a",
+      "preparedSha256": "2139e50eafa4d902650d0ea0ad183725c3e47879b3136e8de9cb48a98a9f2c24",
+      "eventsSha256": "f813907976d80ccfc9d156447e38393e16e1fc08384abcb86a2050a37de45a99",
+      "terminalResultSha256": "895b0f70b6b4311f58bca9a2fe42f4d51d99cb729cf577bec86f00adfddefcd5",
+      "eventCount": 53,
+      "eventCounts": {
+        "prepared": 1,
+        "factor_base_start": 1,
+        "factor_base": 1,
+        "initialized": 1,
+        "driver_pass": 1,
+        "collection_pass": 1,
+        "small_norm_before": 1,
+        "ideal_probe": 7,
+        "relation_candidate": 29,
+        "small_norm_after": 1,
+        "hnf": 1,
+        "regulator_multiple": 1,
+        "acceptance": 1,
+        "honesty_complete": 1,
+        "fundamental_units": 1,
+        "class_group_input": 1,
+        "class_group_output": 1,
+        "final_state": 1,
+        "result": 1
+      },
+      "decisionSummary": {
+        "factorBaseAttempts": [
+          1
+        ],
+        "driverPrecisions": [
+          192
+        ],
+        "acceptanceCodes": [
+          0
+        ],
+        "naturalRandomRelationPasses": 0,
+        "honestyExtraRequired": [
+          false
+        ]
+      }
+    },
+    {
+      "panelIndex": 23,
+      "id": "5.5.1002836007889.1",
+      "filename": "panel-23-c3077e07c31ac758.json",
+      "bytes": 769470,
+      "sha256": "6c4a0b2f5e74d5f156714fad24b0bbf41c8d4998de5bbd046d74c6d8a3930c89",
+      "preparedSha256": "8c8936fcf3e2ec10f2e5eda40102f4e0373e1de0c01639d23a9c404402ded50f",
+      "eventsSha256": "ff0ab0d05d8c1a0f43d08f9ef4cd966e5d5ae8e7b31f1e018463dc4537140d24",
+      "terminalResultSha256": "f82731fdbbcfb19ce16ac4130098ee7feec5220c8b6606a262c6ce84d81d883d",
+      "eventCount": 67,
+      "eventCounts": {
+        "prepared": 1,
+        "factor_base_start": 1,
+        "factor_base": 1,
+        "initialized": 1,
+        "driver_pass": 1,
+        "collection_pass": 1,
+        "small_norm_before": 1,
+        "ideal_probe": 10,
+        "relation_candidate": 40,
+        "small_norm_after": 1,
+        "hnf": 1,
+        "regulator_multiple": 1,
+        "acceptance": 1,
+        "honesty_complete": 1,
+        "fundamental_units": 1,
+        "class_group_input": 1,
+        "class_group_output": 1,
+        "final_state": 1,
+        "result": 1
+      },
+      "decisionSummary": {
+        "factorBaseAttempts": [
+          1
+        ],
+        "driverPrecisions": [
+          192
+        ],
+        "acceptanceCodes": [
+          0
+        ],
+        "naturalRandomRelationPasses": 0,
+        "honestyExtraRequired": [
+          false
+        ]
+      }
+    }
+  ]
+}

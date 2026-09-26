@@ -1,0 +1,61 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "pari-e2e-authentic-correspondence-complete",
+  "title": "Authentic h=1 correspondence-complete sentinel",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Compose presentation, torsion, cleanarch, regulator, unit, and active relation-HNF authorities into the first honest correspondence-complete h=1 internal sentinel while keeping public completeness false",
+  "base_commit": "976acad1f5df4dac2e80b4de56e94e39671eb6b8",
+  "claims": [
+    "bench/pari-class-group-port/class_group_authentic_success.py",
+    "bench/pari-class-group-port/check_class_group_authentic_success.cjs",
+    "bench/pari-class-group-port/class_group_authentic_success.md"
+  ],
+  "dependencies": [
+    "pari-e2e-authentic-success"
+  ],
+  "references": [],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "not-applicable",
+    "oracles": [
+      "Cold replay of presentation, torsion, cleanarch, regulator, and successful unit authorities"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "not-applicable",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native",
+    "SAGEJS_REPLAY_RUNTIME_ROOT=/home/user/sagejs node bench/pari-class-group-port/check_class_group_authentic_success.cjs /tmp/sagejs-resident-generated-class-3qtnS5/output.json /tmp/sagejs-unit-bridge-ovVl6Y/oracle"
+  ],
+  "runs": [
+    {
+      "command": "env SAGEJS_REPLAY_RUNTIME_ROOT=/home/user/sagejs node bench/pari-class-group-port/check_class_group_authentic_success.cjs /tmp/sagejs-resident-generated-class-3qtnS5/output.json /tmp/sagejs-unit-bridge-ovVl6Y/oracle",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 17.307,
+      "started_at": "2026-09-17T02:56:52.490Z",
+      "commit": "976acad1f5df4dac2e80b4de56e94e39671eb6b8",
+      "workspace_fingerprint": "ffbf8023429d941e7d2be14e0c0d166b3af6cf3483aa235e96c94d923ea43190",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Composes authentic presentation, torsion, cleanarch, regulator, Smith, unit-component, and exact relation-product authorities into one immutable h=1 v2 result. Exact 73-relation products reproduce both retry units up to torsion. The result remains explicitly incomplete because the PARI-oracle unit output is not linked to the separate rigorous-regulator units.",
+    "risks": [
+      "The successful UnitComponent still consumes the live PARI unit oracle.",
+      "The rigorous regulator units are not yet proven identical to the successful retry units."
+    ],
+    "next_steps": [
+      "Replace the live PARI retry oracle with the resident precision rebuild/root output and link those exact coordinates to regulator replay."
+    ]
+  }
+}

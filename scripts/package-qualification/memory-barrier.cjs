@@ -71,10 +71,14 @@ function verifyChildObservation(options, pid) {
 function installExitBarrier(options) {
   validate(options);
   const filename = path.join(options.directory, `${process.pid}-${randomUUID()}.ready`);
+  const pendingFilename = `${filename}.pending`;
   const pause = new Int32Array(new SharedArrayBuffer(4));
   process.once("exit", () => {
     try {
-      fs.writeFileSync(filename, options.token, { flag: "wx" });
+      // The supervisor scans the directory concurrently.  A visible .ready
+      // marker must already contain its complete token, including on Windows.
+      fs.writeFileSync(pendingFilename, options.token, { flag: "wx" });
+      fs.renameSync(pendingFilename, filename);
       const deadline = process.hrtime.bigint() + BigInt(options.timeoutMs) * 1000000n;
       while (process.hrtime.bigint() < deadline) {
         if (fs.existsSync(filename + ".ack") &&

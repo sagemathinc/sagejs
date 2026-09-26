@@ -503,15 +503,16 @@ invariants, and the unchanged 902,984/903,000 core budget pass. Evidence is in
 generated class construction paying compiled-Python traversal to decide whether
 a synthetic initializer ends at `object.__init__`. The internal bounded chain
 walk and epoch-current custom-allocator cache now use a raw implementation in
-their owning builtins module. Against the exact PR #316 source, controlled
+the shared bootstrap boundary while `builtins.py` remains strict Python.
+Against the exact PR #316 source, controlled
 exact-artifact measurements improve no-op-initializer construction by 11.72%
 and field-bearing positional/keyword construction by 3.41%; call-only and empty
 class controls remain flat. No-op construction is now 5.68x CPython, while
 field-bearing construction remains 10.51–12.04x and keyword calls roughly
 12.8x. All semantic, differential, package, strict, and merge gates pass at
-902,325/903,000 core bytes. Exact evidence is in
+902,448/903,000 core bytes. Exact evidence is in
 `agents/python-constructor-new-guard-native.md`. Keep this candidate behind PR
-#316 and keep M5 open.
+#316, now merged, and keep M5 open.
 
 **2026-09-17 single-pass keyword-binding checkpoint:** the authenticated
 generated-function path validated keyword packet keys, then scanned every
@@ -567,10 +568,10 @@ immediate defaulted method by 7.84%, and keyword construction by 3.58%; controls
 remain within about 3%. A positional required argument plus one supplied
 default improves 27.70%, while four supplied defaults improve 9.23%, confirming
 that the benefit follows the redundant tail work. The artifact shrinks 4,054
-bytes and core source is 902,294/903,000. Keyword paths still measure roughly
+bytes and current integrated core source is 902,417/903,000. Keyword paths still measure roughly
 10.2x--14.5x CPython, so M5 remains open. Current evidence is in
-`agents/python-default-tail-keyword-prologue.md`; keep this branch behind the
-constructor candidates.
+`agents/python-default-tail-keyword-prologue.md`; this branch is now the direct
+follow-up to merged PR #317.
 
 **2026-09-18 omitted-positional-default replay:** keyword calls which omit
 a positional parameter repeatedly entered a compiled-Python shared helper to

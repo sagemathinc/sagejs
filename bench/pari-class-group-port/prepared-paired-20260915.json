@@ -1,0 +1,539 @@
+{
+  "field": 1,
+  "cpu": 15,
+  "nativeRepetitions": 20,
+  "pariRepetitions": 500,
+  "orders": [
+    [
+      "pari",
+      "gmp",
+      "tagged"
+    ],
+    [
+      "tagged",
+      "gmp",
+      "pari"
+    ],
+    [
+      "pari",
+      "gmp",
+      "tagged"
+    ]
+  ],
+  "inputSha256": "37abbff3ea5a0fbbd81d4261a737f19808a2b85220c725417d0f315d15c0e10c",
+  "referenceSha256": "5ad629a9e428c2f7ce715d2216a1cc4454c558fdda1a468da83109081abcce34",
+  "executableSha256": "1fc1ac2824e0d1e4878487f6ca64e1cca8ccd2a4c145cda1072ee45e57926457",
+  "referenceBuild": {
+    "compilerPath": "/usr/bin/cc",
+    "compilerVersion": "cc (Ubuntu 15.2.0-16ubuntu1) 15.2.0\nCopyright (C) 2025 Free Software Foundation, Inc.\nThis is free software; see the source for copying conditions.  There is NO\nwarranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.",
+    "flags": [
+      "-O3"
+    ],
+    "arguments": [
+      "-O3",
+      "-I/scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4/src/headers",
+      "-I/scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4/Olinux-x86_64",
+      "/tmp/sagejs-prepared-attempt-reference-r6W2XO/oracle.c",
+      "-L/scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4/Olinux-x86_64",
+      "-Wl,-rpath,/scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4/Olinux-x86_64",
+      "-lpari",
+      "-lm",
+      "-o",
+      "/tmp/sagejs-prepared-attempt-reference-r6W2XO/oracle"
+    ],
+    "includePaths": [
+      "/scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4/src/headers",
+      "/scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4/Olinux-x86_64"
+    ],
+    "libraryDirectory": "/scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4/Olinux-x86_64",
+    "pariLibraryPath": "/scratch/pari-class-group-port-C7hzCV2b/pari-2.17.4/Olinux-x86_64/libpari-gmp.so.2.17.4",
+    "libraries": [
+      "pari",
+      "m"
+    ],
+    "sourcePath": "/tmp/sagejs-prepared-attempt-reference-r6W2XO/oracle.c",
+    "executablePath": "/tmp/sagejs-prepared-attempt-reference-r6W2XO/oracle"
+  },
+  "host": {
+    "hostname": "project-b6351099-3c72-458c-aa7e-4b7f4a47c0e7",
+    "platform": "linux",
+    "arch": "x64",
+    "release": "7.0.0-1011-gcp",
+    "cpuModel": "AMD EPYC 7B13",
+    "node": "v26.8.1",
+    "loadBefore": [
+      1.61,
+      1.8,
+      1.61
+    ]
+  },
+  "qualifiedTiming": false,
+  "scope": "Alternating prepared native/reference diagnostic; no dynamic latency, polynomial setup, units/maps or cross-platform qualification. Native reset is separately reported; reference cache allocation is inside its section.",
+  "samples": [
+    {
+      "round": 0,
+      "backend": "pari",
+      "result": {
+        "field": 1,
+        "precision": 192,
+        "C1": 259,
+        "C2": 259,
+        "KC": 51,
+        "initialRelations": 11,
+        "target": 58,
+        "relations": 58,
+        "ideals": 12,
+        "smallElements": 491,
+        "factorAttempts": 54,
+        "hnfRows": 1,
+        "bColumns": 50,
+        "unitColumns": 7,
+        "multipleBits": 180,
+        "action": 0,
+        "classNumber": "3",
+        "invariants": [
+          "3"
+        ],
+        "regulator": [
+          "3895441961913051012156655978319959870688113589397982850906",
+          "192",
+          "17"
+        ],
+        "repetitions": 500,
+        "unqualifiedSecondsTotal": 1.5406562350000013
+      },
+      "secondsPerCall": 0.0030813124700000026,
+      "atLeastOneSecond": true
+    },
+    {
+      "round": 0,
+      "backend": "gmp",
+      "result": {
+        "qualifiedTiming": false,
+        "comparisonToPari": false,
+        "backend": "gmp",
+        "boundary": "Prepared attempt with resident owners restored before every call; kernel totals exclude preparation, packing, reset, compilation, decoding and assertions. Reset totals reported separately. Diagnostic only; batching does not qualify timing.",
+        "repetitions": 20,
+        "sampleCount": 1,
+        "warmupCalls": 1,
+        "timedCalls": 20,
+        "inputSha256": "37abbff3ea5a0fbbd81d4261a737f19808a2b85220c725417d0f315d15c0e10c",
+        "coreBytes": 58205896,
+        "sourceSha256": "ed72b1e3591c11ed1cdaee378b9a1c234e2478e55dbc9fca5c07a9319c1d6904",
+        "coreSha256": "052512849c16228619410f6c1626b1ed5f32273250e7ddf27b759d56e1c27f10",
+        "ownerBytes": 271240904,
+        "resetSnapshotBytes": 271240904,
+        "setupMilliseconds": 1225.4489770000037,
+        "largeInputCapacities": {
+          "admission_products": 1470
+        },
+        "samples": [
+          {
+            "repetitions": 20,
+            "milliseconds": 2181.260279999995,
+            "cpuMilliseconds": 2181.239,
+            "resetMilliseconds": 578.8397399999885,
+            "resetCpuMilliseconds": 579.104
+          }
+        ],
+        "answer": {
+          "action": 0,
+          "state": [
+            4,
+            0,
+            1,
+            1
+          ],
+          "invariants": [
+            "3"
+          ],
+          "classNumber": "3",
+          "regulator": [
+            "3895441961913051012156655978319959870688113589397982850906",
+            "192",
+            "17"
+          ],
+          "relations": "58",
+          "work": {
+            "smallElements": 491,
+            "factorAttempts": 54,
+            "ideals": 12
+          }
+        }
+      },
+      "secondsPerCall": 0.10906301399999975,
+      "atLeastOneSecond": true
+    },
+    {
+      "round": 0,
+      "backend": "tagged",
+      "result": {
+        "qualifiedTiming": false,
+        "comparisonToPari": false,
+        "backend": "tagged",
+        "boundary": "Prepared attempt with resident owners restored before every call; kernel totals exclude preparation, packing, reset, compilation, decoding and assertions. Reset totals reported separately. Diagnostic only; batching does not qualify timing.",
+        "repetitions": 20,
+        "sampleCount": 1,
+        "warmupCalls": 1,
+        "timedCalls": 20,
+        "inputSha256": "37abbff3ea5a0fbbd81d4261a737f19808a2b85220c725417d0f315d15c0e10c",
+        "coreBytes": 58205896,
+        "sourceSha256": "ed72b1e3591c11ed1cdaee378b9a1c234e2478e55dbc9fca5c07a9319c1d6904",
+        "coreSha256": "052512849c16228619410f6c1626b1ed5f32273250e7ddf27b759d56e1c27f10",
+        "ownerBytes": 271240904,
+        "resetSnapshotBytes": 271240904,
+        "setupMilliseconds": 1192.1129550000005,
+        "largeInputCapacities": {
+          "admission_products": 1470
+        },
+        "samples": [
+          {
+            "repetitions": 20,
+            "milliseconds": 2094.034759999995,
+            "cpuMilliseconds": 2094.0049999999997,
+            "resetMilliseconds": 601.867582999992,
+            "resetCpuMilliseconds": 603.645
+          }
+        ],
+        "answer": {
+          "action": 0,
+          "state": [
+            4,
+            0,
+            1,
+            1
+          ],
+          "invariants": [
+            "3"
+          ],
+          "classNumber": "3",
+          "regulator": [
+            "3895441961913051012156655978319959870688113589397982850906",
+            "192",
+            "17"
+          ],
+          "relations": "58",
+          "work": {
+            "smallElements": 491,
+            "factorAttempts": 54,
+            "ideals": 12
+          }
+        }
+      },
+      "secondsPerCall": 0.10470173799999975,
+      "atLeastOneSecond": true
+    },
+    {
+      "round": 1,
+      "backend": "tagged",
+      "result": {
+        "qualifiedTiming": false,
+        "comparisonToPari": false,
+        "backend": "tagged",
+        "boundary": "Prepared attempt with resident owners restored before every call; kernel totals exclude preparation, packing, reset, compilation, decoding and assertions. Reset totals reported separately. Diagnostic only; batching does not qualify timing.",
+        "repetitions": 20,
+        "sampleCount": 1,
+        "warmupCalls": 1,
+        "timedCalls": 20,
+        "inputSha256": "37abbff3ea5a0fbbd81d4261a737f19808a2b85220c725417d0f315d15c0e10c",
+        "coreBytes": 58205896,
+        "sourceSha256": "ed72b1e3591c11ed1cdaee378b9a1c234e2478e55dbc9fca5c07a9319c1d6904",
+        "coreSha256": "052512849c16228619410f6c1626b1ed5f32273250e7ddf27b759d56e1c27f10",
+        "ownerBytes": 271240904,
+        "resetSnapshotBytes": 271240904,
+        "setupMilliseconds": 1202.1736720000008,
+        "largeInputCapacities": {
+          "admission_products": 1470
+        },
+        "samples": [
+          {
+            "repetitions": 20,
+            "milliseconds": 2217.2728380000262,
+            "cpuMilliseconds": 2217.181,
+            "resetMilliseconds": 572.8745640000052,
+            "resetCpuMilliseconds": 573.155
+          }
+        ],
+        "answer": {
+          "action": 0,
+          "state": [
+            4,
+            0,
+            1,
+            1
+          ],
+          "invariants": [
+            "3"
+          ],
+          "classNumber": "3",
+          "regulator": [
+            "3895441961913051012156655978319959870688113589397982850906",
+            "192",
+            "17"
+          ],
+          "relations": "58",
+          "work": {
+            "smallElements": 491,
+            "factorAttempts": 54,
+            "ideals": 12
+          }
+        }
+      },
+      "secondsPerCall": 0.11086364190000131,
+      "atLeastOneSecond": true
+    },
+    {
+      "round": 1,
+      "backend": "gmp",
+      "result": {
+        "qualifiedTiming": false,
+        "comparisonToPari": false,
+        "backend": "gmp",
+        "boundary": "Prepared attempt with resident owners restored before every call; kernel totals exclude preparation, packing, reset, compilation, decoding and assertions. Reset totals reported separately. Diagnostic only; batching does not qualify timing.",
+        "repetitions": 20,
+        "sampleCount": 1,
+        "warmupCalls": 1,
+        "timedCalls": 20,
+        "inputSha256": "37abbff3ea5a0fbbd81d4261a737f19808a2b85220c725417d0f315d15c0e10c",
+        "coreBytes": 58205896,
+        "sourceSha256": "ed72b1e3591c11ed1cdaee378b9a1c234e2478e55dbc9fca5c07a9319c1d6904",
+        "coreSha256": "052512849c16228619410f6c1626b1ed5f32273250e7ddf27b759d56e1c27f10",
+        "ownerBytes": 271240904,
+        "resetSnapshotBytes": 271240904,
+        "setupMilliseconds": 1212.9587699999975,
+        "largeInputCapacities": {
+          "admission_products": 1470
+        },
+        "samples": [
+          {
+            "repetitions": 20,
+            "milliseconds": 2176.8810960000046,
+            "cpuMilliseconds": 2176.8709999999996,
+            "resetMilliseconds": 586.8581619999895,
+            "resetCpuMilliseconds": 587.0979999999998
+          }
+        ],
+        "answer": {
+          "action": 0,
+          "state": [
+            4,
+            0,
+            1,
+            1
+          ],
+          "invariants": [
+            "3"
+          ],
+          "classNumber": "3",
+          "regulator": [
+            "3895441961913051012156655978319959870688113589397982850906",
+            "192",
+            "17"
+          ],
+          "relations": "58",
+          "work": {
+            "smallElements": 491,
+            "factorAttempts": 54,
+            "ideals": 12
+          }
+        }
+      },
+      "secondsPerCall": 0.10884405480000024,
+      "atLeastOneSecond": true
+    },
+    {
+      "round": 1,
+      "backend": "pari",
+      "result": {
+        "field": 1,
+        "precision": 192,
+        "C1": 259,
+        "C2": 259,
+        "KC": 51,
+        "initialRelations": 11,
+        "target": 58,
+        "relations": 58,
+        "ideals": 12,
+        "smallElements": 491,
+        "factorAttempts": 54,
+        "hnfRows": 1,
+        "bColumns": 50,
+        "unitColumns": 7,
+        "multipleBits": 180,
+        "action": 0,
+        "classNumber": "3",
+        "invariants": [
+          "3"
+        ],
+        "regulator": [
+          "3895441961913051012156655978319959870688113589397982850906",
+          "192",
+          "17"
+        ],
+        "repetitions": 500,
+        "unqualifiedSecondsTotal": 1.5380563580000006
+      },
+      "secondsPerCall": 0.0030761127160000012,
+      "atLeastOneSecond": true
+    },
+    {
+      "round": 2,
+      "backend": "pari",
+      "result": {
+        "field": 1,
+        "precision": 192,
+        "C1": 259,
+        "C2": 259,
+        "KC": 51,
+        "initialRelations": 11,
+        "target": 58,
+        "relations": 58,
+        "ideals": 12,
+        "smallElements": 491,
+        "factorAttempts": 54,
+        "hnfRows": 1,
+        "bColumns": 50,
+        "unitColumns": 7,
+        "multipleBits": 180,
+        "action": 0,
+        "classNumber": "3",
+        "invariants": [
+          "3"
+        ],
+        "regulator": [
+          "3895441961913051012156655978319959870688113589397982850906",
+          "192",
+          "17"
+        ],
+        "repetitions": 500,
+        "unqualifiedSecondsTotal": 1.532116001
+      },
+      "secondsPerCall": 0.0030642320019999996,
+      "atLeastOneSecond": true
+    },
+    {
+      "round": 2,
+      "backend": "gmp",
+      "result": {
+        "qualifiedTiming": false,
+        "comparisonToPari": false,
+        "backend": "gmp",
+        "boundary": "Prepared attempt with resident owners restored before every call; kernel totals exclude preparation, packing, reset, compilation, decoding and assertions. Reset totals reported separately. Diagnostic only; batching does not qualify timing.",
+        "repetitions": 20,
+        "sampleCount": 1,
+        "warmupCalls": 1,
+        "timedCalls": 20,
+        "inputSha256": "37abbff3ea5a0fbbd81d4261a737f19808a2b85220c725417d0f315d15c0e10c",
+        "coreBytes": 58205896,
+        "sourceSha256": "ed72b1e3591c11ed1cdaee378b9a1c234e2478e55dbc9fca5c07a9319c1d6904",
+        "coreSha256": "052512849c16228619410f6c1626b1ed5f32273250e7ddf27b759d56e1c27f10",
+        "ownerBytes": 271240904,
+        "resetSnapshotBytes": 271240904,
+        "setupMilliseconds": 1250.4542610000026,
+        "largeInputCapacities": {
+          "admission_products": 1470
+        },
+        "samples": [
+          {
+            "repetitions": 20,
+            "milliseconds": 2163.8036219999995,
+            "cpuMilliseconds": 2163.743,
+            "resetMilliseconds": 583.3516879999879,
+            "resetCpuMilliseconds": 583.6220000000001
+          }
+        ],
+        "answer": {
+          "action": 0,
+          "state": [
+            4,
+            0,
+            1,
+            1
+          ],
+          "invariants": [
+            "3"
+          ],
+          "classNumber": "3",
+          "regulator": [
+            "3895441961913051012156655978319959870688113589397982850906",
+            "192",
+            "17"
+          ],
+          "relations": "58",
+          "work": {
+            "smallElements": 491,
+            "factorAttempts": 54,
+            "ideals": 12
+          }
+        }
+      },
+      "secondsPerCall": 0.10819018109999998,
+      "atLeastOneSecond": true
+    },
+    {
+      "round": 2,
+      "backend": "tagged",
+      "result": {
+        "qualifiedTiming": false,
+        "comparisonToPari": false,
+        "backend": "tagged",
+        "boundary": "Prepared attempt with resident owners restored before every call; kernel totals exclude preparation, packing, reset, compilation, decoding and assertions. Reset totals reported separately. Diagnostic only; batching does not qualify timing.",
+        "repetitions": 20,
+        "sampleCount": 1,
+        "warmupCalls": 1,
+        "timedCalls": 20,
+        "inputSha256": "37abbff3ea5a0fbbd81d4261a737f19808a2b85220c725417d0f315d15c0e10c",
+        "coreBytes": 58205896,
+        "sourceSha256": "ed72b1e3591c11ed1cdaee378b9a1c234e2478e55dbc9fca5c07a9319c1d6904",
+        "coreSha256": "052512849c16228619410f6c1626b1ed5f32273250e7ddf27b759d56e1c27f10",
+        "ownerBytes": 271240904,
+        "resetSnapshotBytes": 271240904,
+        "setupMilliseconds": 1244.0156720000014,
+        "largeInputCapacities": {
+          "admission_products": 1470
+        },
+        "samples": [
+          {
+            "repetitions": 20,
+            "milliseconds": 2184.1626660000184,
+            "cpuMilliseconds": 2184.077,
+            "resetMilliseconds": 579.0302710000105,
+            "resetCpuMilliseconds": 579.291
+          }
+        ],
+        "answer": {
+          "action": 0,
+          "state": [
+            4,
+            0,
+            1,
+            1
+          ],
+          "invariants": [
+            "3"
+          ],
+          "classNumber": "3",
+          "regulator": [
+            "3895441961913051012156655978319959870688113589397982850906",
+            "192",
+            "17"
+          ],
+          "relations": "58",
+          "work": {
+            "smallElements": 491,
+            "factorAttempts": 54,
+            "ideals": 12
+          }
+        }
+      },
+      "secondsPerCall": 0.10920813330000093,
+      "atLeastOneSecond": true
+    }
+  ],
+  "loadAfter": [
+    2.86,
+    2.5,
+    1.94
+  ],
+  "directory": "/tmp/sagejs-prepared-paired-SmVo5J"
+}

@@ -127,6 +127,10 @@ jobs:
         with:
           node-version: 26.5.1
           cache: pnpm
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: 1.98.1
+          targets: wasm32-wasip1
       - name: Validate the explicit qualification request
         env:
           SAGEJS_RELEASE_INPUTS: ${{ toJSON(inputs) }}
@@ -207,6 +211,10 @@ jobs:
         with:
           node-version: 26.5.1
           cache: pnpm
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: 1.98.1
+          targets: wasm32-wasip1
       - name: Fetch authenticated sources without an upstream fallback
         run: |
           node tools/source-mirror/scripts/source-mirror.mjs fetch \

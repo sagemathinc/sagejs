@@ -1,0 +1,83 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "h1-terminal-owner-snapshot",
+  "title": "H1 Terminal Owner Snapshot",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Implement a fixture-free terminal host snapshot, canonical seal, and cold replay verifier for the unified H1 numeric owner bundle",
+  "base_commit": "31fe1d67d238f790c5745339cd40c8a3117d08f4",
+  "claims": [
+    "bench/pari-class-group-port/h1_terminal_owner_snapshot.py",
+    "bench/pari-class-group-port/check_h1_terminal_owner_snapshot.cjs",
+    "bench/pari-class-group-port/h1_terminal_owner_snapshot_audit.md"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "Existing authentic h1 resident/live owner outputs and independent exact matrix/unit replay"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "not-applicable",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "node bench/pari-class-group-port/check_h1_terminal_owner_snapshot.cjs",
+    "pnpm exec ruff check bench/pari-class-group-port/h1_terminal_owner_snapshot.py",
+    "pnpm parallel:check",
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "node bench/pari-class-group-port/check_h1_terminal_owner_snapshot.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.292,
+      "started_at": "2026-09-17T05:17:29.580Z",
+      "commit": "31fe1d67d238f790c5745339cd40c8a3117d08f4",
+      "workspace_fingerprint": "ef8758566016fa7aa3f092061d70a72f2c0d49eb2bf97c335cb7b3f27a9e26d5",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm exec ruff check bench/pari-class-group-port/h1_terminal_owner_snapshot.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.485,
+      "started_at": "2026-09-17T05:18:25.144Z",
+      "commit": "31fe1d67d238f790c5745339cd40c8a3117d08f4",
+      "workspace_fingerprint": "ef8758566016fa7aa3f092061d70a72f2c0d49eb2bf97c335cb7b3f27a9e26d5",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/pari-class-group-port/check_h1_terminal_owner_snapshot.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.272,
+      "started_at": "2026-09-17T05:18:40.285Z",
+      "commit": "31fe1d67d238f790c5745339cd40c8a3117d08f4",
+      "workspace_fingerprint": "ef8758566016fa7aa3f092061d70a72f2c0d49eb2bf97c335cb7b3f27a9e26d5",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Adds a single-copy terminal owner snapshot, canonical SHA-256 envelope, and cold semantic replay for the authentic bounded H1 presentation, class group, exact units, regulator, torsion, and assumption state. The focused checker rejects ten independently rehashed component mutations.",
+    "risks": [
+      "The checker synthesizes a self-consistent p2176 logarithm corridor around the live packed regulator; the unified native root must provide its actual rebuilt logs and rigorous dyadic enclosure.",
+      "The schema deliberately freezes the authentic H1 dimensions and is not a generic-degree public result."
+    ],
+    "next_steps": [
+      "Call capture_h1_terminal_owner_snapshot immediately after the unified native root succeeds and before its reusable owners can be mutated.",
+      "Supply the root's live rebuilt unit logs, phases, and rigorous regulator interval instead of the checker's producer stand-in.",
+      "Run broad repository gates after integration convergence; this lane recorded only its focused replay, Ruff, and contract checks."
+    ]
+  }
+}

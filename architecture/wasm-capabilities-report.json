@@ -1,28 +1,29 @@
 {
   "schema": "sagejs.wasm-capability-report/v1",
   "source": "architecture/wasm-capabilities.json",
-  "source_sha256": "8395edb804df508a081d68be7684d6cb5ba37d7f9705069aeab71e1eed5cf89a",
+  "source_sha256": "163a908eeec762a4c8b8fadbcbc82ed54ec081713de2ea21b172b397f1daa8a7",
   "counts": {
-    "total": 1106,
+    "total": 1107,
     "by_kind": {
       "declared-ffi-function": 480,
       "declared-ffi-resource": 37,
       "napi-export": 358,
       "production-kernel": 55,
       "runtime-intrinsic": 148,
-      "specialist-capability": 28
+      "specialist-capability": 29
     },
     "by_disposition": {
       "compiled-source": 55,
       "desktop-only": 47,
       "generated-wasm": 379,
       "portable-fallback": 575,
-      "shared-core": 50
+      "shared-core": 51
     },
     "by_status": {
-      "available": 625,
+      "available": 626,
       "desktop-only": 47,
-      "fallback": 434
+      "fallback": 433,
+      "planned": 1
     }
   },
   "workflow_aliases": {
@@ -6651,13 +6652,13 @@
       "id": "kernel:complex-cubic-class-group-production",
       "family": "complex-cubic-class-group",
       "disposition": "compiled-source",
-      "status": "fallback",
+      "status": "available",
       "fallback": "ordinary-sagejs-exact-fallback",
       "wasm_module": "kernel-flint",
       "public_consumers": [
         "number-field-cubic-class-number"
       ],
-      "explanation": "This family uses compiled WebAssembly for 0 of 1 functions and the same-source fallback for 1 functions."
+      "explanation": "All 1 registered functions in this family run as compiled WebAssembly in the production artifact."
     },
     {
       "id": "kernel:dense-binary-m4ri-optional",
@@ -13355,6 +13356,20 @@
         "sagejs_capabilities"
       ],
       "explanation": "The checked immutable WebAssembly capability report and workflow queries are available directly in Sage sessions."
+    },
+    {
+      "id": "specialist:cubic-class-groups-rust",
+      "family": "algebraic-number-theory",
+      "disposition": "shared-core",
+      "status": "planned",
+      "fallback": "native-resident-service-or-ordinary-exact-cubic",
+      "wasm_module": "class-group",
+      "public_consumers": [
+        "NumberField.class_group",
+        "NumberField.class_number",
+        "NumberField.unit_group"
+      ],
+      "explanation": "The Rust cubic class-group specialist remains development-only and is not included in the 0.9.0 public WebAssembly package. Ordinary exact fallbacks remain available where supported."
     },
     {
       "id": "specialist:eclib",

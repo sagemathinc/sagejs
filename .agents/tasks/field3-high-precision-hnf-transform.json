@@ -1,0 +1,149 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "field3-high-precision-hnf-transform",
+  "title": "Field-3 high-precision local HNF transform",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Implement an atomic source-faithful local HNF transform protocol that authenticates exact field-3 relation/HNF owners, retains the exact 301x13 transform, proves exact annihilation, and transforms only an eventual authenticated high-precision 3x301 raw log owner into a 3x13 accepted-column owner without consuming 192-bit unit checkpoints",
+  "base_commit": "012579fac7400b04b2decf946af50b16bcd17aa5",
+  "claims": [
+    "bench/pari-class-group-port/field3_high_precision_hnf_transform.py",
+    "bench/pari-class-group-port/field3_high_precision_hnf_transform_coordinator.cjs",
+    "bench/pari-class-group-port/check_field3_high_precision_hnf_transform.cjs",
+    "bench/pari-class-group-port/field3_high_precision_hnf_transform_audit.md"
+  ],
+  "dependencies": [],
+  "references": [
+    "PARI 2.17.4 src/basemath/buch2.c accepted-column HNF schedule",
+    "field3-local-hnf-protocol SHA-256 892afa9a63da8353cce50eead03b12f031812182a3229a48ed8fbdfa60b94e72"
+  ],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "not-applicable",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "synthetic high-precision packed-log prefix controls",
+      "immutable resident authority and initial-capsule HNF checkpoint replay"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native",
+    "node bench/pari-class-group-port/check_field3_high_precision_hnf_transform.cjs",
+    "pnpm exec ruff check bench/pari-class-group-port/field3_high_precision_hnf_transform.py",
+    "pnpm exec pyright bench/pari-class-group-port/field3_high_precision_hnf_transform.py",
+    "node --check bench/pari-class-group-port/field3_high_precision_hnf_transform_coordinator.cjs"
+  ],
+  "runs": [
+    {
+      "command": "node bench/pari-class-group-port/check_field3_high_precision_hnf_transform.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 26.228,
+      "started_at": "2026-09-17T13:46:05.159Z",
+      "commit": "012579fac7400b04b2decf946af50b16bcd17aa5",
+      "workspace_fingerprint": "ee900a6768ad24cd8640a69d349dd230adfa705023fd4171bb4b9f6fe32687f8",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm exec ruff check bench/pari-class-group-port/field3_high_precision_hnf_transform.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.551,
+      "started_at": "2026-09-17T13:46:37.431Z",
+      "commit": "012579fac7400b04b2decf946af50b16bcd17aa5",
+      "workspace_fingerprint": "ee900a6768ad24cd8640a69d349dd230adfa705023fd4171bb4b9f6fe32687f8",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm exec pyright bench/pari-class-group-port/field3_high_precision_hnf_transform.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.386,
+      "started_at": "2026-09-17T13:46:38.692Z",
+      "commit": "012579fac7400b04b2decf946af50b16bcd17aa5",
+      "workspace_fingerprint": "ee900a6768ad24cd8640a69d349dd230adfa705023fd4171bb4b9f6fe32687f8",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --check bench/pari-class-group-port/field3_high_precision_hnf_transform_coordinator.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.03,
+      "started_at": "2026-09-17T13:46:40.782Z",
+      "commit": "012579fac7400b04b2decf946af50b16bcd17aa5",
+      "workspace_fingerprint": "ee900a6768ad24cd8640a69d349dd230adfa705023fd4171bb4b9f6fe32687f8",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/pari-class-group-port/check_field3_high_precision_hnf_transform.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 26.37,
+      "started_at": "2026-09-17T13:47:50.062Z",
+      "commit": "012579fac7400b04b2decf946af50b16bcd17aa5",
+      "workspace_fingerprint": "ee900a6768ad24cd8640a69d349dd230adfa705023fd4171bb4b9f6fe32687f8",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/pari-class-group-port/check_field3_high_precision_hnf_transform.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 31.994,
+      "started_at": "2026-09-17T14:04:23.458Z",
+      "commit": "4940c509102b9609dcc2be3d1bc8bd5b8fb49a36",
+      "workspace_fingerprint": "80c772fc4cc6022889ddf82f33b1f385e26ff6902cd7e16cbf0c9e09111d65ea",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm exec ruff check bench/pari-class-group-port/field3_high_precision_hnf_transform.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.55,
+      "started_at": "2026-09-17T14:05:06.039Z",
+      "commit": "4940c509102b9609dcc2be3d1bc8bd5b8fb49a36",
+      "workspace_fingerprint": "80c772fc4cc6022889ddf82f33b1f385e26ff6902cd7e16cbf0c9e09111d65ea",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm exec pyright bench/pari-class-group-port/field3_high_precision_hnf_transform.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.749,
+      "started_at": "2026-09-17T14:05:07.405Z",
+      "commit": "4940c509102b9609dcc2be3d1bc8bd5b8fb49a36",
+      "workspace_fingerprint": "80c772fc4cc6022889ddf82f33b1f385e26ff6902cd7e16cbf0c9e09111d65ea",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --check bench/pari-class-group-port/field3_high_precision_hnf_transform_coordinator.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.034,
+      "started_at": "2026-09-17T14:05:09.891Z",
+      "commit": "4940c509102b9609dcc2be3d1bc8bd5b8fb49a36",
+      "workspace_fingerprint": "80c772fc4cc6022889ddf82f33b1f385e26ff6902cd7e16cbf0c9e09111d65ea",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Prepared an ordinary-CPython, content-addressed C2/C3 protocol which reconstructs exact 301x13 T from authentic local HNF owners, requires exact R*T=0, and replays the accepted-column log schedule at C1 precision without any 192-bit checkpoint or terminal-A input. Captured and published the immutable authentic local-HNF owner as SHA-256 892afa9a63da8353cce50eead03b12f031812182a3229a48ed8fbdfa60b94e72.",
+    "risks": [
+      "No real complete A was produced: the authentic complete joined C1 owner is still the sole external dependency.",
+      "The full 153088-bit 301-column replay is intentionally unmeasured until the authenticated C1 owner exists; focused controls cover the arithmetic schedule and mutation boundaries."
+    ],
+    "next_steps": [
+      "After the complete C1 joined owner exists, invoke the coordinator with it and field3-local-hnf-protocol SHA-256 892afa9a63da8353cce50eead03b12f031812182a3229a48ed8fbdfa60b94e72, then archive the resulting complete-A receipt."
+    ]
+  }
+}

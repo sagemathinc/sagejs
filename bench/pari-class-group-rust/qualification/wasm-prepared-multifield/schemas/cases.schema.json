@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sagejs.org/schemas/rust-class-group/prepared-multifield-cases-v1.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "artifactRevision", "cases"],
+  "properties": {
+    "schema": { "const": "sagejs.rust-class-group/prepared-multifield-cases-v1" },
+    "artifactRevision": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+    "cases": {
+      "type": "array",
+      "minItems": 3,
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "input", "role"],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "input": { "type": "string", "minLength": 1 },
+          "role": { "type": "string", "minLength": 1 }
+        }
+      }
+    }
+  }
+}

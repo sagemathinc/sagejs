@@ -8,26 +8,24 @@ const { runInNewContext } = require("node:vm");
 const test = require("node:test");
 const root = join(__dirname, "..");
 const source = readFileSync(join(root, "src/baselib/bootstrap_shared.py"), "utf8");
-const builtinsSource = readFileSync(join(root, "src/baselib/builtins.py"), "utf8");
-const sharedNames = ["ρσ_copy_method_metadata", "ρσ_native_method_adapter", "ρσ_unbound_method_adapter",
+const sharedNames = ["ρσ_machine_extension_method_matches", "ρσ_copy_method_metadata", "ρσ_native_method_adapter", "ρσ_unbound_method_adapter",
   "ρσ_exact_integer_add", "ρσ_exact_integer_divmod", "ρσ_exact_shift",
   "ρσ_exact_integer_submul", "ρσ_int_pow",
   "ρσ_check_interrupt", "ρσ_normalize_exception", "ρσ_prepare_method_call",
-  "ρσ_attr", "ρσ_interpolate_kwargs", "ρσ_interpolate_kwargs_constructor"];
-const builtinsNames = ["ρσ_synthetic_init_ends_at_object", "ρσ_skip_init"];
-const names = [...sharedNames, ...builtinsNames];
+  "ρσ_attr", "ρσ_interpolate_kwargs", "ρσ_interpolate_kwargs_constructor",
+  "ρσ_synthetic_init_ends_at_object", "ρσ_skip_init"];
+const names = sharedNames;
 
 // Exercise the native ABI bodies directly; full self-hosted/module
 // linkage remains a separate build qualification, not implied by this test.
 function context(overrides = {}) {
-  const declarations = [[source, sharedNames], [builtinsSource, builtinsNames]]
-    .flatMap(([text, selected]) => selected.map(name => {
-      const match = text.match(new RegExp(
+  const declarations = sharedNames.map(name => {
+      const match = source.match(new RegExp(
         `^def ${name}\\(([^)]*)\\)(?:\\s*->[^:]+)?:[^]*?return r"""%js ([^]*?)"""`, "m"));
       assert.ok(match, `missing raw helper ${name}`);
       const parameters = match[1].replace(/:\s*[^,]+/g, "");
       return `function ${name}(${parameters}) {return ${match[2]};}`;
-    }));
+    });
   class KeyboardInterrupt extends Error {}
   const globals = { KeyboardInterrupt, ρσ_exception_value: (value) => value, ...overrides };
   return runInNewContext(`${declarations.join("\n")}; ({${names.join(",")}, globalThis})`, globals);

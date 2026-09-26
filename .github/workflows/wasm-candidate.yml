@@ -38,6 +38,10 @@ jobs:
         with:
           node-version: 26.5.1
           cache: pnpm
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: 1.98.1
+          targets: wasm32-wasip1
       - name: Fetch every pinned build source from the private R2 mirror
         run: |
           node tools/source-mirror/scripts/source-mirror.mjs fetch \

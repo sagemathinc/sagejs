@@ -1,0 +1,65 @@
+{
+  "boundary": "prepared-maximal-cubic-factor-base",
+  "inputPath": "bench/pari-class-group-rust/qualification/row6-candidate/inputs/row1-neutral-prepared-field.json",
+  "medianMs": 4.0460069999999995,
+  "result": {
+    "checkingBound": 259,
+    "completeGroupCount": 11,
+    "descriptorSha256": "f1b3ae29c7e957f80273d7726873eeea271c3a339eab96ffecb31e30d2661086",
+    "equationOrderIndex": "3",
+    "fieldId": "row1-index-3-cubic",
+    "idealCount": 51,
+    "inputId": "sha256:394cce5d99f0e9f8ba49a12e1542ff41f36c98b535a4535071414a575ded95ba",
+    "rationalPrimeCount": 36,
+    "relationBound": 259,
+    "schema": "sagejs.rust-class-group/prepared-factor-base-v1",
+    "stage": "prepared-maximal-cubic-factor-base",
+    "status": "bounded-stage"
+  },
+  "sampleCount": 15,
+  "samplesMs": [
+    4.058608,
+    4.126688,
+    4.047477,
+    4.037438,
+    4.041317,
+    4.0460069999999995,
+    4.0968979999999995,
+    4.028867,
+    4.057698,
+    4.055077,
+    4.026858000000001,
+    4.074467,
+    3.998657,
+    4.019508,
+    4.014616999999999
+  ],
+  "schema": "sagejs.rust-class-group/native-prepared-factor-base-benchmark-v1",
+  "status": "pass",
+  "observedAt": "2026-09-20T19:24:21.264Z",
+  "repositoryRevision": "c4d07156194765506d137792732ba5109cd8c87e",
+  "caseRole": "unseen-by-wasm-pipeline-nontrivial-index-prime",
+  "input": {
+    "path": "bench/pari-class-group-rust/qualification/row6-candidate/inputs/row1-neutral-prepared-field.json",
+    "sha256": "849adefc199151b221c08f9c573e12534176439a4b354f6b7631ece5cff54c70",
+    "bytes": 2299
+  },
+  "host": {
+    "hostname": "project-b6351099-3c72-458c-aa7e-4b7f4a47c0e7",
+    "platform": "linux",
+    "release": "7.0.0-1011-gcp",
+    "architecture": "x64",
+    "uname": "Linux project-b6351099-3c72-458c-aa7e-4b7f4a47c0e7 7.0.0-1011-gcp #11~24.04.1-Ubuntu SMP PREEMPT Tue Aug 11 20:14:48 UTC 2026 x86_64 GNU/Linux"
+  },
+  "tools": {
+    "rustc": "rustc 1.98.1 (48a229cea 2026-09-01)\nbinary: rustc\ncommit-hash: 48a229ceaefd4985c50990b14116b6d856af0985\ncommit-date: 2026-09-01\nhost: x86_64-unknown-linux-gnu\nrelease: 1.98.1\nLLVM version: 22.1.8",
+    "cargo": "cargo 1.98.1 (797e8a9bc 2026-08-05)"
+  },
+  "executable": {
+    "path": "bench/pari-class-group-rust/qualification/wasm-prepared-factor-base/target/release/native-benchmark",
+    "sha256": "8a7d09270cc1dcffda908d33bf8430712a31ccf93e122b6f8a96cd234ff969ea",
+    "bytes": 644272,
+    "retained": false,
+    "identitySemantics": "frozen identity of the exact measured clean-worktree binary"
+  }
+}

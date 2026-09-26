@@ -14,6 +14,8 @@ const { join } = require("node:path");
 const { spawnSync } = require("node:child_process");
 const { compile } = require("@sagemath/sagejs/native");
 const flint = require("../packages/flint");
+const { generateHostCore } = require("../tools/native-kernel/c-backend.cjs");
+const { lowerSource } = require("../tools/native-kernel/ir.cjs");
 const {
   removeLoadedNativeCache,
 } = require("./helpers/native-cache-cleanup.cjs");
@@ -527,6 +529,38 @@ print("dense-prime-independent-ok")
       functions.get("dense_prime_field_matrix_random_fill").kernelKind,
       "prime-field-source",
     );
+    const selectiveIr = await lowerSource(
+      readFileSync(sourcePath, "utf8"),
+      sourcePath,
+      { functions: [
+        "dense_prime_field_matrix_rank",
+        "dense_prime_field_matrix_rref",
+      ] },
+    );
+    const selectiveFunctions = new Map(
+      selectiveIr.functions.map((fn) => [fn.name, fn]),
+    );
+    const selectiveCore = generateHostCore(selectiveIr);
+    for (const name of [
+      "_dense_prime_field_matrix_blocked_full_rank",
+      "_dense_prime_field_matrix_rank_inplace",
+      "_dense_prime_field_matrix_rref_inplace",
+    ]) {
+      const helper = selectiveFunctions.get(name);
+      assert.equal(helper.kernelKind, "prime-field-source");
+      assert.equal(helper.hostCallable, false);
+      assert.match(
+        selectiveCore.source,
+        new RegExp(
+          `static int sagejs_kernel_${name}\\([^;]+\\);` +
+          `[\\s\\S]+static int sagejs_kernel_${name}\\(`,
+        ),
+      );
+      assert.doesNotMatch(
+        selectiveCore.header,
+        new RegExp(`sagejs_kernel_${name}\\(`),
+      );
+    }
     assert.match(
       compiledFlint.ir.functions.find(
         (fn) => fn.name === "flint_dense_prime_field_matrix_mul",

@@ -1,0 +1,98 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "pari-e2e-honesty",
+  "title": "PARI unequal-bound honesty cut",
+  "lane": "arithmetic-algebra",
+  "status": "review",
+  "owner": "user",
+  "objective": "Implement and differentially verify the smallest faithful PARI 2.17.4 unequal-bound be_honest cut, preserving decision, RNG, and retry observables; otherwise record an exact blocking dependency map",
+  "base_commit": "6a43c61902dd7169c0345b089d3785ae520f8eff",
+  "claims": [
+    "bench/pari-class-group-port/honesty_branch.py",
+    "bench/pari-class-group-port/check_honesty_branch.cjs",
+    "bench/pari-class-group-port/honesty_branch_fixture.json",
+    "bench/pari-class-group-port/honesty_branch_audit.md",
+    "bench/pari-class-group-port/test_honesty_branch.py"
+  ],
+  "dependencies": [],
+  "references": [
+    "PARI 2.17.4 src/basemath/buch2.c be_honest"
+  ],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "Pristine PARI 2.17.4 unequal-bound trace",
+      "native GMP/tagged differential replay"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "fallback",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "node bench/pari-class-group-port/check_honesty_branch.cjs /home/user/upstream/pari-2.17.4 /home/user/upstream/pari-2.17.4.tar.gz",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 5.835,
+      "started_at": "2026-09-16T23:47:06.099Z",
+      "commit": "6a43c61902dd7169c0345b089d3785ae520f8eff",
+      "workspace_fingerprint": "28fdde7b37146d7d4d7c1bb74b87d0f3804c6695f5a8f985453c5afde602d7b3",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "python3 -c import sys,unittest;sys.path.append(\"src/lib\");suite=unittest.defaultTestLoader.discover(\"bench/pari-class-group-port\",pattern=\"test_honesty_branch.py\");r=unittest.TextTestRunner(verbosity=2).run(suite);raise SystemExit(not r.wasSuccessful())",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.082,
+      "started_at": "2026-09-16T23:47:16.796Z",
+      "commit": "6a43c61902dd7169c0345b089d3785ae520f8eff",
+      "workspace_fingerprint": "28fdde7b37146d7d4d7c1bb74b87d0f3804c6695f5a8f985453c5afde602d7b3",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 69.77,
+      "started_at": "2026-09-16T23:47:38.617Z",
+      "commit": "6a43c61902dd7169c0345b089d3785ae520f8eff",
+      "workspace_fingerprint": "28fdde7b37146d7d4d7c1bb74b87d0f3804c6695f5a8f985453c5afde602d7b3",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 347.357,
+      "started_at": "2026-09-16T23:48:59.288Z",
+      "commit": "6a43c61902dd7169c0345b089d3785ae520f8eff",
+      "workspace_fingerprint": "28fdde7b37146d7d4d7c1bb74b87d0f3804c6695f5a8f985453c5afde602d7b3",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Pinned a real PARI 2.17.4 be_honest unequal-bound failure fixture (C1=5, C2=31) and implemented the reusable positive-prime-power retry-ideal and random_bits(4) cut as ordinary Python with exact CPython, JavaScript, GMP-native, and tagged-native replay. The checker rebuilds an instrumented pristine source and authenticates 51 no-cache probes, 50 random retries, every exponent, every determinant norm, the full ideal-HNF transcript, final KCZ, and RNG state. Full pnpm test:native, pnpm test:baselib:strict, pnpm build:check, and focused tests pass.",
+    "risks": [
+      "This deliberately bounded cut does not yet implement the scheduler around bnf_build_nofb; it must not replace the current -206 frontier.",
+      "The fixture exercises the actual unequal-bound retry path ending in failure, not the rarer success path that increments KCZ and restores the accepted relation state.",
+      "pnpm architecture:check reached the optimizer-artifact gate but found stale artifacts inherited from the integration base (expected d1e02072..., found ba06984d...); the lane does not claim those shared generated files."
+    ],
+    "next_steps": [
+      "Add a successful unequal-bound fixture to authenticate KCZ increment and transaction restore.",
+      "Connect the retry cut to the existing no-cache collector behind an explicit transactional scheduler.",
+      "Port and authenticate automorphism-orbit handling and the rare idealred threshold before replacing the -206 frontier."
+    ]
+  }
+}

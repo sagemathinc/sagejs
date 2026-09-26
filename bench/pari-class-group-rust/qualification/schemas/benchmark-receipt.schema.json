@@ -1,0 +1,337 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sagejs.org/schemas/rust-class-group-qualification/benchmark-receipt-v1.json",
+  "title": "Rust class-group benchmark receipt",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema", "receiptId", "runId", "collectedAt", "qualifiedTiming",
+    "repository", "corpusSha256", "caseId", "boundary", "workload",
+    "environment", "tools", "artifacts", "schedule", "implementations",
+    "comparison", "stageBreakdown", "counters", "failures"
+  ],
+  "properties": {
+    "schema": { "const": "sagejs.rust-class-group.benchmark-receipt/v1" },
+    "receiptId": { "$ref": "common.schema.json#/$defs/contentId" },
+    "runId": { "type": "string", "pattern": "^[0-9a-f]{8}-[0-9a-f-]{27}$" },
+    "collectedAt": { "type": "string", "format": "date-time" },
+    "qualifiedTiming": { "type": "boolean" },
+    "repository": { "$ref": "common.schema.json#/$defs/repository" },
+    "corpusSha256": { "$ref": "common.schema.json#/$defs/sha256" },
+    "caseId": { "$ref": "common.schema.json#/$defs/nonempty" },
+    "boundary": { "$ref": "#/$defs/boundary" },
+    "workload": { "$ref": "#/$defs/workload" },
+    "environment": { "$ref": "common.schema.json#/$defs/host" },
+    "tools": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "common.schema.json#/$defs/tool" }
+    },
+    "artifacts": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "common.schema.json#/$defs/artifact" }
+    },
+    "schedule": { "$ref": "#/$defs/schedule" },
+    "implementations": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["rust", "pari"],
+      "properties": {
+        "rust": { "$ref": "#/$defs/implementationSamples" },
+        "pari": { "$ref": "#/$defs/implementationSamples" }
+      }
+    },
+    "comparison": { "$ref": "#/$defs/comparison" },
+    "stageBreakdown": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/stageTiming" }
+    },
+    "counters": {
+      "type": "object",
+      "additionalProperties": { "$ref": "common.schema.json#/$defs/unsignedDecimal" }
+    },
+    "failures": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/failure" }
+    }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "qualifiedTiming": { "const": true } }, "required": ["qualifiedTiming"] },
+      "then": {
+        "properties": {
+          "repository": {
+            "allOf": [
+              { "$ref": "common.schema.json#/$defs/repository" },
+              { "type": "object", "properties": { "clean": { "const": true } } }
+            ]
+          },
+          "workload": {
+            "allOf": [
+              { "$ref": "#/$defs/workload" },
+              {
+                "type": "object",
+                "properties": {
+                  "claimStatus": { "const": "publicly-complete" },
+                  "matchedOutputWork": { "const": true }
+                }
+              }
+            ]
+          },
+          "environment": {
+            "allOf": [
+              { "$ref": "common.schema.json#/$defs/host" },
+              { "type": "object", "properties": { "quietTimingHost": { "const": true } } }
+            ]
+          },
+          "implementations": {
+            "type": "object",
+            "properties": {
+              "rust": {
+                "allOf": [
+                  { "$ref": "#/$defs/implementationSamples" },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "timeouts": { "const": 0 },
+                      "failures": { "const": 0 }
+                    }
+                  }
+                ]
+              },
+              "pari": {
+                "allOf": [
+                  { "$ref": "#/$defs/implementationSamples" },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "timeouts": { "const": 0 },
+                      "failures": { "const": 0 }
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          "comparison": {
+            "allOf": [
+              { "$ref": "#/$defs/comparison" },
+              {
+                "type": "object",
+                "properties": {
+                  "comparable": { "const": true },
+                  "gate": { "const": "passed" }
+                }
+              }
+            ]
+          },
+          "failures": { "type": "array", "maxItems": 0 }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "qualifiedTiming": { "const": true },
+          "boundary": {
+            "type": "object",
+            "properties": { "kind": { "const": "public-call" } },
+            "required": ["kind"]
+          }
+        },
+        "required": ["qualifiedTiming", "boundary"]
+      },
+      "then": {
+        "properties": {
+          "boundary": {
+            "type": "object",
+            "properties": {
+              "publicTimingMode": {
+                "enum": ["fresh-process-fresh-field", "warmed-code-fresh-field", "fresh-field"]
+              }
+            }
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "boundary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "stage", "publicTimingMode", "start", "stop", "includes", "excludes"],
+      "properties": {
+        "kind": { "$ref": "common.schema.json#/$defs/timingBoundaryKind" },
+        "stage": {
+          "oneOf": [
+            { "$ref": "common.schema.json#/$defs/stageName" },
+            { "type": "null" }
+          ]
+        },
+        "publicTimingMode": {
+          "oneOf": [
+            { "$ref": "common.schema.json#/$defs/publicTimingMode" },
+            { "type": "null" }
+          ]
+        },
+        "start": { "$ref": "common.schema.json#/$defs/nonempty" },
+        "stop": { "$ref": "common.schema.json#/$defs/nonempty" },
+        "includes": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "$ref": "common.schema.json#/$defs/nonempty" }
+        },
+        "excludes": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "common.schema.json#/$defs/nonempty" }
+        }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "kind": { "const": "algorithm-stage" } }, "required": ["kind"] },
+          "then": {
+            "properties": {
+              "stage": { "$ref": "common.schema.json#/$defs/stageName" },
+              "publicTimingMode": { "type": "null" }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "kind": { "const": "prepared-field" } }, "required": ["kind"] },
+          "then": {
+            "properties": {
+              "stage": { "const": "complete-prepared-field" },
+              "publicTimingMode": { "type": "null" }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "kind": { "const": "public-call" } }, "required": ["kind"] },
+          "then": {
+            "properties": {
+              "stage": { "const": "complete-public-call" },
+              "publicTimingMode": { "$ref": "common.schema.json#/$defs/publicTimingMode" }
+            }
+          }
+        }
+      ]
+    },
+    "workload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "proofMode", "claimStatus", "outputContract", "mapPolicy", "unitPolicy",
+        "matchedOutputWork", "freshFields", "computedResultReuse"
+      ],
+      "properties": {
+        "proofMode": { "$ref": "common.schema.json#/$defs/proofRequest" },
+        "claimStatus": { "$ref": "common.schema.json#/$defs/claimStatus" },
+        "outputContract": { "enum": ["class-group", "class-and-unit-group"] },
+        "mapPolicy": { "enum": ["construct-eagerly", "construct-on-first-use"] },
+        "unitPolicy": { "enum": ["completion-only", "compact-complete", "expanded-complete"] },
+        "matchedOutputWork": { "type": "boolean" },
+        "freshFields": { "const": true },
+        "computedResultReuse": { "const": false }
+      }
+    },
+    "schedule": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "warmups", "blocks", "order", "randomSeeds"],
+      "properties": {
+        "kind": { "const": "alternating-blocks-v1" },
+        "warmups": { "$ref": "common.schema.json#/$defs/nonnegativeInteger" },
+        "blocks": { "$ref": "common.schema.json#/$defs/positiveInteger" },
+        "order": { "enum": ["AB", "BA", "ABBA", "BAAB"] },
+        "randomSeeds": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "$ref": "common.schema.json#/$defs/sha256" }
+        }
+      }
+    },
+    "implementationSamples": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "implementationId", "boundarySha256", "resultDigest", "samplesNanoseconds",
+        "medianNanoseconds", "peakMemoryBytes", "timeouts", "failures"
+      ],
+      "properties": {
+        "implementationId": { "$ref": "common.schema.json#/$defs/nonempty" },
+        "boundarySha256": { "$ref": "common.schema.json#/$defs/sha256" },
+        "resultDigest": { "$ref": "common.schema.json#/$defs/sha256" },
+        "samplesNanoseconds": {
+          "type": "array",
+          "minItems": 15,
+          "items": { "$ref": "common.schema.json#/$defs/positiveDecimal" }
+        },
+        "medianNanoseconds": { "$ref": "common.schema.json#/$defs/positiveDecimal" },
+        "peakMemoryBytes": { "$ref": "common.schema.json#/$defs/positiveDecimal" },
+        "timeouts": { "$ref": "common.schema.json#/$defs/nonnegativeInteger" },
+        "failures": { "$ref": "common.schema.json#/$defs/nonnegativeInteger" }
+      }
+    },
+    "comparison": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["comparable", "rustOverPari", "uncertainty", "gate", "reason"],
+      "properties": {
+        "comparable": { "type": "boolean" },
+        "rustOverPari": {
+          "oneOf": [
+            { "type": "number", "exclusiveMinimum": 0 },
+            { "type": "null" }
+          ]
+        },
+        "uncertainty": {
+          "oneOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["method", "lower", "upper"],
+              "properties": {
+                "method": { "$ref": "common.schema.json#/$defs/nonempty" },
+                "lower": { "type": "number", "minimum": 0 },
+                "upper": { "type": "number", "minimum": 0 }
+              }
+            },
+            { "type": "null" }
+          ]
+        },
+        "gate": { "enum": ["passed", "failed", "not-applicable", "unavailable"] },
+        "reason": { "type": ["string", "null"] }
+      }
+    },
+    "stageTiming": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["stage", "samplesNanoseconds", "medianNanoseconds", "instrumented"],
+      "properties": {
+        "stage": { "$ref": "common.schema.json#/$defs/stageName" },
+        "samplesNanoseconds": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "common.schema.json#/$defs/unsignedDecimal" }
+        },
+        "medianNanoseconds": { "$ref": "common.schema.json#/$defs/unsignedDecimal" },
+        "instrumented": { "const": true }
+      }
+    },
+    "failure": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["implementation", "sampleIndex", "kind", "detail"],
+      "properties": {
+        "implementation": { "enum": ["rust", "pari"] },
+        "sampleIndex": { "$ref": "common.schema.json#/$defs/nonnegativeInteger" },
+        "kind": { "enum": ["timeout", "wrong-result", "crash", "resource-limit", "measurement-invalid"] },
+        "detail": { "$ref": "common.schema.json#/$defs/nonempty" }
+      }
+    }
+  }
+}

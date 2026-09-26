@@ -40,6 +40,41 @@ function supportsCompactStatements(PyLang) {
   return probe.get().endsWith("();next");
 }
 
+// The immutable stage-zero compiler predates the Tree-sitter frontend's three
+// newest statement node types.  Its legacy parser can read their Python class
+// definitions, but its module emitter does not retain them in the first
+// self-hosted artifact.  Supply just enough nominal structure to let the
+// authoritative frontend compile the current compiler sources.  The generated
+// compiler then defines the complete nodes from src/ast_types.py itself.
+function installBootstrapAstBridge(PyLang) {
+  function define(name, Base, properties) {
+    if (typeof PyLang[name] === "function") return PyLang[name];
+    const Node = {
+      [name]: function (initializer) {
+        Base.call(this, initializer);
+      },
+    }[name];
+    Object.setPrototypeOf(Node, Base);
+    Node.prototype = Object.create(Base.prototype, {
+      constructor: { value: Node, configurable: true, writable: true },
+    });
+    Node.prototype.properties = properties;
+    PyLang[name] = Node;
+    return Node;
+  }
+
+  define("AST_TimedStatement", PyLang.AST_Statement, {
+    body: "[AST_Statement] the statement whose execution is timed",
+  });
+  define("AST_AnnotatedAssignment", PyLang.AST_Statement, {
+    target: "[AST_Node] the annotated assignment target",
+    annotation: "[AST_Node] the annotation expression",
+    value: "[AST_Node?] optional assigned value",
+  });
+  define("AST_AsyncFor", PyLang.AST_ForIn, {});
+  return PyLang;
+}
+
 async function compile_baselib(PyLang, src_path, compiler_only = false) {
   let supportsPythonOrdering = false;
   try {
@@ -451,6 +486,12 @@ async function compile(
   var output_options, profiler, cpu_profile;
   var compiled_baselib = await compile_baselib(PyLang, src_path);
   var compiler_baselib = await compile_baselib(PyLang, src_path, true);
+  // Keep stage-zero baselib compilation on its historical parser.  After that
+  // output is captured, bridge the missing node identities so compiler-source
+  // lowering can use the complete frontend and escape the legacy fixed point.
+  if (typeof PyLang.get_compiler_version === "function") {
+    installBootstrapAstBridge(PyLang);
+  }
   var out_path = lib_path;
   try {
     fs.mkdirSync(out_path);
@@ -583,7 +624,7 @@ async function run_single_compile(base_path, src_path, lib_path, profile) {
   return compiler_changed;
 }
 
-module.exports = async function compile_self(
+async function compile_self(
   base_path,
   src_path,
   lib_path,
@@ -595,4 +636,7 @@ module.exports = async function compile_self(
     changed = await run_single_compile(base_path, src_path, lib_path, profile);
     lib_path = lib_path;
   } while (changed && complete);
-};
+}
+
+module.exports = compile_self;
+module.exports.installBootstrapAstBridge = installBootstrapAstBridge;

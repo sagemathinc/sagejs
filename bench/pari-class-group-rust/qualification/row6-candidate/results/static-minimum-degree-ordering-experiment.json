@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "status": "qualification-diagnostic-passed",
+  "input": "x^3 - 2000000000010*x + 2000000000018",
+  "algorithm": {
+    "name": "deterministic-static-minimum-degree-markowitz",
+    "matrixConvention": "S' = P S Q^T",
+    "rhsConvention": "B' = P B; X = Q^T X'",
+    "initialNonzeros": 7090,
+    "symbolicNonzerosAfterFill": 104707,
+    "scope": "qualification-only"
+  },
+  "method": {
+    "pairs": 5,
+    "ordering": "alternating AB/BA",
+    "timing": "CLOCK_MONOTONIC around planner and existing exact FLINT FFLU",
+    "memory": "maximum sampled VmRSS from Linux /proc",
+    "correctness": "candidate verifier plus compact-certificate SHA-256 on every run"
+  },
+  "baseline": {
+    "medianDeterminantNanoseconds": 3397315184,
+    "medianWallSeconds": 8.102985834993888,
+    "maximumRssKiB": 115228
+  },
+  "staticOrdering": {
+    "medianPlannerNanoseconds": 5522569,
+    "medianDeterminantNanoseconds": 634013322,
+    "medianCombinedNanoseconds": 639535891,
+    "medianWallSeconds": 5.266316372028086,
+    "maximumRssKiB": 113144
+  },
+  "gate": {
+    "maximumCombinedNanoseconds": 2500000000,
+    "minimumImprovementPercent": 26.0,
+    "observedImprovementPercent": 81.1752558605113,
+    "combinedTimePassed": true,
+    "improvementPassed": true,
+    "memoryRegressionAbsent": true,
+    "allDigestsMatch": true
+  },
+  "exactEvidence": {
+    "compactCertificateSha256": "c51e090edbb33fabfbbe07a554c70b8b63053dc6946136d4850dddc4198aa46b",
+    "selectedSquareDeterminant": "80043126994058281385129755894296177567385995865588636777763629949545941304571837861587634736",
+    "dependencyProjectionIndex": "20010781748514570346282438973574044391846498966397159194440907487386485326142959465396908684",
+    "presentationIndex": "4"
+  }
+}

@@ -1,0 +1,117 @@
+name: Class-group qualification
+
+on:
+  pull_request:
+    paths:
+      - "packages/class-groups/**"
+      - "packages/flint-wasm/class-group-core*"
+      - "src/lib/sagejs/number_fields/**"
+      - "test/number-field-rust-class-group-release.cjs"
+      - "test/fixtures/number-field-rust-class-group-release.json"
+      - ".github/workflows/class-group-qualification.yml"
+  push:
+    branches: [main]
+    paths:
+      - "packages/class-groups/**"
+      - "packages/flint-wasm/class-group-core*"
+      - "src/lib/sagejs/number_fields/**"
+      - "test/number-field-rust-class-group-release.cjs"
+      - "test/fixtures/number-field-rust-class-group-release.json"
+      - ".github/workflows/class-group-qualification.yml"
+  schedule:
+    - cron: "17 4 * * 2"
+  workflow_dispatch:
+    inputs:
+      profile:
+        description: Corpus profile
+        required: true
+        default: routine
+        type: choice
+        options: [routine, heavy]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: class-group-qualification-${{ github.workflow }}-${{ github.ref }}-${{ inputs.profile || 'routine' }}
+  cancel-in-progress: true
+
+jobs:
+  routine:
+    name: Bounded public cubic corpus
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      CI: "true"
+      SAGEJS_CLASS_GROUP_CORPUS_PROFILE: routine
+      SAGEJS_CLASS_GROUP_CORPUS_EXECUTABLE: ${{ github.workspace }}/packages/class-groups/target/release/class-group-service
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          submodules: recursive
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 11.9.0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 26.5.1
+          cache: pnpm
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: 1.98.1
+          targets: wasm32-wasip1
+      - run: pnpm install --frozen-lockfile
+      - name: Build the pinned FLINT dependency
+        run: node packages/flint/scripts/build-deps.cjs
+      - name: Build the production native service
+        env:
+          SAGEJS_FLINT_PREFIX: ${{ github.workspace }}/packages/flint/.native/prefix
+        run: packages/class-groups/scripts/build-native.sh
+      - name: Prepare the pinned Wasm toolchain
+        run: node packages/wasm-toolchain/scripts/toolchain.cjs prepare
+      - name: Build the production Wasm reactor
+        run: packages/class-groups/scripts/build-wasm.sh
+      - name: Replay exact outputs, proof semantics, limits, mutation, cleanup, and available parity
+        run: node --test test/number-field-rust-class-group-release.cjs
+      - name: Replay the Rust certificate-mutation regression
+        env:
+          SAGEJS_FLINT_PREFIX: ${{ github.workspace }}/packages/flint/.native/prefix
+        run: cargo test --release --locked --manifest-path packages/class-groups/Cargo.toml --test cubic_conditional_completion sealed_result_answers_and_replays_arbitrary_ideal_queries
+
+  heavy:
+    name: Deterministic row-6 qualification
+    if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.profile == 'heavy')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      CI: "true"
+      SAGEJS_CLASS_GROUP_CORPUS_PROFILE: heavy
+      SAGEJS_CLASS_GROUP_CORPUS_EXECUTABLE: ${{ github.workspace }}/packages/class-groups/target/release/class-group-service
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          submodules: recursive
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 11.9.0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 26.5.1
+          cache: pnpm
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: 1.98.1
+          targets: wasm32-wasip1
+      - run: pnpm install --frozen-lockfile
+      - name: Build the pinned FLINT dependency
+        run: node packages/flint/scripts/build-deps.cjs
+      - name: Build the production native service
+        env:
+          SAGEJS_FLINT_PREFIX: ${{ github.workspace }}/packages/flint/.native/prefix
+        run: packages/class-groups/scripts/build-native.sh
+      - name: Prepare the pinned Wasm toolchain
+        run: node packages/wasm-toolchain/scripts/toolchain.cjs prepare
+      - name: Build the production Wasm reactor
+        run: packages/class-groups/scripts/build-wasm.sh
+      - name: Run row-6 outside pull-request CI
+        run: node --test test/number-field-rust-class-group-release.cjs

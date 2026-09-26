@@ -1,0 +1,4 @@
+row6 element=[3, 0, 0] sparse=[(1, 2)] candidates=1 trials=3
+small element=[-2, 1, 1] sparse=[] candidates=1 trials=3
+counterfeit_element=rejected counterfeit_exponent=rejected
+qualification=passed

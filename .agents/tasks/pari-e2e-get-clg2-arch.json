@@ -1,0 +1,96 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "pari-e2e-get-clg2-arch",
+  "title": "Packed get_clg2 archimedean assembly",
+  "lane": "integration",
+  "status": "active",
+  "owner": "user",
+  "objective": "Implement and differentially verify the packed get_clg2 archimedean assembly leaf for GD and ga on an authentic cubic fixture",
+  "base_commit": "944a1291113a51b366d293e00c7979c754eeee03",
+  "claims": [
+    "bench/pari-class-group-port/get_clg2_arch.py",
+    "bench/pari-class-group-port/check_get_clg2_arch.cjs",
+    "bench/pari-class-group-port/get_clg2_arch_audit.md"
+  ],
+  "dependencies": [],
+  "references": [
+    "/home/user/upstream/pari-2.17.4/src/basemath/buch2.c:get_clg2"
+  ],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "Pristine PARI 2.17.4 exact packed-output oracle on an authentic cubic class-group fixture"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "fallback",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "node bench/pari-class-group-port/check_get_clg2_arch.cjs /home/user/upstream/pari-2.17.4 /home/user/upstream/pari-2.17.4.tar.gz",
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict"
+  ],
+  "runs": [
+    {
+      "command": "node bench/pari-class-group-port/check_get_clg2_arch.cjs /home/user/upstream/pari-2.17.4 /home/user/upstream/pari-2.17.4.tar.gz",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 0.651,
+      "started_at": "2026-09-17T00:26:40.157Z",
+      "commit": "944a1291113a51b366d293e00c7979c754eeee03",
+      "workspace_fingerprint": "341a6675ef698a8cf99f3dfcd2d93717c2fcdc8ba6a08e8b74c8b9d4aa4e8c88",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/pari-class-group-port/check_get_clg2_arch.cjs /home/user/upstream/pari-2.17.4 /home/user/upstream/pari-2.17.4.tar.gz",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.033,
+      "started_at": "2026-09-17T00:27:02.430Z",
+      "commit": "944a1291113a51b366d293e00c7979c754eeee03",
+      "workspace_fingerprint": "341a6675ef698a8cf99f3dfcd2d93717c2fcdc8ba6a08e8b74c8b9d4aa4e8c88",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 11.933,
+      "started_at": "2026-09-17T00:27:09.272Z",
+      "commit": "944a1291113a51b366d293e00c7979c754eeee03",
+      "workspace_fingerprint": "341a6675ef698a8cf99f3dfcd2d93717c2fcdc8ba6a08e8b74c8b9d4aa4e8c88",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 84.645,
+      "started_at": "2026-09-17T00:30:30.074Z",
+      "commit": "944a1291113a51b366d293e00c7979c754eeee03",
+      "workspace_fingerprint": "341a6675ef698a8cf99f3dfcd2d93717c2fcdc8ba6a08e8b74c8b9d4aa4e8c88",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Implemented the packed get_clg2 archimedean leaf with reusable transform workspaces and delayed result publication. A pristine PARI 2.17.4 oracle runs bnfinit on x^3-10*x^2-30*x-195, rebuilds Ga from stored Ge through nf_cxlog, and authenticates both identities against PARI's stored GD and ga. Exact packed outputs agree under CPython, JavaScript, GMP, and tagged execution; malformed dimensions preserve public outputs and the documented output/input alias mode passes.",
+    "risks": [
+      "Only the authentic accepted cubic shape rows=2, inner=active=1 is qualified; wider active<=inner shapes are implemented but not yet backed by an authentic fixture.",
+      "The two result owners and three scratch owners must remain mutually disjoint; separate IntegerBuffer arguments do not expose portable owner identity for a dynamic rejection.",
+      "The base commit's portable suite has an unrelated modular q-expansion source-freeze mismatch in architecture/package-graph.json (actual acf5c55b..., frozen 66d0eec3...); the focused oracle, architecture check, and strict baselib check pass."
+    ],
+    "next_steps": [
+      "Wire pari_get_clg2_arch after Smith transforms and genback/nf_cxlog provide C, Ga, cyc, Ur, M1, and M2 owners.",
+      "Add a wider authentic class-group fixture if a later integration state exposes active<inner or multiple nontrivial invariants."
+    ]
+  }
+}

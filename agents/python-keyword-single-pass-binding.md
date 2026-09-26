@@ -1,7 +1,7 @@
 # Single-pass generated keyword binding
 
-Base: `2db70414c` (`agent/python-exact-integer-add-native`, queued behind the
-call, construction, and attribute integration sequence).
+Originally measured from `2db70414c`; the complete binder stack is now replayed
+on merged PR #317 (`1fa7a26bd`).
 
 ## Change
 
@@ -91,14 +91,16 @@ the binder cliff.
   default, dynamic-initializer, method, keyword-size, and pinned traitlets set
   passes 36/36.
 - Pinned attrs 25.4.0 and decorator 5.2.1 workflows pass with checked outputs.
+- The current 11-package runner matches the exact #317 parent at 9/11; both
+  retain the same pyparsing execution failure and mpmath timeout.
 - Strict CPython syntax, Ruff 0.16.0, and Pyright pass for 404 modules;
   documentation and merge invariants pass.
-- Core runtime is 902,348/903,000 bytes after the follow-up. No source, startup, browser, or
-  performance budget changed.
-- The final local startup measurement is not a passing receipt: 435.5 ms normalized
-  exceeds the unchanged 400.0 ms budget. This is recorded rather than widened;
-  merge-owned CI must provide the startup/browser receipt when the integration
-  queue reaches this candidate.
+- The current combined stack is 902,417/903,000 core bytes. No source, startup,
+  browser, or performance budget changed.
+- Back-to-back current-head startup qualification measured the exact #317
+  parent at 416.3--416.7 ms raw and the candidate at 415.5--418.1 ms raw. With
+  the harness's contemporaneous load normalization, parent and candidate pass
+  at 396.4 ms and 398.0 ms respectively against the unchanged 400.0 ms budget.
 
-The branch remains queued behind its prerequisites and has no stacked PR. It is
-not a release action.
+The branch is the direct follow-up to merged PR #317. It is not a release
+action.

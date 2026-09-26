@@ -1,0 +1,49 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "unified-live-h1-root",
+  "title": "Unified Live H1 Root",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Compile the resident generated class candidate and live h1 owner bridge in one source-transparent native call graph with transactional exact-h1 publication",
+  "base_commit": "398678093d4e7e3883b2a1addc1b07d75381f9ec",
+  "claims": [
+    "bench/pari-class-group-port/unified_live_h1_root.py",
+    "bench/pari-class-group-port/check_unified_live_h1_root.cjs",
+    "bench/pari-class-group-port/unified_live_h1_root_audit.md"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "javascript"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "Adds one source-transparent native root that runs the 351-parameter resident generated candidate and the live H1 owner bridge in one compiled call graph. Large candidate owners pass directly, the sole type mismatch is an explicit eight-word preparation-state repack, and the root exposes live suffix dimensions/counts while keeping public completion false.",
+    "risks": [
+      "This is an exact-H1 prefix only; exact unit expansion and precision authority remain downstream.",
+      "The focused checker uses the existing resident sanitizer to allocate prepared input owners outside the computation."
+    ],
+    "next_steps": [
+      "Feed the live bridge outputs and exposed counts into a non-answer-derived precision retry/convergence suffix.",
+      "Set public completion only after the exact-unit suffix independently succeeds."
+    ]
+  }
+}

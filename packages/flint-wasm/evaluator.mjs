@@ -1,6 +1,5 @@
 import { instantiateFlintFactor } from "./index.mjs";
 import { instantiateM4ri } from "./m4ri.mjs";
-import { createExtensionMultivariate } from "./extension-multivariate.mjs";
 import {
   canSeedDynamicName,
   createPrecompiledDynamicCompiler,
@@ -28,6 +27,215 @@ import {
   createCapabilityDispatchTrace,
 } from "./capability-trace.mjs";
 import { createBrowserAutoReceiptPolicyRuntime } from "./auto-receipt-policy.mjs";
+import {
+  fetchSpecialistBytes,
+  validateSpecialistReceipt,
+} from "./specialist-bytes.mjs";
+import {
+  classGroupCoreAbi,
+  instantiateClassGroupCore,
+} from "./class-group-core-loader.mjs";
+
+const CLASS_GROUP_REQUEST_SCHEMA = "sagejs.class-groups/service-request-v1";
+const CLASS_GROUP_RESPONSE_SCHEMA = "sagejs.class-groups/service-response-v1";
+const CLASS_GROUP_ARTIFACT = new URL(
+  "./dist/class-group-core.wasm",
+  import.meta.url,
+);
+const CLASS_GROUP_RECEIPT = new URL(
+  "./dist/class-group-core-receipt.json",
+  import.meta.url,
+);
+
+async function createDefaultExtensionBackend(options) {
+  const { createExtensionMultivariate } = await import("./extension-multivariate.mjs");
+  return createExtensionMultivariate(options);
+}
+
+function isEvaluatorWorkerRealm() {
+  return (
+    typeof globalThis.document === "undefined" &&
+    typeof globalThis.postMessage === "function" &&
+    typeof globalThis.close === "function"
+  );
+}
+
+async function loadClassGroupReceipt(receipt, { fetchImpl, signal }) {
+  if (receipt !== undefined &&
+      typeof receipt !== "string" && !(receipt instanceof URL)) {
+    return validateSpecialistReceipt(receipt);
+  }
+  const response = await fetchImpl(String(receipt ?? CLASS_GROUP_RECEIPT), { signal });
+  if (!response?.ok) {
+    throw new Error(`class-group receipt download failed (${response?.status})`);
+  }
+  const length = Number(response.headers?.get?.("content-length"));
+  if (Number.isFinite(length) && length > 4096) {
+    throw new RangeError("class-group receipt exceeds its transfer limit");
+  }
+  const source = await response.text();
+  if (source.length > 4096) {
+    throw new RangeError("class-group receipt exceeds its transfer limit");
+  }
+  return validateSpecialistReceipt(JSON.parse(source));
+}
+
+function classGroupEnvelope(operation, request, id) {
+  if (typeof operation !== "string") {
+    throw new TypeError("class-group operation must be a string");
+  }
+  if (request === null || typeof request !== "object" || Array.isArray(request)) {
+    throw new TypeError("class-group request must be a plain object");
+  }
+  const common = {
+    schema: CLASS_GROUP_REQUEST_SCHEMA,
+    abi: classGroupCoreAbi.version,
+    id: `evaluator-${id}`,
+    operation,
+  };
+  if (operation === "capability") {
+    if (Object.keys(request).length !== 0) {
+      throw new TypeError("class-group capability request must be empty");
+    }
+    return common;
+  }
+  if (operation === "open") return { ...common, request };
+  if (operation === "summary" || operation === "query" ||
+      operation === "publication" || operation === "close") {
+    return { ...request, ...common };
+  }
+  return { ...request, ...common };
+}
+
+function unboxClassGroupResponse(operation, id, response) {
+  if (response === null || typeof response !== "object" || Array.isArray(response) ||
+      response.schema !== CLASS_GROUP_RESPONSE_SCHEMA ||
+      response.abi !== classGroupCoreAbi.version || response.id !== id ||
+      typeof response.ok !== "boolean") {
+    throw new TypeError("class-group reactor returned an invalid service response");
+  }
+  if (!response.ok) {
+    if (response.error === null || typeof response.error !== "object" ||
+        response.error.schema !== CLASS_GROUP_RESPONSE_SCHEMA ||
+        response.error.outcome !== "error" || response.error.operation !== operation ||
+        typeof response.error.category !== "string" ||
+        typeof response.error.message !== "string") {
+      throw new TypeError("class-group reactor returned an invalid typed error");
+    }
+    return response.error;
+  }
+  const result = response.result;
+  if (result === null || typeof result !== "object" || Array.isArray(result)) {
+    throw new TypeError("class-group reactor returned an invalid service result");
+  }
+  if (operation !== "query" && result.operation !== operation) {
+    throw new TypeError("class-group reactor returned a result for another operation");
+  }
+  if (operation === "open" &&
+      (!/^[1-9][0-9]*$/.test(result.generation) ||
+       typeof result.handle !== "string" ||
+       !/^[1-9][0-9]*$/.test(result.handle) ||
+       result.completion === null || typeof result.completion !== "object")) {
+    throw new TypeError("class-group reactor returned an invalid open response");
+  }
+  return result;
+}
+
+/**
+ * Authenticate and instantiate the class-group reactor in the evaluator
+ * worker. The returned host has one deliberately coarse synchronous method;
+ * no Promise or callable reactor internals cross into compiled Python.
+ */
+export async function createClassGroupEvaluatorBackend({
+  artifact = CLASS_GROUP_ARTIFACT,
+  receipt = CLASS_GROUP_RECEIPT,
+  fetchImpl = globalThis.fetch,
+  subtle = globalThis.crypto?.subtle,
+  signal,
+  instantiateCore = instantiateClassGroupCore,
+} = {}) {
+  if (typeof fetchImpl !== "function") {
+    throw new TypeError("class-group preload requires fetch");
+  }
+  if (signal?.aborted) throw signal.reason ?? new DOMException("Aborted", "AbortError");
+  const authenticatedReceipt = await loadClassGroupReceipt(receipt, { fetchImpl, signal });
+  const bytes = await fetchSpecialistBytes(artifact, authenticatedReceipt, {
+    fetchImpl,
+    subtle,
+    signal,
+  });
+  const core = await instantiateCore(bytes);
+  const diagnostics = core.diagnostics();
+  if (diagnostics.maximumMemoryPages !== classGroupCoreAbi.maximumMemoryPages ||
+      diagnostics.maximumMemoryBytes !== classGroupCoreAbi.maximumMemoryBytes) {
+    core.close();
+    throw new TypeError("class-group reactor does not enforce the 256 MiB memory maximum");
+  }
+  let closed = false;
+  let nextId = 0;
+  const sessions = new Map();
+  const call = (operation, request) => {
+    if (closed) throw new Error("class-group evaluator backend is closed");
+    const envelope = classGroupEnvelope(operation, request, ++nextId);
+    const response = unboxClassGroupResponse(
+      operation,
+      envelope.id,
+      core.invoke(envelope),
+    );
+    if (response.outcome === "error") return response;
+    if (operation === "capability") {
+      return Object.freeze({
+        ...response,
+        artifactSha256: authenticatedReceipt.sha256,
+      });
+    }
+    if (operation === "open") {
+      sessions.set(`${response.generation}:${response.handle}`, {
+        generation: response.generation,
+        handle: response.handle,
+      });
+      return Object.freeze({
+        ...response,
+        artifactSha256: authenticatedReceipt.sha256,
+      });
+    }
+    if (operation === "summary") {
+      return Object.freeze({
+        ...response,
+        artifactSha256: authenticatedReceipt.sha256,
+      });
+    }
+    if (operation === "close") {
+      sessions.delete(`${request.generation}:${request.handle}`);
+    }
+    return response;
+  };
+  return Object.freeze({
+    call,
+    diagnostics() {
+      return Object.freeze({
+        ...diagnostics,
+        artifactSha256: authenticatedReceipt.sha256,
+        residentSessions: sessions.size,
+        hostShape: "call(operation, request)",
+      });
+    },
+    close() {
+      if (closed) return;
+      closed = true;
+      for (const session of sessions.values()) {
+        try {
+          core.invoke(classGroupEnvelope("close", session, ++nextId));
+        } catch {
+          // Evaluator teardown is authoritative: closing the reactor below
+          // invalidates every resident allocation even after a service fault.
+        }
+      }
+      sessions.clear();
+      core.close();
+    },
+  });
+}
 
 function deserializeError(serialized) {
   const constructors = {
@@ -608,10 +816,11 @@ export async function instantiateSageEvaluator({
     "./dist/hyperelliptic-auto-receipt-policy.json",
     import.meta.url,
   ),
+  classGroup = isEvaluatorWorkerRealm() ? Object.freeze({}) : undefined,
   WorkerConstructor = globalThis.Worker,
   instantiateFlint = instantiateFlintFactor,
   instantiateM4riBackend = instantiateM4ri,
-  instantiateExtensionBackend = createExtensionMultivariate,
+  instantiateExtensionBackend = createDefaultExtensionBackend,
   importSymbolic = (url) => import(String(url)),
   importNumpy = (url) => import(String(url)),
   fetchNumerical = globalThis.fetch,
@@ -632,6 +841,7 @@ export async function instantiateSageEvaluator({
   evaluateGlobal = globalThis.eval,
   fetchCapabilityReport = globalThis.fetch,
   fetchAutoReceiptPolicy = globalThis.fetch,
+  createClassGroupBackend = createClassGroupEvaluatorBackend,
 }) {
   if (mode !== "sage" && mode !== "python") {
     throw new TypeError(`unknown Sage.js language mode ${JSON.stringify(mode)}`);
@@ -655,9 +865,11 @@ export async function instantiateSageEvaluator({
   });
   const abort = (error) => {
     initializationAborted = true;
+    classGroupInitializationController?.abort(error);
     try {
       conwayDataResource?.close();
       extensionResource?.close();
+      classGroupResource?.close();
     } catch (cleanupError) {
       if (error && typeof error === "object") error.cleanupError = cleanupError;
     }
@@ -687,6 +899,8 @@ export async function instantiateSageEvaluator({
   let conwayDataReady;
   let conwayDataResource;
   let extensionResource;
+  let classGroupResource;
+  let classGroupInitializationController;
   let initializationAborted = false;
   let flintBackend;
   let m4riBackend;
@@ -712,6 +926,7 @@ export async function instantiateSageEvaluator({
       autoReceiptPolicyResponse,
       dynamicProgramBundle,
       extensionResource,
+      classGroupResource,
     ] = await Promise.all([
       language.request("initialize", {
         mode,
@@ -754,7 +969,24 @@ export async function instantiateSageEvaluator({
         extensionResource = resource;
         return resource;
       }),
+      classGroup === undefined
+        ? Promise.resolve(undefined)
+        : (() => {
+            classGroupInitializationController = new AbortController();
+            return createClassGroupBackend({
+              ...classGroup,
+              signal: classGroupInitializationController.signal,
+            }).then((resource) => {
+              if (initializationAborted) {
+                resource.close();
+                throw new Error("class-group backend initialized after evaluator abort");
+              }
+              classGroupResource = resource;
+              return resource;
+            });
+          })(),
     ]);
+    classGroupInitializationController = undefined;
     const primaryManifest = flintBackend.__sagejs_ffi_manifest__;
     if (primaryManifest?.declaration !== extensionResource.manifest.declaration) {
       throw new Error("FLINT core and specialist declaration identities disagree");
@@ -949,6 +1181,23 @@ export async function instantiateSageEvaluator({
   const serializationHost = Object.freeze({
     call(operation, args) {
       try {
+        if (operation === "classGroup") {
+          if (classGroupResource === undefined) {
+            const requestedOperation = Array.isArray(args) &&
+                typeof args[0] === "string" ? args[0] : "unknown";
+            return { ok: true, value: {
+              schema: CLASS_GROUP_RESPONSE_SCHEMA,
+              outcome: "error",
+              category: "capability-declined",
+              operation: requestedOperation,
+              message: "the class-group reactor is unavailable in this evaluator",
+            } };
+          }
+          if (!Array.isArray(args) || args.length !== 2) {
+            throw new TypeError("classGroup expects operation and request arguments");
+          }
+          return { ok: true, value: classGroupResource.call(args[0], args[1]) };
+        }
         if (operation === "describe") {
           return {
             ok: true,
@@ -1253,6 +1502,7 @@ export async function instantiateSageEvaluator({
   function terminate() {
     conwayDataResource.close();
     extensionResource.close();
+    classGroupResource?.close();
     language.terminate();
     globals.restoreAll();
   }

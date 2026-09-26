@@ -1,0 +1,96 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "field3-cleanarch-153088",
+  "title": "Field3 authentic precision cleanarch capacity",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Generalize the packed field3 class cleanarch and required workspaces to authenticated 153088-bit inputs without changing PARI operation order or failure semantics",
+  "base_commit": "951f5ce850ea26c8f5814c453e38f7fd78563c87",
+  "claims": [
+    "bench/pari-class-group-port/field3_packed_class_cleanarch.py",
+    "bench/pari-class-group-port/pi_constant.py",
+    "bench/pari-class-group-port/field3_c7_final_assembly.py",
+    "bench/pari-class-group-port/check_field3_live_packed_cleanarch.cjs",
+    "bench/pari-class-group-port/field3_cleanarch_153088_audit.md"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "pristine PARI 2.17.4 low-precision differential",
+      "high-precision neutral synthetic capacity replay"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "not-applicable",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "node bench/pari-class-group-port/check_field3_live_packed_cleanarch.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 7.848,
+      "started_at": "2026-09-17T15:35:07.603Z",
+      "commit": "951f5ce850ea26c8f5814c453e38f7fd78563c87",
+      "workspace_fingerprint": "2c3b024bf0032b88e4447b17167d990ad5dae51b227853be4ef9d0295865625d",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/pari-class-group-port/check_field3_c7_final_assembly.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.284,
+      "started_at": "2026-09-17T15:35:16.151Z",
+      "commit": "951f5ce850ea26c8f5814c453e38f7fd78563c87",
+      "workspace_fingerprint": "2c3b024bf0032b88e4447b17167d990ad5dae51b227853be4ef9d0295865625d",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 66.198,
+      "started_at": "2026-09-17T15:35:29.149Z",
+      "commit": "951f5ce850ea26c8f5814c453e38f7fd78563c87",
+      "workspace_fingerprint": "2c3b024bf0032b88e4447b17167d990ad5dae51b227853be4ef9d0295865625d",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "bash -lc /usr/bin/prlimit --as=3221225472 -- node bench/pari-class-group-port/check_field3_live_packed_cleanarch.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 26.217,
+      "started_at": "2026-09-17T15:37:28.731Z",
+      "commit": "951f5ce850ea26c8f5814c453e38f7fd78563c87",
+      "workspace_fingerprint": "581443586721aa501b1f5e061c540cce26b190d13378376782d905ee57dcb5fc",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Active focused lane raises the field3 packed class-cleanarch boundary to 153088 bits, derives exact pi coefficient/stack capacities, and updates C7 to allocate those capacities. Generated low inputs match pristine PARI 2.17.4; bounded high neutral/synthetic CPython, native low differential/preflight, C7 correspondence, and strict checks pass.",
+    "risks": [
+      "An initial negative-test design allocated maximum-width native coefficient arrays and reached about 4.9 GiB RSS; campaign supervision stopped it. The corrected checker uses sparse CPython lists for high cold capacity and truly empty native negative workspaces, and passes under an inherited 3 GiB address-space cap.",
+      "The successful initial 153088-bit JavaScript/GMP/tagged synthetic outputs are incident evidence only and are not rerun or claimed as an accepted receipt after the resource failure.",
+      "No authentic 153088-bit Ce replay, broad native/architecture suite, or cross-platform gate was run."
+    ],
+    "next_steps": [
+      "Replay the immutable authentic Ce owner only in an explicitly authorized resource-controlled integration campaign.",
+      "Run full native, architecture, and required platform gates after integration.",
+      "Keep future high-precision buffer tests capacity-aware; never allocate maximum bit capacity for every coefficient cell merely to test a preflight failure."
+    ]
+  }
+}

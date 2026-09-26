@@ -17,7 +17,7 @@ test("keyword packet sizing has a CPython oracle", () => {
   assert.ifError(result.error);
   assert.equal(result.status, 0, result.stderr);
   assert.equal(result.stderr, "");
-  assert.equal(result.stdout, "keyword-length-binding-ok\n");
+  assert.equal(result.stdout.replaceAll("\r\n", "\n"), "keyword-length-binding-ok\n");
 });
 
 for (const mode of ["python", "sage"]) {

@@ -1,0 +1,19 @@
+{
+  "schema": "sagejs.rust-class-group-browser-vector/v1",
+  "id": "row6-factor-pattern-baseline-i128",
+  "request": {
+    "schema": "sagejs.rust-class-group/factor-pattern-ab-request-v1",
+    "mode": "baseline",
+    "polynomialAscending": [2000000000018, -2000000000010, 0, 1],
+    "bound": 9196
+  },
+  "expected": {
+    "schema": "sagejs.rust-class-group/factor-pattern-ab-result-v1",
+    "status": "pass",
+    "mode": "baseline",
+    "bound": 9196,
+    "rationalPrimeCount": 1139,
+    "factorCount": 2066,
+    "digestSha256": "e0b4936ea49e92649808af36cafb8d4820a54cca0d57260d293ce7d696271bbb"
+  }
+}

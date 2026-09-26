@@ -1,0 +1,131 @@
+{
+  "schema": "sagejs.class-group-release-corpus/v1",
+  "evidenceStatus": {
+    "kind": "public-regression",
+    "unseenEvidence": false,
+    "note": "These records are committed regression data. They are not held out and must not be described as unseen qualification evidence."
+  },
+  "requestSchema": "sagejs.rust-class-group/public-cubic-e2e-request-v2",
+  "resources": {
+    "maximumTrialDivisor": 10000,
+    "maximumIrreducibilityPrime": 257,
+    "embeddingPrecisionBits": 192,
+    "maximumVisitedIdeals": 10000,
+    "maximumCandidates": 100000,
+    "maximumNormalFormEntries": 10000000,
+    "maximumNormalFormOperations": 50000000,
+    "maximumRelationExponent": 256,
+    "maximumVerificationMultiplyAdds": 100000000,
+    "maximumPrincipalFactorTerms": 10000000,
+    "maximumCompactGenerators": 16384,
+    "maximumCompactSurplusRows": 32,
+    "maximumCompactSaturationMinorTrials": 32768,
+    "maximumCompactDependencyEntries": 1000000,
+    "maximumCompactTargetCoefficientBits": 1000000,
+    "logarithmPrecisionBits": 4096,
+    "replayPrecisionBits": 2048,
+    "analyticPrecisionBits": 512,
+    "maximumRelations": 10000,
+    "maximumDependencies": 1000,
+    "maximumKernelCoefficientBits": 4080,
+    "maximumUnitExponentBits": 8192,
+    "maximumReconstructionDenominatorBits": 4096,
+    "maximumAnalyticThreshold": 23994
+  },
+  "routine": [
+    {
+      "id": "complex-trivial",
+      "coverage": ["trivial", "complex-signature"],
+      "polynomialAscending": ["-1", "-1", "0", "1"],
+      "expected": {
+        "discriminant": "-23",
+        "signature": [1, 1],
+        "equationOrderIndex": "1",
+        "classNumber": "1",
+        "invariantFactors": [],
+        "unitRank": 1
+      }
+    },
+    {
+      "id": "complex-cyclic-three",
+      "coverage": ["cyclic", "non-two-primary"],
+      "polynomialAscending": ["-26", "-30", "-8", "1"],
+      "expected": {
+        "discriminant": "-18220",
+        "signature": [1, 1],
+        "equationOrderIndex": "1",
+        "classNumber": "3",
+        "invariantFactors": ["3"],
+        "unitRank": 1
+      }
+    },
+    {
+      "id": "complex-noncyclic-two-two",
+      "coverage": ["noncyclic", "mixed-invariant-presentation"],
+      "polynomialAscending": ["-37", "-30", "-8", "1"],
+      "expected": {
+        "discriminant": "-106979",
+        "signature": [1, 1],
+        "equationOrderIndex": "1",
+        "classNumber": "4",
+        "invariantFactors": ["2", "2"],
+        "unitRank": 1
+      }
+    },
+    {
+      "id": "real-index-three",
+      "coverage": ["index-prime", "nonmonogenic", "totally-real"],
+      "polynomialAscending": ["20018", "-20010", "0", "1"],
+      "expected": {
+        "discriminant": "3559689395028",
+        "signature": [3, 0],
+        "equationOrderIndex": "3",
+        "classNumber": "3",
+        "invariantFactors": ["3"],
+        "unitRank": 2
+      },
+      "oracle": {
+        "kind": "committed-sage-pari-corpus-record",
+        "recordId": "generated-sha256-dec56e7e41f5f60071249da2e66871ed837a3c6e65d821c328e7b4c57adaff3"
+      }
+    },
+    {
+      "id": "real-large-unit-reconstruction",
+      "coverage": ["large-regulator", "precision-replay", "totally-real"],
+      "polynomialAscending": ["-214", "-225", "1", "1"],
+      "expected": {
+        "discriminant": "45244189",
+        "signature": [3, 0],
+        "equationOrderIndex": "1",
+        "classNumber": "1",
+        "invariantFactors": [],
+        "unitRank": 2
+      }
+    }
+  ],
+  "heavy": [
+    {
+      "id": "row-6",
+      "coverage": ["large-factor-base", "continuation", "index-prime", "noncyclic", "row-6"],
+      "polynomialAscending": ["2000000000018", "-2000000000010", "0", "1"],
+      "resources": {
+        "maximumVisitedIdeals": 1000000,
+        "maximumCandidates": 1000000,
+        "logarithmPrecisionBits": 8192,
+        "replayPrecisionBits": 4096
+      },
+      "expected": {
+        "discriminant": "3555555555596888888888939555555555028",
+        "signature": [3, 0],
+        "equationOrderIndex": "3",
+        "classNumber": "4",
+        "invariantFactors": ["2", "2"],
+        "unitRank": 2
+      },
+      "oracle": {
+        "kind": "committed-sage-pari-corpus-record",
+        "recordId": "generated-sha256-55ba15494f03f38bf8f687ff4d2813e81184d71c84dbed9e1adc6af7ba62f0eb"
+      }
+    }
+  ]
+}

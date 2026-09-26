@@ -1,0 +1,17 @@
+{
+  "schema": "sagejs.rust-class-group/benchmark-context-note-v1",
+  "receipt": "prepared-cubic-overlapping-host-smoke.receipt.json",
+  "receiptSha256": "256da1f1d802110f475f1267d0a6229faf01b56d562519ba7fe3ec8ce9a4c79e",
+  "classification": "functional-smoke-not-qualified-timing",
+  "reason": "This native Rust/PARI campaign overlapped a three-browser Wasm campaign on the same host.",
+  "allowedClaims": [
+    "all 90 retained invocations completed",
+    "there were no adapter failures or timeouts",
+    "the exact common result fingerprint agreed for all 15 samples of all three fields"
+  ],
+  "forbiddenClaims": [
+    "headline or frozen native timing",
+    "acceptance-gate performance evidence",
+    "quiet-host Rust/PARI ratio"
+  ]
+}

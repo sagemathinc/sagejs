@@ -1,0 +1,74 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "pari-h1-class-correspondence",
+  "title": "Authentic h1 class correspondence completion",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "generator_order_witness",
+  "objective": "Publish and cold-replay an internal upstream-assumed correspondence-complete class witness for the authentic h=1 cubic from full exact presentation authority, while keeping every public certification flag false",
+  "base_commit": "176ee7b8bab3f86e54d6b32d1ac5a4123c49f776",
+  "claims": [
+    "bench/pari-class-group-port/class_group_h1_correspondence.py",
+    "bench/pari-class-group-port/check_class_group_h1_correspondence.cjs",
+    "bench/pari-class-group-port/class_group_h1_correspondence_audit.md"
+  ],
+  "dependencies": [],
+  "references": [
+    "PARI 2.17.4 src/basemath/buch2.c buchall/class_group_gen"
+  ],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "detached presentation_authority replay",
+      "exact Smith replay with vacuous generator-order witness set"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "fallback",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "node bench/pari-class-group-port/check_class_group_h1_correspondence.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 5.322,
+      "started_at": "2026-09-17T02:55:32.232Z",
+      "commit": "176ee7b8bab3f86e54d6b32d1ac5a4123c49f776",
+      "workspace_fingerprint": "c7f17ded1b7cea6ec12cba100137f13c1cf8227abf37f7b7377583d3e568f440",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/pari-class-group-port/check_class_group_h1_correspondence.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 5.277,
+      "started_at": "2026-09-17T02:56:10.562Z",
+      "commit": "176ee7b8bab3f86e54d6b32d1ac5a4123c49f776",
+      "workspace_fingerprint": "21b30134888bd4abe3179038835580e75f6b7b35e4519e296eff65a9346870a5",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Added a new-files-only immutable internal class-correspondence witness for the authentic h=1 real cubic. Cold replay retains the full exact presentation authority, reconstructs 66 factor-base ideals, verifies 73 principal relations, reruns relation HNF and Smith transformations, and proves that the resulting factor-base presentation is trivial. It records the sole remaining class-side leap—the global generation of the ideal class group by PARI's selected factor base—as a pinned upstream assumption. Class correspondence is complete only under that assumption; phase5, public class completion, and public class/unit completion stay false.",
+    "risks": [
+      "Global factor-base generation is accepted from the pinned PARI 2.17.4 policy and is not independently proved by this internal witness.",
+      "The result is intentionally field-specific and dynamic Python; it is a correctness/status boundary rather than a timed native kernel.",
+      "Only the focused Linux-x64 replay and syntax/format checks were run in this lane; broad baselib/native suites remain for integration."
+    ],
+    "next_steps": [
+      "Attach this class-only status to the authentic final internal result without mapping it to ClassUnitComputation.complete.",
+      "Supply a certified maximal-order/factor-base theorem and replayable global saturation record before any public class-complete promotion."
+    ]
+  }
+}

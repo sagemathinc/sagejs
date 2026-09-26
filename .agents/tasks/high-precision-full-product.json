@@ -1,0 +1,95 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "high-precision-full-product",
+  "title": "Source-matched high-precision packed-real full product",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Add and validate the pinned PARI 2.17.4 x86-64 3520-bit full-integer product branch for packed-real multiplication at 153088 bits without changing the readable dynamic fallback or small-product branch",
+  "base_commit": "5083d897aabf09a312d77143c92a24687c59a62f",
+  "claims": [
+    "bench/pari-class-group-port/short_product.py",
+    "bench/pari-class-group-port/check_high_precision_full_product.cjs",
+    "bench/pari-class-group-port/high_precision_full_product_probe.py",
+    "bench/pari-class-group-port/high-precision-full-product-results.md"
+  ],
+  "dependencies": [],
+  "references": [
+    "PARI 2.17.4 src/kernel/gmp/mp.c MULRR_MULII_LIMIT and mulrr"
+  ],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "Pristine PARI 2.17.4 exact packed mantissa/precision/exponent fixtures"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "fallback",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "node bench/pari-class-group-port/check_high_precision_full_product.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.549,
+      "started_at": "2026-09-17T10:06:17.903Z",
+      "commit": "5083d897aabf09a312d77143c92a24687c59a62f",
+      "workspace_fingerprint": "5c5aef55d15e20ddf0fcc421b318fc614453950816143b68b9ee12decc2bc668",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/pari-class-group-port/check_word_product.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 10.572,
+      "started_at": "2026-09-17T10:06:27.621Z",
+      "commit": "5083d897aabf09a312d77143c92a24687c59a62f",
+      "workspace_fingerprint": "5c5aef55d15e20ddf0fcc421b318fc614453950816143b68b9ee12decc2bc668",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 60.385,
+      "started_at": "2026-09-17T10:06:56.710Z",
+      "commit": "5083d897aabf09a312d77143c92a24687c59a62f",
+      "workspace_fingerprint": "5c5aef55d15e20ddf0fcc421b318fc614453950816143b68b9ee12decc2bc668",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm parallel:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.635,
+      "started_at": "2026-09-17T10:08:33.858Z",
+      "commit": "5083d897aabf09a312d77143c92a24687c59a62f",
+      "workspace_fingerprint": "5c5aef55d15e20ddf0fcc421b318fc614453950816143b68b9ee12decc2bc668",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Translated the pinned host's mulrrz_int branch into ordinary Python integer multiplication plus exact PARI normalization and rounding. Eight below/at/above-cutoff and 153088-bit fixtures agree exactly across pristine PARI, CPython, JavaScript, GMP, and tagged lowering; malformed batches are fail-atomic. Generated C contains mpz_mul, and a diagnostic size sweep grows 4.43x for a 42.71x operand-size increase rather than the 1824.51x quadratic size ratio.",
+    "risks": [
+      "MULRR_MULII_LIMIT is host tuned. The translated 3520-bit cutoff matches the pinned Olinux-x86_64 reference, not every PARI build.",
+      "The scaling probe is diagnostic and unqualified against PARI; it establishes branch shape, not an end-to-end performance ratio.",
+      "The broad pnpm test:native lane gate was deliberately deferred under the no-broad-build/probe constraint; focused compiled differential checks and test:baselib:strict pass."
+    ],
+    "next_steps": [
+      "Cherry-pick this lane into the end-to-end integration worktree and rerun the bounded 153088-bit real/complex corridor.",
+      "Run the broad native suite at the next coordinated integration checkpoint rather than competing with active heavy campaign builds."
+    ]
+  }
+}

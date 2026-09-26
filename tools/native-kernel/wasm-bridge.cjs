@@ -6,6 +6,7 @@ const SCALAR_TYPES = new Set([
   "Float64",
   "Integer",
   "uint64",
+  "int64",
   "PrimeModulusValue",
 ]);
 const BUFFER_TYPES = new Set([
@@ -14,7 +15,7 @@ const BUFFER_TYPES = new Set([
   "Int64Buffer",
   "UInt64Buffer",
 ]);
-const RESULT_TYPES = new Set(["Float64", "Integer", "uint64", "bool"]);
+const RESULT_TYPES = new Set(["Float64", "Integer", "uint64", "int64", "bool"]);
 
 function cName(value) {
   return String(value).replace(/[^A-Za-z0-9_]/g, "_");
@@ -244,6 +245,15 @@ function parameterBridge(parameter, ir, fn) {
       descriptor: { name: parameter.name, type: parameter.type },
     };
   }
+  if (parameter.type === "int64") {
+    return {
+      signature: [`int64_t sagejs_arg_${name}`],
+      declaration: "",
+      argument: `sagejs_arg_${name}`,
+      cleanup: "",
+      descriptor: { name: parameter.name, type: parameter.type },
+    };
+  }
   if (parameter.type === "Float64") {
     return {
       signature: [`double sagejs_arg_${name}`],
@@ -269,9 +279,10 @@ function parameterBridge(parameter, ir, fn) {
         type: parameter.type,
         ...(parameter.type === "Float64Buffer"
           ? {
-            mutable: (fn.analysis?.effects?.mutates ?? []).includes(
-              parameter.name,
-            ),
+            mutable: [
+              ...(fn.analysis?.effects?.mutates ?? []),
+              ...(fn.analysis?.effects?.externalWrites ?? []),
+            ].includes(parameter.name),
           }
           : {}),
       },
@@ -370,7 +381,7 @@ function resultLocals(results, fn) {
         `    sagejs_wasm_result_f64_storage_m_$MODULE[${index}] = ${name};`,
       );
     } else {
-      const cType = type === "bool" ? "int" : "uint64_t";
+      const cType = type === "bool" ? "int" : type === "int64" ? "int64_t" : "uint64_t";
       declarations.push(`    ${cType} ${name} = 0;`);
       arguments_.push(`&${name}`);
       stores.push(

@@ -1,0 +1,84 @@
+{
+  "boundary": "prepared-cubic-relation-prefix",
+  "inputPath": "bench/pari-class-group-rust/qualification/row6-candidate/inputs/h1-neutral-prepared-field.json",
+  "medianMs": 9.129274,
+  "result": {
+    "completeRankAndSurplus": false,
+    "counters": {
+      "appendedRelations": 4,
+      "cursorTrials": 97,
+      "positiveCacheStatuses": 4,
+      "primitiveNonscalarCandidates": 57,
+      "randomIdeals": 0,
+      "randomSearchIdeals": 0,
+      "smoothCandidates": 4,
+      "visitedIdeals": 1
+    },
+    "factorBaseIdeals": 66,
+    "fieldId": "h1-real-cubic",
+    "inputId": "sha256:2d0fa668fad6c929a71eabdee7ebfb7acc1938307a41d4c1b49847cc99c7964d",
+    "limits": {
+      "maximumCandidates": 64,
+      "maximumVisitedIdeals": 1
+    },
+    "missingRank": 50,
+    "prefixSha256": "2e5106eac99f59078876bd629c66a02cf35e11e10127d3cd2e285b5c41a6bb55",
+    "relationBound": 333,
+    "residentRelationRows": 16,
+    "schema": "sagejs.rust-class-group/prepared-relation-prefix-v1",
+    "stage": "prepared-cubic-relation-prefix",
+    "status": "bounded-stage",
+    "storage": {
+      "denseRecordsBytes": 40128,
+      "fullDenseRecordsBytes": 411840,
+      "fullRelationCacheCapacity": 780,
+      "relationCacheCapacity": 76
+    }
+  },
+  "sampleCount": 15,
+  "samplesMs": [
+    9.193914,
+    9.131084,
+    9.175154,
+    9.072775,
+    9.034524000000001,
+    9.171524,
+    9.107924,
+    9.129274,
+    9.110684000000001,
+    9.182865,
+    9.032824,
+    9.111284000000001,
+    9.142074000000001,
+    9.044984000000001,
+    9.139774
+  ],
+  "schema": "sagejs.rust-class-group/native-prepared-relation-prefix-benchmark-v1",
+  "status": "pass",
+  "observedAt": "2026-09-20T19:24:49.280Z",
+  "repositoryRevision": "c4d07156194765506d137792732ba5109cd8c87e",
+  "caseRole": "required-h1",
+  "input": {
+    "path": "bench/pari-class-group-rust/qualification/row6-candidate/inputs/h1-neutral-prepared-field.json",
+    "sha256": "6ef97f99f3fb676e9c8d59cedaf696409916ea485f356244efc60f0b14d0e54d",
+    "bytes": 2294
+  },
+  "host": {
+    "hostname": "project-b6351099-3c72-458c-aa7e-4b7f4a47c0e7",
+    "platform": "linux",
+    "release": "7.0.0-1011-gcp",
+    "architecture": "x64",
+    "uname": "Linux project-b6351099-3c72-458c-aa7e-4b7f4a47c0e7 7.0.0-1011-gcp #11~24.04.1-Ubuntu SMP PREEMPT Tue Aug 11 20:14:48 UTC 2026 x86_64 GNU/Linux"
+  },
+  "tools": {
+    "rustc": "rustc 1.98.1 (48a229cea 2026-09-01)\nbinary: rustc\ncommit-hash: 48a229ceaefd4985c50990b14116b6d856af0985\ncommit-date: 2026-09-01\nhost: x86_64-unknown-linux-gnu\nrelease: 1.98.1\nLLVM version: 22.1.8",
+    "cargo": "cargo 1.98.1 (797e8a9bc 2026-08-05)"
+  },
+  "executable": {
+    "path": "bench/pari-class-group-rust/qualification/wasm-prepared-relation-prefix/target/release/native-benchmark",
+    "sha256": "7fdd101bb8f2f14f91139739b36a79a5b1d5a3348b3044fa8fff126e6569a5c0",
+    "bytes": 1291560,
+    "retained": false,
+    "identitySemantics": "frozen identity of the exact measured clean-worktree binary"
+  }
+}

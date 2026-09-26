@@ -1,0 +1,73 @@
+{
+  "schema": "sagejs.rust-class-group/row6-candidate-diagnosis-v1",
+  "qualificationStatus": "diagnostic-candidate-only",
+  "linksPari": false,
+  "usesOracleAsInput": false,
+  "polynomialAscending": ["2000000000018", "-2000000000010", "0", "1"],
+  "mathematicalBoundary": "equation-order-only-not-maximal-order",
+  "maximalOrderRepresentationBlocker": {
+    "equationOrderIndex": "3",
+    "integralBasis": ["1", "x", "(x^2 + x - 1333333333340) / 3"],
+    "currentBoundary": "unimodular i64 PreparedCubic basis"
+  },
+  "factorBase": {
+    "idealCount": 1202,
+    "elapsedNanoseconds": 133034173
+  },
+  "collectorSetupNanoseconds": {
+    "normForm": 2080,
+    "primeSieve": 274320,
+    "primeProducts": 3011099,
+    "factorBasePrimeProduct": 54320
+  },
+  "initialCachePrefix": {
+    "completeGroupsProcessed": 216,
+    "initialRows": 216,
+    "missingRank": 986,
+    "representativeElapsedNanoseconds": 4300189
+  },
+  "radiusOneRationalAdmission": {
+    "visited": 24,
+    "primitiveCanonical": 12,
+    "factored": 1,
+    "nonsmooth": 11,
+    "unresolved": 0,
+    "elapsedNanoseconds": 35480
+  },
+  "checkpoints": [
+    {
+      "timeoutSeconds": 120,
+      "timedOut": true,
+      "elapsedNanoseconds": 120022629029,
+      "kernelMaximumResidentSetKiB": 22568,
+      "sampledMaximumResidentSetKiB": 22668,
+      "sampledMaximumVirtualSizeKiB": 136752,
+      "memorySampleCount": 11755
+    },
+    {
+      "timeoutSeconds": 10,
+      "timedOut": true,
+      "elapsedNanoseconds": 10014035887,
+      "kernelMaximumResidentSetKiB": 19824,
+      "sampledMaximumResidentSetKiB": 19984,
+      "sampledMaximumVirtualSizeKiB": 133832,
+      "memorySampleCount": 983
+    }
+  ],
+  "firstSlowBoundary": "prime-ideal valuation of the first rationally smooth coefficient-box candidate",
+  "resolution": {
+    "mechanism": "a complete rational-prime group containing exactly one prime ideal is valued directly from v_p(norm)=f*v_P instead of local division",
+    "firstSmoothElement": "x - 1",
+    "firstSmoothNormFactorization": "3^2",
+    "postFixElapsedNanoseconds": 286293295,
+    "postFixRows": 217,
+    "postFixGenerators": 1202,
+    "postFixFullRank": false
+  },
+  "outcome": {
+    "completed": true,
+    "relationPresentationAvailable": true,
+    "classGroupCandidateAvailable": false,
+    "reason": "the radius-1 equation-order presentation is rank deficient, and the faithful maximal-order row-6 input is not yet connected to the collector"
+  }
+}

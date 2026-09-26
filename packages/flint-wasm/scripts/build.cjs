@@ -369,6 +369,11 @@ requirePath(
 );
 
 fs.mkdirSync(outputDirectory, { recursive: true });
+// An earlier developer build may have staged the Rust reactor. Never carry
+// those unreviewed bytes into a public browser or npm artifact by accident.
+for (const name of ["class-group-core.wasm", "class-group-core-receipt.json"]) {
+  fs.rmSync(path.join(outputDirectory, name), { force: true });
+}
 {
   const reference = JSON.parse(fs.readFileSync(documentationSource, "utf8"));
   if (reference?.docs?.schema_version !== 1 || !Array.isArray(reference.docs.entries)) {

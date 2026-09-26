@@ -1,8 +1,26 @@
 """Shared host adapters for both compiler and Sage/Python bootstrap runtimes.
 
-These unchanged native ABI and interruption primitives must be initialized
+These native ABI, method-identity, and interruption primitives must be initialized
 before builtins. They have no private state or mathematical implementation.
 """
+
+
+def ρσ_machine_extension_method_matches(parent, name, owner, getter, method):
+    """Authenticate an unbound method despite fresh bound-wrapper lookups."""
+    return r"""%js (() => {
+        if (typeof method !== "function") return false;
+        let cursor = parent;
+        while (cursor !== null) {
+            const descriptor = Object.getOwnPropertyDescriptor(cursor, name);
+            if (descriptor !== undefined) {
+                return cursor === owner && descriptor.get === getter &&
+                    (getter === undefined ? descriptor.value === method :
+                     getter.__sagejs_unbound_method__ === method);
+            }
+            cursor = Object.getPrototypeOf(cursor);
+        }
+        return false;
+    })()"""
 
 
 def ρσ_copy_method_metadata(method, target_function):
@@ -279,4 +297,40 @@ def ρσ_interpolate_kwargs_constructor(
             ρσ_interpolate_kwargs(receiver,target_function,supplied_args);
         return result!=null&&(typeof result==="object"||typeof result==="function")?
             result:receiver;
+    })()"""
+
+
+def ρσ_synthetic_init_ends_at_object(initializer):
+    return r"""%js (()=>{
+        if(initializer===ρσ_object_init)return true;
+        if(_builtins_get_member(initializer,"__sagejs_synthetic_init__")!==true){
+            const underlying=_builtins_get_member(initializer,"__func__");
+            if(underlying===ρσ_object_init)return true;
+            if(_builtins_get_member(underlying,"__sagejs_synthetic_init__")!==true)
+                return false;
+            initializer=underlying;
+        }
+        let remaining=100;
+        while(remaining>0&&
+              _builtins_get_member(initializer,"__sagejs_synthetic_init__")===true){
+            initializer=_builtins_get_member(
+                initializer,"__sagejs_synthetic_init_target__");
+            --remaining;
+        }
+        return initializer===ρσ_object_init;
+    })()"""
+
+
+def ρσ_skip_init(cls, initializer):
+    return r"""%js (()=>{
+        if(!ρσ_synthetic_init_ends_at_object(initializer))return false;
+        const cached=_builtins_initializer_cache.get(cls);
+        const cacheable=cached!==undefined&&
+            cached[0]===_builtins_descriptor_epoch.value&&cached[1]===initializer;
+        if(cacheable&&cached.length>2)return cached[2];
+        const allocator=ρσ_getattr(cls,"__new__",null);
+        const answer=ρσ_native_jstype(allocator)==="function"&&
+            allocator!==_builtins_object_new;
+        if(cacheable)cached[2]=answer;
+        return answer;
     })()"""

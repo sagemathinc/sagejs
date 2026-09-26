@@ -1,0 +1,125 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "resident-mpz-scratch-frame-falsification",
+  "title": "Record resident mpz scratch-frame falsification",
+  "lane": "compiler-runtime",
+  "status": "active",
+  "owner": "tagged_set_small_regression",
+  "objective": "Preserve the rejected root-owned mpz scratch-frame A/B with exact provenance, gate metrics, and the falsification conclusion, without compiler code",
+  "base_commit": "54449ef0f5aae5df58f982fceee24789d9a58073",
+  "claims": [
+    "bench/pari-class-group-port/resident-mpz-scratch-frame-falsification-20260917.json",
+    "bench/pari-class-group-port/resident_mpz_scratch_frame_falsification.md"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "not-applicable",
+    "fallback": "not-applicable",
+    "oracles": [
+      "Frozen 4-field fixture exact output hashes and alternating process CPU A/B"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "not-applicable",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm build",
+    "pnpm test:compiler",
+    "pnpm test:integration"
+  ],
+  "runs": [
+    {
+      "command": "jq empty bench/pari-class-group-port/resident-mpz-scratch-frame-falsification-20260917.json",
+      "result": "passed",
+      "date": "2026-09-17"
+    },
+    {
+      "command": "pnpm docs:check",
+      "result": "passed",
+      "date": "2026-09-17"
+    },
+    {
+      "command": "pnpm parallel:check",
+      "result": "passed",
+      "date": "2026-09-17"
+    },
+    {
+      "command": "pnpm docs:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 460.032,
+      "started_at": "2026-09-17T00:45:51.270Z",
+      "commit": "54449ef0f5aae5df58f982fceee24789d9a58073",
+      "workspace_fingerprint": "07eba52993ceda9eef12b8e1626fda888403c7c7dd5e1b7733794899f7f1a105",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:tutorial",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 610.059,
+      "started_at": "2026-09-17T00:53:38.040Z",
+      "commit": "54449ef0f5aae5df58f982fceee24789d9a58073",
+      "workspace_fingerprint": "07eba52993ceda9eef12b8e1626fda888403c7c7dd5e1b7733794899f7f1a105",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm build",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 454.903,
+      "started_at": "2026-09-17T01:05:04.845Z",
+      "commit": "54449ef0f5aae5df58f982fceee24789d9a58073",
+      "workspace_fingerprint": "07eba52993ceda9eef12b8e1626fda888403c7c7dd5e1b7733794899f7f1a105",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:compiler",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 223.971,
+      "started_at": "2026-09-17T01:12:44.732Z",
+      "commit": "54449ef0f5aae5df58f982fceee24789d9a58073",
+      "workspace_fingerprint": "07eba52993ceda9eef12b8e1626fda888403c7c7dd5e1b7733794899f7f1a105",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:compiler",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 218.782,
+      "started_at": "2026-09-17T01:16:38.705Z",
+      "commit": "54449ef0f5aae5df58f982fceee24789d9a58073",
+      "workspace_fingerprint": "07eba52993ceda9eef12b8e1626fda888403c7c7dd5e1b7733794899f7f1a105",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:compiler",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 230.929,
+      "started_at": "2026-09-17T01:20:22.919Z",
+      "commit": "54449ef0f5aae5df58f982fceee24789d9a58073",
+      "workspace_fingerprint": "07eba52993ceda9eef12b8e1626fda888403c7c7dd5e1b7733794899f7f1a105",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Records the exact provenance, correctness hashes, code sizes, owner memory, and alternating CPU/wall A/B that rejected the root-owned mpz scratch-frame compiler prototype. No compiler code remains.",
+    "risks": [
+      "Timing is diagnostic-only and dynamic GMP lifecycle execution counts were not collected because the independent 3x CPU gate had already failed.",
+      "The reported RSS is the combined alternating process, not a qualified per-variant delta.",
+      "The unrelated guided-tour baseline currently fails 335 of 662 selected examples; this documentation-only ledger does not change tutorial inputs or runtime code.",
+      "The compiler baseline passes 25 fixtures but fails seven extension-polynomial fixtures because generated lazy modules are absent from this clean worktree; the evidence-only diff cannot affect those imports."
+    ],
+    "next_steps": [
+      "Target demonstrated exact-buffer conversion/copy or arithmetic-representation costs rather than generalizing root-owned mpz scratch reuse."
+    ]
+  }
+}

@@ -1,0 +1,115 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sagejs.org/schemas/rust-class-group/prepared-multifield-vector-v1.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "id", "request", "expected"],
+  "properties": {
+    "schema": { "const": "sagejs.rust-class-group-browser-vector/v1" },
+    "id": { "type": "string", "minLength": 1 },
+    "request": {},
+    "expected": {}
+  },
+  "oneOf": [
+    {
+      "properties": {
+        "request": { "$ref": "https://sagejs.org/schemas/rust-class-group-qualification/neutral-input-v1.json" },
+        "expected": { "$ref": "#/$defs/factorResult" }
+      }
+    },
+    {
+      "properties": {
+        "request": { "$ref": "#/$defs/relationRequest" },
+        "expected": { "$ref": "#/$defs/relationResult" }
+      }
+    }
+  ],
+  "$defs": {
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "inputId": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+    "nonnegative": { "type": "integer", "minimum": 0 },
+    "factorResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["checkingBound", "completeGroupCount", "descriptorSha256", "equationOrderIndex", "fieldId", "idealCount", "inputId", "rationalPrimeCount", "relationBound", "schema", "stage", "status"],
+      "properties": {
+        "checkingBound": { "$ref": "#/$defs/nonnegative" },
+        "completeGroupCount": { "$ref": "#/$defs/nonnegative" },
+        "descriptorSha256": { "$ref": "#/$defs/sha256" },
+        "equationOrderIndex": { "type": "string", "pattern": "^[0-9]+$" },
+        "fieldId": { "type": "string", "minLength": 1 },
+        "idealCount": { "$ref": "#/$defs/nonnegative" },
+        "inputId": { "$ref": "#/$defs/inputId" },
+        "rationalPrimeCount": { "$ref": "#/$defs/nonnegative" },
+        "relationBound": { "$ref": "#/$defs/nonnegative" },
+        "schema": { "const": "sagejs.rust-class-group/prepared-factor-base-v1" },
+        "stage": { "const": "prepared-maximal-cubic-factor-base" },
+        "status": { "const": "bounded-stage" }
+      }
+    },
+    "relationRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema", "preparedField", "maximumVisitedIdeals", "maximumCandidates"],
+      "properties": {
+        "schema": { "const": "sagejs.rust-class-group/prepared-relation-prefix-request-v1" },
+        "preparedField": { "$ref": "https://sagejs.org/schemas/rust-class-group-qualification/neutral-input-v1.json" },
+        "maximumVisitedIdeals": { "const": 1 },
+        "maximumCandidates": { "const": 64 }
+      }
+    },
+    "relationResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["completeRankAndSurplus", "counters", "factorBaseIdeals", "fieldId", "inputId", "limits", "missingRank", "prefixSha256", "relationBound", "residentRelationRows", "schema", "stage", "status", "storage"],
+      "properties": {
+        "completeRankAndSurplus": { "type": "boolean" },
+        "counters": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["appendedRelations", "cursorTrials", "positiveCacheStatuses", "primitiveNonscalarCandidates", "randomIdeals", "randomSearchIdeals", "smoothCandidates", "visitedIdeals"],
+          "properties": {
+            "appendedRelations": { "$ref": "#/$defs/nonnegative" },
+            "cursorTrials": { "$ref": "#/$defs/nonnegative" },
+            "positiveCacheStatuses": { "$ref": "#/$defs/nonnegative" },
+            "primitiveNonscalarCandidates": { "$ref": "#/$defs/nonnegative" },
+            "randomIdeals": { "$ref": "#/$defs/nonnegative" },
+            "randomSearchIdeals": { "$ref": "#/$defs/nonnegative" },
+            "smoothCandidates": { "$ref": "#/$defs/nonnegative" },
+            "visitedIdeals": { "$ref": "#/$defs/nonnegative" }
+          }
+        },
+        "factorBaseIdeals": { "$ref": "#/$defs/nonnegative" },
+        "fieldId": { "type": "string", "minLength": 1 },
+        "inputId": { "$ref": "#/$defs/inputId" },
+        "limits": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["maximumCandidates", "maximumVisitedIdeals"],
+          "properties": {
+            "maximumCandidates": { "const": 64 },
+            "maximumVisitedIdeals": { "const": 1 }
+          }
+        },
+        "missingRank": { "$ref": "#/$defs/nonnegative" },
+        "prefixSha256": { "$ref": "#/$defs/sha256" },
+        "relationBound": { "$ref": "#/$defs/nonnegative" },
+        "residentRelationRows": { "$ref": "#/$defs/nonnegative" },
+        "schema": { "const": "sagejs.rust-class-group/prepared-relation-prefix-v1" },
+        "stage": { "const": "prepared-cubic-relation-prefix" },
+        "status": { "const": "bounded-stage" },
+        "storage": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["denseRecordsBytes", "fullDenseRecordsBytes", "fullRelationCacheCapacity", "relationCacheCapacity"],
+          "properties": {
+            "denseRecordsBytes": { "$ref": "#/$defs/nonnegative" },
+            "fullDenseRecordsBytes": { "$ref": "#/$defs/nonnegative" },
+            "fullRelationCacheCapacity": { "$ref": "#/$defs/nonnegative" },
+            "relationCacheCapacity": { "$ref": "#/$defs/nonnegative" }
+          }
+        }
+      }
+    }
+  }
+}

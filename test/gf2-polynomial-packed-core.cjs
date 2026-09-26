@@ -3,11 +3,13 @@
 "use strict";
 
 const assert = require("node:assert/strict");
-const { mkdtempSync, rmSync } = require("node:fs");
+const { mkdtempSync, readFileSync, rmSync } = require("node:fs");
 const { tmpdir } = require("node:os");
 const { join } = require("node:path");
 const { spawnSync } = require("node:child_process");
 const test = require("node:test");
+const { lowerSource } = require("../tools/native-kernel/ir.cjs");
+const { generateJavaScript } = require("../tools/native-kernel/js-backend.cjs");
 const { sageMathOracle } = require("./helpers/sage-math.cjs");
 
 const root = join(__dirname, "..");
@@ -26,6 +28,22 @@ const sage = sageMathOracle({
   environmentVariables: ["SAGE_EXECUTABLE"],
 });
 const sageMathAvailable = sage !== null;
+
+test("private source-record helpers emit a fail-closed JavaScript fallback", async () => {
+  const ir = await lowerSource(readFileSync(kernelSource, "utf8"), kernelSource, {
+    functions: ["gf2_packed_valid"],
+  });
+  const helper = ir.functions.find((fn) => fn.name === "_gf2_packed_valid");
+  assert.equal(helper.hostCallable, false);
+  assert.equal(helper.kernelKind, "prime-field-source");
+  assert.match(JSON.stringify(helper.body), /source\.record\.get/);
+
+  const generated = generateJavaScript(ir);
+  assert.match(
+    generated,
+    /function javascript__gf2_packed_valid\(source\) \{\n  throw new Error\("source-transparent native artifact is unavailable"\);\n\}/,
+  );
+});
 
 function runSage(source, environment = {}) {
   const result = spawnSync(process.execPath, [sagejs, "--python"], {

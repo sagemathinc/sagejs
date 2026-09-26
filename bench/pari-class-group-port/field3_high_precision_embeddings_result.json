@@ -1,0 +1,36 @@
+{
+  "status": "pass",
+  "oracleTraceSha256": "7ff3153e7fd4acdb5162ce6082726144bc88031a18a993bf6406c983da6c1973",
+  "ownerSha256": "03a19e230febd45c79dab3b0f42366b8646f8b77a3246d9dc7bd2c16cae5528e",
+  "runIdentity": "pari-2.17.4:nfinit192->nfnewprec153088:field3",
+  "rootPackedTriplesBitExact": 4,
+  "embeddingPackedTriplesBitExact": 16,
+  "embeddingPackedTriplesTotal": 16,
+  "embeddingMismatch": [],
+  "preTruncationState": {
+    "requestedBits": 153088,
+    "rootPrecisionBits": 153152,
+    "makeMTruncation": false,
+    "ownerBound": true,
+    "basdenCommonDenominatorRetained": true
+  },
+  "independent": {
+    "status": "pass",
+    "tensorCells": 64,
+    "basisProducts": 16,
+    "rootResidualExponents": [-153132, -153126, -153126, -153124],
+    "embeddingIdentityResidualMaximumExponent": -153120
+  },
+  "dynamicFallbacks": {
+    "cpython": true,
+    "javascript": true
+  },
+  "native": {
+    "backend": "gmp",
+    "elapsedMs": 276.713688,
+    "cacheKey": "7a280e2dfb2f16bc1fe6401121e99d9c483fe949596d10df76a645de8f45ec11",
+    "mpzMul": true,
+    "resourceGate": "prlimit --as=4294967296; timeout 600s"
+  },
+  "transactionalRejections": 3
+}

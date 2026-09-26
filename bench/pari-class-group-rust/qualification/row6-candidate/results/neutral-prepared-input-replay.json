@@ -1,0 +1,24 @@
+{
+  "schema": "sagejs.rust-class-group/neutral-prepared-input-replay-v1",
+  "input": {
+    "path": "inputs/row6-neutral-prepared-field.json",
+    "sha256": "24551723d43685e5592d9b3f866bf73e3f0bbde69ee5afec1eb2dc2f760314b5",
+    "containsOracleAnswers": false,
+    "preparationAuthority": "independent-oracle"
+  },
+  "command": "./target/release/sagejs-row6-rust-candidate-diagnostic small-norm-unit-kernel-prepared inputs/row6-neutral-prepared-field.json 2000 600000",
+  "validation": {
+    "exactPreparationReplay": true,
+    "equationOrderIndex": "3",
+    "relationRows": 1137,
+    "relationColumns": 1130,
+    "classGroup": "C2 x C2",
+    "classNumber": "4",
+    "allRelationsMapToZero": true,
+    "classUnitIndex": 1,
+    "timingStrippedOutputSha256": "ba0900d4856e54b08a18ce2707f66092dfe1db3edd99ff302cda81d1eb27dd5d",
+    "matchesCompiledFixtureSha256": "ba0900d4856e54b08a18ce2707f66092dfe1db3edd99ff302cda81d1eb27dd5d"
+  },
+  "observedTotalNanoseconds": "7583400901",
+  "claim": "The complete prepared-field engine no longer requires row-6 field data to be compiled into the executable. This is not yet the public polynomial-to-result boundary."
+}

@@ -1,0 +1,79 @@
+{
+  "schema": "sagejs.pari-class-group/phase1-precision-escalation-correctness-v1",
+  "scope": {
+    "kind": "correctness-only-bounded-authentic-h1-corridor",
+    "status": "closed",
+    "performanceInput": false,
+    "defaultPerformancePopulationCoverage": "absent",
+    "opensReserveField": false
+  },
+  "identity": {
+    "panelIndex": 0,
+    "panelId": "generated-sha256-0e970fdb1b4f043d042bd6093172638086e293ad03749215f71f7510a6622ba0",
+    "polynomial": "x^3-20018*x+20034",
+    "coefficientsAscending": ["20034", "-20018", "0", "1"],
+    "polynomialSha256": "2d0fa668fad6c929a71eabdee7ebfb7acc1938307a41d4c1b49847cc99c7964d",
+    "classNumber": "1",
+    "unitRank": 2,
+    "residentRelationCount": 73
+  },
+  "pristinePari": {
+    "version": "2.17.4",
+    "archiveSha256": "02651d99c391007d384b3fadbc20abc6916b77036f9e496c99e9ce8688ca4b53",
+    "buch2Sha256": "904ced8034732c7fcfe1da393e23950aac0862b085150fdc24ce1e31beb7d1ac",
+    "lllSha256": "ba42f21e52b09873ba5bf2817edd8f0a8b69d4e0ff779419cc5390941aa7404b"
+  },
+  "observedRetry": {
+    "initialPrecision": "192",
+    "attempts": [
+      {"precision": "192", "status": "PRECI", "statusCode": "3", "precisionDeficit": "1923"},
+      {"precision": "384", "status": "PRECI", "statusCode": "3", "precisionDeficit": "1731"},
+      {"precision": "768", "status": "PRECI", "statusCode": "3", "precisionDeficit": "1347"},
+      {"precision": "1536", "status": "PRECI", "statusCode": "3", "precisionDeficit": "579"},
+      {"precision": "2304", "status": "success", "statusCode": "0", "precisionDeficit": "-178"}
+    ],
+    "transitionPolicy": "PARI-2.17.4-myprecdbl-unflagged-PRECI",
+    "terminalPrecisionIsObservation": true,
+    "terminalPrecisionIsDriverConstant": false,
+    "exactUnitNorms": ["-1", "-1"],
+    "phaseBits": ["0", "0", "1", "1", "1", "1"],
+    "retainedExactOwnerDigest": "2f1c69aba652429ce286b73c7316cb0d2ddddc7ba6613ee6ca008df878a47b15"
+  },
+  "failureContracts": {
+    "resourceCapPrecision": "2048",
+    "resourceCapStatus": "resource-cap",
+    "publicFailureTransactional": true,
+    "retainedExactOwnerMutationRejected": true,
+    "malformedLogicalDimensionRejected": true,
+    "fixtureAnswersLoadedByDriver": false
+  },
+  "sourceMatchedRebuild": {
+    "residentPrecision": "192",
+    "requestedRetryPrecision": "2048",
+    "rebuiltLogPrecision": "2176",
+    "rebuiltEmbeddingPrecision": "2240",
+    "workingCapacity": "2304",
+    "backends": ["cpython", "javascript", "gmp", "tagged"],
+    "pristinePariExactOutputsMatched": true
+  },
+  "evidence": [
+    {"path": "bench/pari-class-group-port/panel.json", "sha256": "7c6515240940db971cff3bc28819f9e6547adae9305643b0f6274eeafe6ec3a5", "role": "frozen-field-identity"},
+    {"path": "bench/pari-class-group-port/unit-bridge-cubic-fixtures.json", "sha256": "83ce9a256e29b06530e8de2846d274e093f2021c4a547496ccf8122b310061e7", "role": "authentic-resident-owner-fixture"},
+    {"path": "bench/pari-class-group-port/unit_bridge_cubic.py", "sha256": "9397579940ba419ef6a0773fd95c711c3cf84e70e05fb937cdf032d84befe24e", "role": "source-matched-unit-bridge"},
+    {"path": "bench/pari-class-group-port/check_unit_bridge_cubic.cjs", "sha256": "e8f31e1b7f6d3da82a46d77daebb4dba990ea5a5e448ab0d02180b27d6203067", "role": "pristine-pari-retry-differential"},
+    {"path": "bench/pari-class-group-port/cubic_precision_rebuild.py", "sha256": "0d2ac4fc886b5fd3231be9e2c391b47c665ce91cde7cf75d48756c5a407a6f0e", "role": "precision-dependent-owner-rebuild"},
+    {"path": "bench/pari-class-group-port/check_cubic_precision_rebuild.cjs", "sha256": "6173f35d1e65a099b100c4e1e486267e67a48774ce58390b59ff5ffaba4b33ea", "role": "pristine-pari-rebuild-differential"},
+    {"path": "bench/pari-class-group-port/live_retry_control.py", "sha256": "97eeb66ee64451a1c6386bc1f32e03b6ff22f891311c6b75b2402464d2eae694", "role": "pinned-source-retry-policy"},
+    {"path": "bench/pari-class-group-port/check_live_retry_control.cjs", "sha256": "d8b8cfe39d4846eeb7fc9c760f36e935c4b5e6ace90bdf160e05a5cef768d333", "role": "cpython-javascript-native-policy-differential"},
+    {"path": "bench/pari-class-group-port/h1_precision_retry_driver.cjs", "sha256": "63d9d3c794c42e5b43617da4442780143c95fc39d2d03c6e365dc95a5ba44bdd", "role": "answer-independent-live-retry-owner"},
+    {"path": "bench/pari-class-group-port/check_h1_precision_retry_driver.cjs", "sha256": "fb5da88a6c859c6fdd80361e1ec2dda96efdf89ca1614f44c099cb8a639c5a0a", "role": "authentic-live-schedule-and-failure-check"},
+    {"path": "bench/pari-class-group-port/unified_full_h1_root.py", "sha256": "1605a7d93f1a2307f0322f156ec7a70da2f60810122741440e2b515bff051a47", "role": "single-native-root-transactional-publication"},
+    {"path": "bench/pari-class-group-port/check_unified_full_h1_root.cjs", "sha256": "901563e45a35efaffaf59e0a4de7ed84077239c722c8e3a883759605f99d1a3f", "role": "native-root-success-cap-and-mutation-check"}
+  ],
+  "nonClaims": [
+    "The frozen sixteen-field default-driver population exercised precision escalation.",
+    "The 192-bit attempt jumped directly to 2304 bits.",
+    "This correctness fixture is a timing or performance input.",
+    "This fixture closes the separate successful full-honesty requirement."
+  ]
+}

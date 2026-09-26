@@ -1,3 +1,4 @@
+# DISABLED: full-runtime lazy-package fixture, run by extension-field-capabilities.cjs
 # sagejs-test-tier: portable
 """Keep scalar availability separate from public geometry and packed ABIs."""
 

@@ -55,7 +55,7 @@ test("combined compound/type-slot ordering matches CPython", () => {
   });
   assert.ifError(result.error);
   assert.equal(result.status, 0, result.stderr);
-  assert.equal(result.stdout, "combined-call-slots-ok\n");
+  assert.equal(result.stdout.replaceAll("\r\n", "\n"), "combined-call-slots-ok\n");
   assert.equal(result.stderr, "");
 });
 

@@ -1,0 +1,172 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sagejs.org/schemas/rust-class-group-context-browser-v1.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "status", "observedAt", "artifact", "hostInputs", "boundReceipts", "finalizerEvidence", "engines", "limitations"],
+  "properties": {
+    "schema": { "const": "sagejs.rust-class-group-context-browser/v1" },
+    "status": { "const": "pass-small-candidate" },
+    "observedAt": { "type": "string", "minLength": 1 },
+    "artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "bytes", "sha256", "sourceInputs"],
+      "properties": {
+        "path": { "type": "string", "minLength": 1 },
+        "bytes": { "type": "integer", "minimum": 1 },
+        "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "sourceInputs": {
+          "type": "array", "minItems": 6, "maxItems": 6,
+          "items": { "$ref": "#/$defs/fileIdentity" }
+        }
+      }
+    },
+    "hostInputs": {
+      "type": "array", "minItems": 3, "maxItems": 3,
+      "items": { "$ref": "#/$defs/fileIdentity" }
+    },
+    "boundReceipts": {
+      "type": "array", "minItems": 2, "maxItems": 2,
+      "items": { "$ref": "#/$defs/fileIdentity" }
+    },
+    "finalizerEvidence": {
+      "type": "object", "additionalProperties": false,
+      "required": ["availabilityObservedAllEngines", "registrationPresentInBoundLoaderSource", "executionObserved", "authoritativeLifecycle"],
+      "properties": {
+        "availabilityObservedAllEngines": { "const": true },
+        "registrationPresentInBoundLoaderSource": { "const": true },
+        "executionObserved": { "const": false },
+        "authoritativeLifecycle": { "const": "explicit-close" }
+      }
+    },
+    "engines": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "items": { "$ref": "#/$defs/engine" }
+    },
+    "limitations": {
+      "type": "array",
+      "minItems": 4,
+      "uniqueItems": true,
+      "items": { "type": "string", "minLength": 1 }
+    }
+  },
+  "$defs": {
+    "fileIdentity": {
+      "type": "object", "additionalProperties": false,
+      "required": ["path", "bytes", "sha256"],
+      "properties": {
+        "path": { "type": "string", "minLength": 1 },
+        "bytes": { "type": "integer", "minimum": 1 },
+        "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+      }
+    },
+    "engine": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["engine", "browserVersion", "status", "finalization_registry_available", "initial_memory_pages", "memory_page_observations", "resumable_completion", "mixed_jobs", "mixed_memory_pages", "memory_pages_after_mixed", "cancellation_latency_ms", "retired_handle_abi", "live_context_candidate_close", "stale_after_host_close_rejected"],
+      "properties": {
+        "engine": { "enum": ["chromium", "firefox", "webkit"] },
+        "browserVersion": { "type": "string", "minLength": 1 },
+        "status": { "const": "pass" },
+        "finalization_registry_available": { "const": true },
+        "initial_memory_pages": { "type": "integer", "minimum": 1 },
+        "memory_page_observations": {
+          "type": "array",
+          "minItems": 10,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["call", "pages"],
+            "properties": {
+              "call": { "type": "integer", "minimum": 1, "maximum": 1000 },
+              "pages": { "type": "integer", "minimum": 1 }
+            }
+          }
+        },
+        "resumable_completion": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["status", "steps", "maximum_step_ms", "memory_pages"],
+          "properties": {
+            "status": { "const": 2 },
+            "steps": { "type": "integer", "minimum": 101 },
+            "maximum_step_ms": { "type": "number", "minimum": 0, "maximum": 100 },
+            "memory_pages": { "type": "integer", "minimum": 1 }
+          }
+        },
+        "mixed_jobs": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["count", "cancelled", "reset", "completed"],
+          "properties": {
+            "count": { "const": 100 },
+            "cancelled": { "const": 34 },
+            "reset": { "const": 33 },
+            "completed": { "const": 33 }
+          }
+        },
+        "mixed_memory_pages": {
+          "type": "array", "minItems": 100, "maxItems": 100,
+          "items": {
+            "type": "object", "additionalProperties": false,
+            "required": ["job", "mode", "pages"],
+            "properties": {
+              "job": { "type": "integer", "minimum": 1, "maximum": 100 },
+              "mode": { "enum": ["cancel", "reset-complete", "complete"] },
+              "pages": { "type": "integer", "minimum": 1 }
+            }
+          }
+        },
+        "memory_pages_after_mixed": { "type": "integer", "minimum": 1 },
+        "cancellation_latency_ms": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["maximum", "samples"],
+          "properties": {
+            "maximum": { "type": "number", "minimum": 0, "maximum": 100 },
+            "samples": { "type": "array", "minItems": 34, "maxItems": 34, "items": { "type": "number", "minimum": 0, "maximum": 100 } }
+          }
+        },
+        "retired_handle_abi": {
+          "type": "object", "additionalProperties": false,
+          "required": ["first_close", "after_close", "invalid_reset_zero", "original_live_after_invalid_reset", "generation_changed", "after_reset", "replacement_close", "memory_pages"],
+          "properties": {
+            "first_close": { "const": 1 },
+            "after_close": { "$ref": "#/$defs/retiredAbiResult" },
+            "invalid_reset_zero": { "const": true },
+            "original_live_after_invalid_reset": { "const": true },
+            "generation_changed": { "const": true },
+            "after_reset": { "$ref": "#/$defs/retiredAbiResult" },
+            "replacement_close": { "const": 1 },
+            "memory_pages": { "type": "integer", "minimum": 1 }
+          }
+        },
+        "live_context_candidate_close": {
+          "type": "object", "additionalProperties": false,
+          "required": ["live_context_created", "api_close_called", "context_rejected_after_candidate_close", "memory_pages_before_close"],
+          "properties": {
+            "live_context_created": { "const": true },
+            "api_close_called": { "const": true },
+            "context_rejected_after_candidate_close": { "const": true },
+            "memory_pages_before_close": { "type": "integer", "minimum": 1 }
+          }
+        },
+        "stale_after_host_close_rejected": { "const": true }
+      }
+    },
+    "retiredAbiResult": {
+      "type": "object", "additionalProperties": false,
+      "required": ["step", "cancel", "result_error", "reset_zero", "close"],
+      "properties": {
+        "step": { "const": 0 },
+        "cancel": { "const": 0 },
+        "result_error": { "const": "State" },
+        "reset_zero": { "const": true },
+        "close": { "const": 0 }
+      }
+    }
+  }
+}

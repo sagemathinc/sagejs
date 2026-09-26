@@ -1,0 +1,726 @@
+{
+  "schema": "sagejs.rust-class-group/qualification-layout-v1",
+  "spec": "qualification-corpus-spec-v1.json",
+  "slots": [
+    {
+      "slot": "open-d2-01",
+      "partition": "open",
+      "degree": 2,
+      "status": "unselected"
+    },
+    {
+      "slot": "open-d2-02",
+      "partition": "open",
+      "degree": 2,
+      "status": "unselected"
+    },
+    {
+      "slot": "open-d2-03",
+      "partition": "open",
+      "degree": 2,
+      "status": "unselected"
+    },
+    {
+      "slot": "open-d2-04",
+      "partition": "open",
+      "degree": 2,
+      "status": "unselected"
+    },
+    {
+      "slot": "open-d2-05",
+      "partition": "open",
+      "degree": 2,
+      "status": "unselected"
+    },
+    {
+      "slot": "open-d2-06",
+      "partition": "open",
+      "degree": 2,
+      "status": "unselected"
+    },
+    {
+      "slot": "open-d2-07",
+      "partition": "open",
+      "degree": 2,
+      "status": "unselected"
+    },
+    {
+      "slot": "open-d2-08",
+      "partition": "open",
+      "degree": 2,
+      "status": "unselected"
+    },
+    {
+      "slot": "open-d2-09",
+      "partition": "open",
+      "degree": 2,
+      "status": "unselected"
+    },
+    {
+      "slot": "open-d2-10",
+      "partition": "open",
+      "degree": 2,
+      "status": "unselected"
+    },
+    {
+      "slot": "open-d2-11",
+      "partition": "open",
+      "degree": 2,
+      "status": "unselected"
+    },
+    {
+      "slot": "open-d2-12",
+      "partition": "open",
+      "degree": 2,
+      "status": "unselected"
+    },
+    {
+      "slot": "open-d3-01",
+      "partition": "open",
+      "degree": 3,
+      "status": "unselected"
+    },
+    {
+      "slot": "open-d3-02",
+      "partition": "open",
+      "degree": 3,
+      "status": "unselected"
+    },
+    {
+      "slot": "open-d3-03",
+      "partition": "open",
+      "degree": 3,
+      "status": "unselected"
+    },
+    {
+      "slot": "open-d3-04",
+      "partition": "open",
+      "degree": 3,
+      "status": "unselected"
+    },
+    {
+      "slot": "open-d3-05",
+      "partition": "open",
+      "degree": 3,
+      "status": "unselected"
+    },
+    {
+      "slot": "open-d3-06",
+      "partition": "open",
+      "degree": 3,
+      "status": "unselected"
+    },
+    {
+      "slot": "open-d3-07",
+      "partition": "open",
+      "degree": 3,
+      "status": "unselected"
+    },
+    {
+      "slot": "open-d3-08",
+      "partition": "open",
+      "degree": 3,
+      "status": "unselected"
+    },
+    {
+      "slot": "open-d3-09",
+      "partition": "open",
+      "degree": 3,
+      "status": "unselected"
+    },
+    {
+      "slot": "open-d3-10",
+      "partition": "open",
+      "degree": 3,
+      "status": "unselected"
+    },
+    {
+      "slot": "open-d3-11",
+      "partition": "open",
+      "degree": 3,
+      "status": "unselected"
+    },
+    {
+      "slot": "open-d3-12",
+      "partition": "open",
+      "degree": 3,
+      "status": "unselected"
+    },
+    {
+      "slot": "open-d4-01",
+      "partition": "open",
+      "degree": 4,
+      "status": "unselected"
+    },
+    {
+      "slot": "open-d4-02",
+      "partition": "open",
+      "degree": 4,
+      "status": "unselected"
+    },
+    {
+      "slot": "open-d4-03",
+      "partition": "open",
+      "degree": 4,
+      "status": "unselected"
+    },
+    {
+      "slot": "open-d4-04",
+      "partition": "open",
+      "degree": 4,
+      "status": "unselected"
+    },
+    {
+      "slot": "open-d4-05",
+      "partition": "open",
+      "degree": 4,
+      "status": "unselected"
+    },
+    {
+      "slot": "open-d4-06",
+      "partition": "open",
+      "degree": 4,
+      "status": "unselected"
+    },
+    {
+      "slot": "open-d4-07",
+      "partition": "open",
+      "degree": 4,
+      "status": "unselected"
+    },
+    {
+      "slot": "open-d4-08",
+      "partition": "open",
+      "degree": 4,
+      "status": "unselected"
+    },
+    {
+      "slot": "open-d4-09",
+      "partition": "open",
+      "degree": 4,
+      "status": "unselected"
+    },
+    {
+      "slot": "open-d4-10",
+      "partition": "open",
+      "degree": 4,
+      "status": "unselected"
+    },
+    {
+      "slot": "open-d4-11",
+      "partition": "open",
+      "degree": 4,
+      "status": "unselected"
+    },
+    {
+      "slot": "open-d4-12",
+      "partition": "open",
+      "degree": 4,
+      "status": "unselected"
+    },
+    {
+      "slot": "open-d5-01",
+      "partition": "open",
+      "degree": 5,
+      "status": "unselected"
+    },
+    {
+      "slot": "open-d5-02",
+      "partition": "open",
+      "degree": 5,
+      "status": "unselected"
+    },
+    {
+      "slot": "open-d5-03",
+      "partition": "open",
+      "degree": 5,
+      "status": "unselected"
+    },
+    {
+      "slot": "open-d5-04",
+      "partition": "open",
+      "degree": 5,
+      "status": "unselected"
+    },
+    {
+      "slot": "open-d5-05",
+      "partition": "open",
+      "degree": 5,
+      "status": "unselected"
+    },
+    {
+      "slot": "open-d5-06",
+      "partition": "open",
+      "degree": 5,
+      "status": "unselected"
+    },
+    {
+      "slot": "open-d5-07",
+      "partition": "open",
+      "degree": 5,
+      "status": "unselected"
+    },
+    {
+      "slot": "open-d5-08",
+      "partition": "open",
+      "degree": 5,
+      "status": "unselected"
+    },
+    {
+      "slot": "open-d5-09",
+      "partition": "open",
+      "degree": 5,
+      "status": "unselected"
+    },
+    {
+      "slot": "open-d5-10",
+      "partition": "open",
+      "degree": 5,
+      "status": "unselected"
+    },
+    {
+      "slot": "open-d5-11",
+      "partition": "open",
+      "degree": 5,
+      "status": "unselected"
+    },
+    {
+      "slot": "open-d5-12",
+      "partition": "open",
+      "degree": 5,
+      "status": "unselected"
+    },
+    {
+      "slot": "open-d6-01",
+      "partition": "open",
+      "degree": 6,
+      "status": "unselected"
+    },
+    {
+      "slot": "open-d6-02",
+      "partition": "open",
+      "degree": 6,
+      "status": "unselected"
+    },
+    {
+      "slot": "open-d6-03",
+      "partition": "open",
+      "degree": 6,
+      "status": "unselected"
+    },
+    {
+      "slot": "open-d6-04",
+      "partition": "open",
+      "degree": 6,
+      "status": "unselected"
+    },
+    {
+      "slot": "open-d6-05",
+      "partition": "open",
+      "degree": 6,
+      "status": "unselected"
+    },
+    {
+      "slot": "open-d6-06",
+      "partition": "open",
+      "degree": 6,
+      "status": "unselected"
+    },
+    {
+      "slot": "open-d6-07",
+      "partition": "open",
+      "degree": 6,
+      "status": "unselected"
+    },
+    {
+      "slot": "open-d6-08",
+      "partition": "open",
+      "degree": 6,
+      "status": "unselected"
+    },
+    {
+      "slot": "open-d6-09",
+      "partition": "open",
+      "degree": 6,
+      "status": "unselected"
+    },
+    {
+      "slot": "open-d6-10",
+      "partition": "open",
+      "degree": 6,
+      "status": "unselected"
+    },
+    {
+      "slot": "open-d6-11",
+      "partition": "open",
+      "degree": 6,
+      "status": "unselected"
+    },
+    {
+      "slot": "open-d6-12",
+      "partition": "open",
+      "degree": 6,
+      "status": "unselected"
+    },
+    {
+      "slot": "heldout-d2-01",
+      "partition": "heldOut",
+      "degree": 2,
+      "status": "unselected"
+    },
+    {
+      "slot": "heldout-d2-02",
+      "partition": "heldOut",
+      "degree": 2,
+      "status": "unselected"
+    },
+    {
+      "slot": "heldout-d2-03",
+      "partition": "heldOut",
+      "degree": 2,
+      "status": "unselected"
+    },
+    {
+      "slot": "heldout-d2-04",
+      "partition": "heldOut",
+      "degree": 2,
+      "status": "unselected"
+    },
+    {
+      "slot": "heldout-d2-05",
+      "partition": "heldOut",
+      "degree": 2,
+      "status": "unselected"
+    },
+    {
+      "slot": "heldout-d2-06",
+      "partition": "heldOut",
+      "degree": 2,
+      "status": "unselected"
+    },
+    {
+      "slot": "heldout-d2-07",
+      "partition": "heldOut",
+      "degree": 2,
+      "status": "unselected"
+    },
+    {
+      "slot": "heldout-d2-08",
+      "partition": "heldOut",
+      "degree": 2,
+      "status": "unselected"
+    },
+    {
+      "slot": "heldout-d2-09",
+      "partition": "heldOut",
+      "degree": 2,
+      "status": "unselected"
+    },
+    {
+      "slot": "heldout-d2-10",
+      "partition": "heldOut",
+      "degree": 2,
+      "status": "unselected"
+    },
+    {
+      "slot": "heldout-d2-11",
+      "partition": "heldOut",
+      "degree": 2,
+      "status": "unselected"
+    },
+    {
+      "slot": "heldout-d2-12",
+      "partition": "heldOut",
+      "degree": 2,
+      "status": "unselected"
+    },
+    {
+      "slot": "heldout-d3-01",
+      "partition": "heldOut",
+      "degree": 3,
+      "status": "unselected"
+    },
+    {
+      "slot": "heldout-d3-02",
+      "partition": "heldOut",
+      "degree": 3,
+      "status": "unselected"
+    },
+    {
+      "slot": "heldout-d3-03",
+      "partition": "heldOut",
+      "degree": 3,
+      "status": "unselected"
+    },
+    {
+      "slot": "heldout-d3-04",
+      "partition": "heldOut",
+      "degree": 3,
+      "status": "unselected"
+    },
+    {
+      "slot": "heldout-d3-05",
+      "partition": "heldOut",
+      "degree": 3,
+      "status": "unselected"
+    },
+    {
+      "slot": "heldout-d3-06",
+      "partition": "heldOut",
+      "degree": 3,
+      "status": "unselected"
+    },
+    {
+      "slot": "heldout-d3-07",
+      "partition": "heldOut",
+      "degree": 3,
+      "status": "unselected"
+    },
+    {
+      "slot": "heldout-d3-08",
+      "partition": "heldOut",
+      "degree": 3,
+      "status": "unselected"
+    },
+    {
+      "slot": "heldout-d3-09",
+      "partition": "heldOut",
+      "degree": 3,
+      "status": "unselected"
+    },
+    {
+      "slot": "heldout-d3-10",
+      "partition": "heldOut",
+      "degree": 3,
+      "status": "unselected"
+    },
+    {
+      "slot": "heldout-d3-11",
+      "partition": "heldOut",
+      "degree": 3,
+      "status": "unselected"
+    },
+    {
+      "slot": "heldout-d3-12",
+      "partition": "heldOut",
+      "degree": 3,
+      "status": "unselected"
+    },
+    {
+      "slot": "heldout-d4-01",
+      "partition": "heldOut",
+      "degree": 4,
+      "status": "unselected"
+    },
+    {
+      "slot": "heldout-d4-02",
+      "partition": "heldOut",
+      "degree": 4,
+      "status": "unselected"
+    },
+    {
+      "slot": "heldout-d4-03",
+      "partition": "heldOut",
+      "degree": 4,
+      "status": "unselected"
+    },
+    {
+      "slot": "heldout-d4-04",
+      "partition": "heldOut",
+      "degree": 4,
+      "status": "unselected"
+    },
+    {
+      "slot": "heldout-d4-05",
+      "partition": "heldOut",
+      "degree": 4,
+      "status": "unselected"
+    },
+    {
+      "slot": "heldout-d4-06",
+      "partition": "heldOut",
+      "degree": 4,
+      "status": "unselected"
+    },
+    {
+      "slot": "heldout-d4-07",
+      "partition": "heldOut",
+      "degree": 4,
+      "status": "unselected"
+    },
+    {
+      "slot": "heldout-d4-08",
+      "partition": "heldOut",
+      "degree": 4,
+      "status": "unselected"
+    },
+    {
+      "slot": "heldout-d4-09",
+      "partition": "heldOut",
+      "degree": 4,
+      "status": "unselected"
+    },
+    {
+      "slot": "heldout-d4-10",
+      "partition": "heldOut",
+      "degree": 4,
+      "status": "unselected"
+    },
+    {
+      "slot": "heldout-d4-11",
+      "partition": "heldOut",
+      "degree": 4,
+      "status": "unselected"
+    },
+    {
+      "slot": "heldout-d4-12",
+      "partition": "heldOut",
+      "degree": 4,
+      "status": "unselected"
+    },
+    {
+      "slot": "heldout-d5-01",
+      "partition": "heldOut",
+      "degree": 5,
+      "status": "unselected"
+    },
+    {
+      "slot": "heldout-d5-02",
+      "partition": "heldOut",
+      "degree": 5,
+      "status": "unselected"
+    },
+    {
+      "slot": "heldout-d5-03",
+      "partition": "heldOut",
+      "degree": 5,
+      "status": "unselected"
+    },
+    {
+      "slot": "heldout-d5-04",
+      "partition": "heldOut",
+      "degree": 5,
+      "status": "unselected"
+    },
+    {
+      "slot": "heldout-d5-05",
+      "partition": "heldOut",
+      "degree": 5,
+      "status": "unselected"
+    },
+    {
+      "slot": "heldout-d5-06",
+      "partition": "heldOut",
+      "degree": 5,
+      "status": "unselected"
+    },
+    {
+      "slot": "heldout-d5-07",
+      "partition": "heldOut",
+      "degree": 5,
+      "status": "unselected"
+    },
+    {
+      "slot": "heldout-d5-08",
+      "partition": "heldOut",
+      "degree": 5,
+      "status": "unselected"
+    },
+    {
+      "slot": "heldout-d5-09",
+      "partition": "heldOut",
+      "degree": 5,
+      "status": "unselected"
+    },
+    {
+      "slot": "heldout-d5-10",
+      "partition": "heldOut",
+      "degree": 5,
+      "status": "unselected"
+    },
+    {
+      "slot": "heldout-d5-11",
+      "partition": "heldOut",
+      "degree": 5,
+      "status": "unselected"
+    },
+    {
+      "slot": "heldout-d5-12",
+      "partition": "heldOut",
+      "degree": 5,
+      "status": "unselected"
+    },
+    {
+      "slot": "heldout-d6-01",
+      "partition": "heldOut",
+      "degree": 6,
+      "status": "unselected"
+    },
+    {
+      "slot": "heldout-d6-02",
+      "partition": "heldOut",
+      "degree": 6,
+      "status": "unselected"
+    },
+    {
+      "slot": "heldout-d6-03",
+      "partition": "heldOut",
+      "degree": 6,
+      "status": "unselected"
+    },
+    {
+      "slot": "heldout-d6-04",
+      "partition": "heldOut",
+      "degree": 6,
+      "status": "unselected"
+    },
+    {
+      "slot": "heldout-d6-05",
+      "partition": "heldOut",
+      "degree": 6,
+      "status": "unselected"
+    },
+    {
+      "slot": "heldout-d6-06",
+      "partition": "heldOut",
+      "degree": 6,
+      "status": "unselected"
+    },
+    {
+      "slot": "heldout-d6-07",
+      "partition": "heldOut",
+      "degree": 6,
+      "status": "unselected"
+    },
+    {
+      "slot": "heldout-d6-08",
+      "partition": "heldOut",
+      "degree": 6,
+      "status": "unselected"
+    },
+    {
+      "slot": "heldout-d6-09",
+      "partition": "heldOut",
+      "degree": 6,
+      "status": "unselected"
+    },
+    {
+      "slot": "heldout-d6-10",
+      "partition": "heldOut",
+      "degree": 6,
+      "status": "unselected"
+    },
+    {
+      "slot": "heldout-d6-11",
+      "partition": "heldOut",
+      "degree": 6,
+      "status": "unselected"
+    },
+    {
+      "slot": "heldout-d6-12",
+      "partition": "heldOut",
+      "degree": 6,
+      "status": "unselected"
+    }
+  ]
+}

@@ -1,0 +1,71 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "pari-authentic-compact-success",
+  "title": "Bind genuine compact units into authentic h1 success",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Compose the authentic h1 success authority with the resident-derived compact unit factor pool, proving exact factor provenance and materialization without answer-derived factors",
+  "base_commit": "f0d3cfe24d58e46492635fd20c6a24dd5e0c0772",
+  "claims": [
+    "bench/pari-class-group-port/authentic_compact_success.py",
+    "bench/pari-class-group-port/check_authentic_compact_success.cjs",
+    "bench/pari-class-group-port/authentic_compact_success_audit.md"
+  ],
+  "dependencies": [
+    "pari-compact-unit-resident-pool"
+  ],
+  "references": [],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "not-applicable",
+    "oracles": [
+      "Existing cold-replayed authentic h1 success and qualified resident presentation authorities"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "not-applicable",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "env SAGEJS_REPLAY_RUNTIME_ROOT=/home/user/sagejs-worktrees/pari-class-group-e2e-integration node bench/pari-class-group-port/check_authentic_compact_success.cjs /tmp/sagejs-resident-generated-class-3qtnS5/output.json",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 34.071,
+      "started_at": "2026-09-17T03:27:33.670Z",
+      "commit": "f0d3cfe24d58e46492635fd20c6a24dd5e0c0772",
+      "workspace_fingerprint": "52d27965f886e59f4f0441f15b2c9f92593f760f85c29b406c63e4054da9b716",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 68.287,
+      "started_at": "2026-09-17T03:28:18.444Z",
+      "commit": "f0d3cfe24d58e46492635fd20c6a24dd5e0c0772",
+      "workspace_fingerprint": "52d27965f886e59f4f0441f15b2c9f92593f760f85c29b406c63e4054da9b716",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Bound the cold-replayed authentic h1 success to the genuine seven-factor resident pool. The composer proves the 7x73 factor provenance from the live HNF kernel and retained relation map, exactly materializes the selected 2x7 unit lattice, and links its integral coordinates, norms, and power-coordinate hash to the relation/regulator authorities without serializing expanded units.",
+    "risks": [
+      "The composition retains the authentic success payload's live PARI unit-oracle blocker and does not claim unit saturation or public completion.",
+      "The result is currently qualified only for the frozen authentic cubic resident artifact."
+    ],
+    "next_steps": [
+      "Wire this compact composition hash into the integration-owned internal final result without changing its public-completion honesty flags.",
+      "Replace the remaining live-oracle unit input with the integration lane's newer live exact unit and no-fixture regulator authorities."
+    ]
+  }
+}

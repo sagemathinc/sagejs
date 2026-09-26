@@ -16,6 +16,16 @@ const {
 
 const root = join(__dirname, "..");
 
+test("polynomial capability module is available to precompiled workers", async (t) => {
+  const session = await createSage({ mode: "sage" });
+  t.after(() => session.close());
+  const result = await session.evaluate(
+    "from multiprocessing import worker_module_available\n" +
+    "print(worker_module_available('sagejs.polynomial_algorithms.field_capabilities'))",
+  );
+  assert.equal(result.stdout.trim(), "True");
+});
+
 test("Pool.map and starmap use persistent isolated evaluators", async (t) => {
   const session = await createSage({ mode: "python" });
   t.after(() => session.close());

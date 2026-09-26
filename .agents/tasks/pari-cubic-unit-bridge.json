@@ -1,0 +1,94 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "pari-cubic-unit-bridge",
+  "title": "PARI cubic unit bridge",
+  "lane": "arithmetic-algebra",
+  "status": "review",
+  "owner": "user",
+  "objective": "Compose resident accepted packed cubic logs and relation provenance through unit-lattice reduction, sign-safe cleaned A*U, provenance exponent composition, and exact cubic unit reconstruction on the frozen equal-bound fixtures.",
+  "base_commit": "1a1367404e6e41bf32783d0fbe1f8b6d1da50a34",
+  "claims": [
+    "bench/pari-class-group-port/unit_bridge_cubic.py",
+    "bench/pari-class-group-port/check_unit_bridge_cubic.cjs",
+    "bench/pari-class-group-port/unit-bridge-cubic-fixtures.json",
+    "bench/pari-class-group-port/unit_bridge_cubic_audit.md"
+  ],
+  "dependencies": [
+    "pari-unit-lattice-native",
+    "pari-getfu-sign-phases"
+  ],
+  "references": [
+    "/home/user/upstream/pari-2.17.4/src/basemath/buch2.c",
+    "/home/user/upstream/pari-2.17.4/src/basemath/buch3.c",
+    "signed getfu dependency 0eff12d72"
+  ],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "gmp",
+      "tagged",
+      "Pinned PARI 2.17.4 trace",
+      "Exact unit inverse and norm replay"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "node bench/pari-class-group-port/check_unit_bridge_cubic.cjs",
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "node bench/pari-class-group-port/check_unit_bridge_cubic.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 21.107,
+      "started_at": "2026-09-17T00:59:39.637Z",
+      "commit": "1a1367404e6e41bf32783d0fbe1f8b6d1da50a34",
+      "workspace_fingerprint": "b06a4785783472368f0cc4cea2481b1756e46c4451248c93bac12eb4f069e608",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 77.237,
+      "started_at": "2026-09-17T01:00:05.926Z",
+      "commit": "1a1367404e6e41bf32783d0fbe1f8b6d1da50a34",
+      "workspace_fingerprint": "b06a4785783472368f0cc4cea2481b1756e46c4451248c93bac12eb4f069e608",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 803.783,
+      "started_at": "2026-09-17T01:02:15.123Z",
+      "commit": "1a1367404e6e41bf32783d0fbe1f8b6d1da50a34",
+      "workspace_fingerprint": "b06a4785783472368f0cc4cea2481b1756e46c4451248c93bac12eb4f069e608",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Composes the authentic 73-relation real-cubic resident boundary through both lattice reductions, sign-safe packed A*U cleaning, regulator replay, getfu-factor preparation, and exact relation provenance. CPython, JavaScript, GMP, and tagged backends agree. The signed getfu leaf reaches the source-authentic PRECI stop at resident 192-bit precision.",
+    "risks": [
+      "The 2115-bit final unit requires pristine retry logs at p2176 and an embedding at p2240, beyond the current shared packed-real p1856-2048 limits.",
+      "Only the frozen totally-real cubic NULL-selector path is exercised; mixed signatures and the wide selector are excluded.",
+      "pnpm test:changed reached the full unit suite after build and architecture passed, then stopped on the pre-existing modular-qexp source-freeze hash for architecture/package-graph.json (acf5c55b... versus frozen 66d0eec3...); this lane does not claim or edit either file."
+    ],
+    "next_steps": [
+      "After the precision-resource campaign raises the coherent packed-real graph to p2240 input / p2304 working capacity, rerun this checker and require exact reconstructed units, logs, phases, and normalized factor.",
+      "Integrate the bridge only after retry ownership is available in the shared final driver."
+    ]
+  }
+}

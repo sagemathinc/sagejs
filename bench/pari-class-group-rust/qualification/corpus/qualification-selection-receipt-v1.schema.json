@@ -1,0 +1,152 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sagejs.org/schemas/rust-class-group-qualification/qualification-selection-receipt-v1.json",
+  "title": "Rust class-group qualification selection receipt",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "status",
+    "spec",
+    "specSha256",
+    "selectionAlgorithm",
+    "selectionSeeds",
+    "sourcePoolSha256",
+    "oracleIdentity",
+    "oracleIdentitySha256",
+    "traceContract",
+    "traceContractSha256",
+    "qualifiedNeutralPanel",
+    "qualifiedNeutralPanelSha256",
+    "privateEvidenceSha256",
+    "answerVisibility",
+    "partitions"
+  ],
+  "properties": {
+    "schema": { "const": "sagejs.rust-class-group/qualification-selection-receipt-v1" },
+    "status": { "const": "passed" },
+    "spec": { "const": "qualification-corpus-spec-v1.json" },
+    "specSha256": { "$ref": "#/$defs/sha256" },
+    "selectionAlgorithm": { "const": "sagejs-rust-class-group-deficit-greedy-v1" },
+    "selectionSeeds": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["open", "heldOut"],
+      "properties": {
+        "open": { "const": "sagejs-rust-class-group-open-v1-2026-09-20" },
+        "heldOut": { "const": "sagejs-rust-class-group-heldout-v1-2026-09-20" }
+      }
+    },
+    "sourcePoolSha256": { "$ref": "#/$defs/sha256" },
+    "oracleIdentity": { "const": "pari-2.17.4-oracle-identity.json" },
+    "oracleIdentitySha256": { "$ref": "#/$defs/sha256" },
+    "traceContract": { "const": "pari-buchall-debug-trace-v1.json" },
+    "traceContractSha256": { "$ref": "#/$defs/sha256" },
+    "qualifiedNeutralPanel": { "const": "qualified-neutral-panel-v1.json" },
+    "qualifiedNeutralPanelSha256": { "$ref": "#/$defs/sha256" },
+    "privateEvidenceSha256": { "$ref": "#/$defs/sha256" },
+    "answerVisibility": { "const": "aggregate-counts-only" },
+    "partitions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["open", "heldOut"],
+      "properties": {
+        "open": { "$ref": "#/$defs/summary" },
+        "heldOut": { "$ref": "#/$defs/summary" }
+      }
+    }
+  },
+  "$defs": {
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "degreeCounts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["2", "3", "4", "5", "6"],
+      "properties": {
+        "2": { "const": 12 },
+        "3": { "const": 12 },
+        "4": { "const": 12 },
+        "5": { "const": 12 },
+        "6": { "const": 12 }
+      }
+    },
+    "timingCounts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["under-5ms", "5ms-to-100ms", "100ms-to-2s", "2s-to-30s"],
+      "properties": {
+        "under-5ms": { "type": "integer", "minimum": 10, "maximum": 20 },
+        "5ms-to-100ms": { "type": "integer", "minimum": 10, "maximum": 20 },
+        "100ms-to-2s": { "type": "integer", "minimum": 10, "maximum": 20 },
+        "2s-to-30s": { "type": "integer", "minimum": 10, "maximum": 20 }
+      }
+    },
+    "signature": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["degree", "signature"],
+      "properties": {
+        "degree": { "type": "integer", "minimum": 2, "maximum": 6 },
+        "signature": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": { "type": "integer", "minimum": 0 }
+        }
+      }
+    },
+    "traitCounts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "trivial-class-group",
+        "nontrivial-class-group",
+        "noncyclic-class-group",
+        "nontrivial-equation-order-index",
+        "ramified-factor-base-prime",
+        "nontrivial-units",
+        "precision-restart",
+        "relation-continuation",
+        "large-exact-intermediates"
+      ],
+      "properties": {
+        "trivial-class-group": { "type": "integer", "minimum": 6 },
+        "nontrivial-class-group": { "type": "integer", "minimum": 12 },
+        "noncyclic-class-group": { "type": "integer", "minimum": 4 },
+        "nontrivial-equation-order-index": { "type": "integer", "minimum": 6 },
+        "ramified-factor-base-prime": { "type": "integer", "minimum": 8 },
+        "nontrivial-units": { "type": "integer", "minimum": 8 },
+        "precision-restart": { "type": "integer", "minimum": 3 },
+        "relation-continuation": { "type": "integer", "minimum": 3 },
+        "large-exact-intermediates": { "type": "integer", "minimum": 4 }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "caseCount",
+        "degreeCounts",
+        "timingStratumCounts",
+        "legalSignaturesCovered",
+        "traitCounts",
+        "minimumTimingSamplesPerCase",
+        "quotaValidation"
+      ],
+      "properties": {
+        "caseCount": { "const": 60 },
+        "degreeCounts": { "$ref": "#/$defs/degreeCounts" },
+        "timingStratumCounts": { "$ref": "#/$defs/timingCounts" },
+        "legalSignaturesCovered": {
+          "type": "array",
+          "minItems": 14,
+          "maxItems": 14,
+          "items": { "$ref": "#/$defs/signature" }
+        },
+        "traitCounts": { "$ref": "#/$defs/traitCounts" },
+        "minimumTimingSamplesPerCase": { "type": "integer", "minimum": 15 },
+        "quotaValidation": { "const": "passed" }
+      }
+    }
+  }
+}

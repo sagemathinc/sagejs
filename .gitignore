@@ -2,6 +2,7 @@ node_modules
 .sagejs-native-kernels/
 .native-integer-cache/
 dist
+packages/class-groups/target/
 *.tgz
 *.tsbuildinfo
 *.term

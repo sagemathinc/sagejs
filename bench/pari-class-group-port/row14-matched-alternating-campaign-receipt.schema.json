@@ -1,0 +1,108 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sagejs.org/schemas/pari-class-group/row14-matched-alternating-campaign-v1.json",
+  "title": "Row 14 matched PARI/Sage.js alternating timing receipt",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "pairCount",
+    "schedule",
+    "authority",
+    "boundary",
+    "minimumArmNanoseconds",
+    "matchedProjectionSha256",
+    "pairs",
+    "summary",
+    "row14BoundaryQualified",
+    "fullPanelQualified",
+    "qualificationScope"
+  ],
+  "properties": {
+    "schema": {
+      "const": "sagejs.pari-class-group/row14-matched-alternating-campaign-v1"
+    },
+    "pairCount": { "const": 11 },
+    "schedule": { "const": "ABBA/BAAB" },
+    "authority": { "type": "object" },
+    "boundary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "input",
+        "output",
+        "preparationInsideClock",
+        "compilationInsideClock",
+        "filesystemInsideClock",
+        "hashingInsideClock",
+        "replayInsideClock",
+        "serializationInsideClock",
+        "eachArmFresh"
+      ],
+      "properties": {
+        "input": { "type": "string" },
+        "output": { "type": "string" },
+        "preparationInsideClock": { "const": false },
+        "compilationInsideClock": { "const": false },
+        "filesystemInsideClock": { "const": false },
+        "hashingInsideClock": { "const": false },
+        "replayInsideClock": { "const": false },
+        "serializationInsideClock": { "const": false },
+        "eachArmFresh": { "const": true }
+      }
+    },
+    "minimumArmNanoseconds": { "const": "1000000000" },
+    "matchedProjectionSha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "pairs": {
+      "type": "array",
+      "minItems": 11,
+      "maxItems": 11,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["pairIndex", "order", "arms"],
+        "properties": {
+          "pairIndex": { "type": "integer", "minimum": 0, "maximum": 10 },
+          "order": {
+            "type": "array",
+            "minItems": 4,
+            "maxItems": 4,
+            "items": { "enum": ["sagejs", "pari"] }
+          },
+          "arms": {
+            "type": "array",
+            "minItems": 4,
+            "maxItems": 4,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "implementation",
+                "kernelNanoseconds",
+                "freshComputationOrdinal",
+                "exactOutputAdmission",
+                "matchedProjectionSha256",
+                "semanticRecordSha256"
+              ],
+              "properties": {
+                "implementation": { "enum": ["sagejs", "pari"] },
+                "kernelNanoseconds": { "type": "string", "pattern": "^[1-9][0-9]*$" },
+                "freshComputationOrdinal": { "type": "string", "pattern": "^[1-9][0-9]*$" },
+                "exactOutputAdmission": { "const": true },
+                "matchedProjectionSha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+                "semanticRecordSha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "summary": { "type": "object" },
+    "row14BoundaryQualified": { "const": true },
+    "fullPanelQualified": { "const": false },
+    "qualificationScope": { "type": "string" }
+  }
+}

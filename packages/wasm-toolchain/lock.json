@@ -14,7 +14,7 @@
     }
   },
   "libraries": {
-    "gmp": { "version": "6.2.1", "source": "gmp-wasm", "prefix": "prefixes/gmp", "archiveName": "libgmp.a" },
+    "gmp": { "version": "6.3.0", "source": "native-gmp", "prefix": "prefixes/gmp", "archiveName": "libgmp.a" },
     "mpfr": { "version": "4.2.2", "source": "mpfr", "prefix": "prefixes/mpfr", "archiveName": "libmpfr.a" },
     "mpc": { "version": "1.4.1", "source": "mpc", "prefix": "prefixes/mpc", "archiveName": "libmpc.a" },
     "flint": { "version": "3.6.0", "source": "flint", "prefix": "prefixes/flint", "archiveName": "libflint.a" },

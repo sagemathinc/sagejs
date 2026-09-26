@@ -1,0 +1,538 @@
+{
+  "answerDisclosure": "none",
+  "caseCount": 12,
+  "cases": [
+    {
+      "checks": [
+        {
+          "field": "polynomialAscending",
+          "status": "passed"
+        },
+        {
+          "field": "signature",
+          "status": "passed"
+        },
+        {
+          "field": "equationOrderIndex",
+          "status": "passed"
+        },
+        {
+          "field": "fieldDiscriminant",
+          "status": "passed"
+        },
+        {
+          "field": "candidate.classNumber",
+          "status": "passed"
+        },
+        {
+          "field": "candidate.invariantFactors",
+          "status": "passed"
+        },
+        {
+          "field": "completion.classNumber",
+          "status": "passed"
+        },
+        {
+          "field": "completion.invariantFactors",
+          "status": "passed"
+        },
+        {
+          "field": "unitRank",
+          "status": "passed"
+        }
+      ],
+      "fieldId": "admissible-v2-d3-0029-8bd43f772059",
+      "status": "passed"
+    },
+    {
+      "checks": [
+        {
+          "field": "polynomialAscending",
+          "status": "passed"
+        },
+        {
+          "field": "signature",
+          "status": "passed"
+        },
+        {
+          "field": "equationOrderIndex",
+          "status": "passed"
+        },
+        {
+          "field": "fieldDiscriminant",
+          "status": "passed"
+        },
+        {
+          "field": "candidate.classNumber",
+          "status": "passed"
+        },
+        {
+          "field": "candidate.invariantFactors",
+          "status": "passed"
+        },
+        {
+          "field": "completion.classNumber",
+          "status": "passed"
+        },
+        {
+          "field": "completion.invariantFactors",
+          "status": "passed"
+        },
+        {
+          "field": "unitRank",
+          "status": "passed"
+        }
+      ],
+      "fieldId": "generated-d3-0010-a6ee1623294b",
+      "status": "passed"
+    },
+    {
+      "checks": [
+        {
+          "field": "polynomialAscending",
+          "status": "passed"
+        },
+        {
+          "field": "signature",
+          "status": "passed"
+        },
+        {
+          "field": "equationOrderIndex",
+          "status": "passed"
+        },
+        {
+          "field": "fieldDiscriminant",
+          "status": "passed"
+        },
+        {
+          "field": "candidate.classNumber",
+          "status": "passed"
+        },
+        {
+          "field": "candidate.invariantFactors",
+          "status": "passed"
+        },
+        {
+          "field": "completion.classNumber",
+          "status": "passed"
+        },
+        {
+          "field": "completion.invariantFactors",
+          "status": "passed"
+        },
+        {
+          "field": "unitRank",
+          "status": "passed"
+        }
+      ],
+      "fieldId": "generated-d3-0024-5ec686536776",
+      "status": "passed"
+    },
+    {
+      "checks": [
+        {
+          "field": "polynomialAscending",
+          "status": "passed"
+        },
+        {
+          "field": "signature",
+          "status": "passed"
+        },
+        {
+          "field": "equationOrderIndex",
+          "status": "passed"
+        },
+        {
+          "field": "fieldDiscriminant",
+          "status": "passed"
+        },
+        {
+          "field": "candidate.classNumber",
+          "status": "passed"
+        },
+        {
+          "field": "candidate.invariantFactors",
+          "status": "passed"
+        },
+        {
+          "field": "completion.classNumber",
+          "status": "passed"
+        },
+        {
+          "field": "completion.invariantFactors",
+          "status": "passed"
+        },
+        {
+          "field": "unitRank",
+          "status": "passed"
+        }
+      ],
+      "fieldId": "h1-real-cubic",
+      "status": "passed"
+    },
+    {
+      "checks": [
+        {
+          "field": "polynomialAscending",
+          "status": "passed"
+        },
+        {
+          "field": "signature",
+          "status": "passed"
+        },
+        {
+          "field": "equationOrderIndex",
+          "status": "passed"
+        },
+        {
+          "field": "fieldDiscriminant",
+          "status": "passed"
+        },
+        {
+          "field": "candidate.classNumber",
+          "status": "passed"
+        },
+        {
+          "field": "candidate.invariantFactors",
+          "status": "passed"
+        },
+        {
+          "field": "completion.classNumber",
+          "status": "passed"
+        },
+        {
+          "field": "completion.invariantFactors",
+          "status": "passed"
+        },
+        {
+          "field": "unitRank",
+          "status": "passed"
+        }
+      ],
+      "fieldId": "row1-index-3-cubic",
+      "status": "passed"
+    },
+    {
+      "checks": [
+        {
+          "field": "polynomialAscending",
+          "status": "passed"
+        },
+        {
+          "field": "signature",
+          "status": "passed"
+        },
+        {
+          "field": "equationOrderIndex",
+          "status": "passed"
+        },
+        {
+          "field": "fieldDiscriminant",
+          "status": "passed"
+        },
+        {
+          "field": "candidate.classNumber",
+          "status": "passed"
+        },
+        {
+          "field": "candidate.invariantFactors",
+          "status": "passed"
+        },
+        {
+          "field": "completion.classNumber",
+          "status": "passed"
+        },
+        {
+          "field": "completion.invariantFactors",
+          "status": "passed"
+        },
+        {
+          "field": "unitRank",
+          "status": "passed"
+        }
+      ],
+      "fieldId": "row6-continuation-cubic",
+      "status": "passed"
+    },
+    {
+      "checks": [
+        {
+          "field": "polynomialAscending",
+          "status": "passed"
+        },
+        {
+          "field": "signature",
+          "status": "passed"
+        },
+        {
+          "field": "equationOrderIndex",
+          "status": "passed"
+        },
+        {
+          "field": "fieldDiscriminant",
+          "status": "passed"
+        },
+        {
+          "field": "candidate.classNumber",
+          "status": "passed"
+        },
+        {
+          "field": "candidate.invariantFactors",
+          "status": "passed"
+        },
+        {
+          "field": "completion.classNumber",
+          "status": "passed"
+        },
+        {
+          "field": "completion.invariantFactors",
+          "status": "passed"
+        },
+        {
+          "field": "unitRank",
+          "status": "passed"
+        }
+      ],
+      "fieldId": "small-class-number-2",
+      "status": "passed"
+    },
+    {
+      "checks": [
+        {
+          "field": "polynomialAscending",
+          "status": "passed"
+        },
+        {
+          "field": "signature",
+          "status": "passed"
+        },
+        {
+          "field": "equationOrderIndex",
+          "status": "passed"
+        },
+        {
+          "field": "fieldDiscriminant",
+          "status": "passed"
+        },
+        {
+          "field": "candidate.classNumber",
+          "status": "passed"
+        },
+        {
+          "field": "candidate.invariantFactors",
+          "status": "passed"
+        },
+        {
+          "field": "completion.classNumber",
+          "status": "passed"
+        },
+        {
+          "field": "completion.invariantFactors",
+          "status": "passed"
+        },
+        {
+          "field": "unitRank",
+          "status": "passed"
+        }
+      ],
+      "fieldId": "small-class-number-3",
+      "status": "passed"
+    },
+    {
+      "checks": [
+        {
+          "field": "polynomialAscending",
+          "status": "passed"
+        },
+        {
+          "field": "signature",
+          "status": "passed"
+        },
+        {
+          "field": "equationOrderIndex",
+          "status": "passed"
+        },
+        {
+          "field": "fieldDiscriminant",
+          "status": "passed"
+        },
+        {
+          "field": "candidate.classNumber",
+          "status": "passed"
+        },
+        {
+          "field": "candidate.invariantFactors",
+          "status": "passed"
+        },
+        {
+          "field": "completion.classNumber",
+          "status": "passed"
+        },
+        {
+          "field": "completion.invariantFactors",
+          "status": "passed"
+        },
+        {
+          "field": "unitRank",
+          "status": "passed"
+        }
+      ],
+      "fieldId": "small-class-number-4",
+      "status": "passed"
+    },
+    {
+      "checks": [
+        {
+          "field": "polynomialAscending",
+          "status": "passed"
+        },
+        {
+          "field": "signature",
+          "status": "passed"
+        },
+        {
+          "field": "equationOrderIndex",
+          "status": "passed"
+        },
+        {
+          "field": "fieldDiscriminant",
+          "status": "passed"
+        },
+        {
+          "field": "candidate.classNumber",
+          "status": "passed"
+        },
+        {
+          "field": "candidate.invariantFactors",
+          "status": "passed"
+        },
+        {
+          "field": "completion.classNumber",
+          "status": "passed"
+        },
+        {
+          "field": "completion.invariantFactors",
+          "status": "passed"
+        },
+        {
+          "field": "unitRank",
+          "status": "passed"
+        }
+      ],
+      "fieldId": "small-class-number-6",
+      "status": "passed"
+    },
+    {
+      "checks": [
+        {
+          "field": "polynomialAscending",
+          "status": "passed"
+        },
+        {
+          "field": "signature",
+          "status": "passed"
+        },
+        {
+          "field": "equationOrderIndex",
+          "status": "passed"
+        },
+        {
+          "field": "fieldDiscriminant",
+          "status": "passed"
+        },
+        {
+          "field": "candidate.classNumber",
+          "status": "passed"
+        },
+        {
+          "field": "candidate.invariantFactors",
+          "status": "passed"
+        },
+        {
+          "field": "completion.classNumber",
+          "status": "passed"
+        },
+        {
+          "field": "completion.invariantFactors",
+          "status": "passed"
+        },
+        {
+          "field": "unitRank",
+          "status": "passed"
+        }
+      ],
+      "fieldId": "small-discriminant-49",
+      "status": "passed"
+    },
+    {
+      "checks": [
+        {
+          "field": "polynomialAscending",
+          "status": "passed"
+        },
+        {
+          "field": "signature",
+          "status": "passed"
+        },
+        {
+          "field": "equationOrderIndex",
+          "status": "passed"
+        },
+        {
+          "field": "fieldDiscriminant",
+          "status": "passed"
+        },
+        {
+          "field": "candidate.classNumber",
+          "status": "passed"
+        },
+        {
+          "field": "candidate.invariantFactors",
+          "status": "passed"
+        },
+        {
+          "field": "completion.classNumber",
+          "status": "passed"
+        },
+        {
+          "field": "completion.invariantFactors",
+          "status": "passed"
+        },
+        {
+          "field": "unitRank",
+          "status": "passed"
+        }
+      ],
+      "fieldId": "small-x3-x-1",
+      "status": "passed"
+    }
+  ],
+  "comparisonFields": [
+    "polynomialAscending",
+    "signature",
+    "equationOrderIndex",
+    "fieldDiscriminant",
+    "classNumber",
+    "invariantFactors",
+    "unitRank"
+  ],
+  "degree": 3,
+  "failurePolicy": "preserve-every-public-case-and-every-failed-check",
+  "heldOutCompared": false,
+  "oracleIdentitySha256": "e6eb5e0cbd901791cf232ff03d946b1ee4b4a924659616bd24ddc0c02d14742f",
+  "partition": "open",
+  "privateEvidenceSha256": "585ccd969c2df2fa165138a07ce7247553fa02acd50741c1f76b09c0d30008b6",
+  "publicReceipt": {
+    "executionCommit": "1f4237449e31ef87a4b5d7ff4c4b57bea1364c9d",
+    "sha256": "54a94785efe43da991cb79e66f3796156f95cbf8eeaa0f0ac7b876ab42a04411",
+    "sourceClosureSha256": "4f2fd077f81710157170273984f8b35f30397f424317105c8a7afd2c2257749c"
+  },
+  "rustExecution": "not-launched-private-evidence-opened-only-after-public-run",
+  "schema": "sagejs.rust-class-group/public-cubic-open-oracle-receipt-v1",
+  "status": "passed",
+  "traceContractSha256": "2e4f10b85601930c89bf94ef2b92db06b79f4ab11361a9fb4c675d5eab37eafe",
+  "verifierSources": {
+    "configSha256": "27f532f67dd64d039013c1523a7f5bc421da402cec561c731578360aff5260a5",
+    "runnerSha256": "c8e9d2e7809575aed7c063b7b7b8c80ac000e9fb39c05795b0e183fafbc85afd"
+  }
+}

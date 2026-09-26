@@ -4,12 +4,15 @@ export interface NativeCompileOptions {
   sourceKey?: string;
   cacheRoot?: string;
   functions?: string[];
+  /** Native exact-integer representations retained in this artifact. */
+  integerBackends?: Array<"tagged" | "gmp">;
 }
 
 export interface NativeCompileResult {
   addonPath: string;
   cacheKey: string;
   cached: boolean;
+  integerBackends: ReadonlyArray<"tagged" | "gmp">;
   ir: {
     version: number;
     functions: ReadonlyArray<{

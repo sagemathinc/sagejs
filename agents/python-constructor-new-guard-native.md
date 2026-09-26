@@ -15,8 +15,9 @@ even an explicit ordinary `__init__` paid generic member lookup, Python truth
 conversion, and identity plumbing on every construction.
 
 The two internal helpers now express the same bounded traversal and cache
-protocol as raw JavaScript in their owning builtins module. The semantic
-boundary is unchanged:
+protocol as raw JavaScript in the shared bootstrap boundary used by builtins.
+`builtins.py` remains ordinary strict Python source. The semantic boundary is
+unchanged:
 
 - direct and bound `object.__init__` are recognized;
 - synthetic forwarding chains are followed for at most 100 links;
@@ -72,12 +73,11 @@ function and method calls remain roughly 12.8x. This is not closure of M5.
 - All six pinned traitlets checks and the pinned decorator 5.2.1 and attrs
   25.4.0 workflows pass.
 - Strict CPython syntax, Ruff 0.16.0, and Pyright pass for 404 modules; merge
-  invariants pass.
-- Core runtime is 902,325/903,000 bytes. No source, startup, browser, or
+  invariants and the baselib raw-source boundary pass.
+- Core runtime is 902,448/903,000 bytes. No source, startup, browser, or
   performance budget changed.
-- The local startup gate is not a passing receipt: the candidate measured
-  415.5 ms normalized and its exact parent measured 411.9 ms, both above the
-  unchanged 400 ms budget. No budget was widened; merge-owned CI must supply
-  the startup/browser receipt.
+- The source-current routine suite passes, including the unchanged startup
+  regression budget and all 225 portable tests. No budget was widened.
 
-The branch remains queued behind PR #316. It is not a release action.
+PR #316 is merged; this branch is its direct follow-up. It is not a release
+action.

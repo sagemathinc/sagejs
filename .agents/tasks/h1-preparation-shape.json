@@ -1,0 +1,185 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "h1-preparation-shape",
+  "title": "Qualify private IntegerBuffer state layouts",
+  "lane": "native-compiler",
+  "status": "review",
+  "owner": "user",
+  "objective": "Derive a complete authenticated private IntegerBuffer layout from the fused H1 call graph, activate capacity-reuse only for proven nonescaping owners, and retain canonical public boundaries and fail-closed fallback",
+  "base_commit": "42efed5871d7db3d334ecfbf77db8c2762ab1fce",
+  "claims": [
+    "bench/pari-class-group-port/check_h1_preparation_shape.cjs",
+    "bench/pari-class-group-port/check_h1_fused_attribution.cjs",
+    "bench/pari-class-group-port/h1_preparation_shape_result.json",
+    "bench/pari-class-group-port/h1_preparation_shape_audit.md",
+    "tools/native-kernel/private-integer-buffer-authority.cjs",
+    "tools/native-kernel/private-integer-buffer-emitter.cjs",
+    "tools/native-kernel/private-integer-buffer-layout.cjs",
+    "tools/native-kernel/c-backend.cjs",
+    "tools/native-kernel/test/private-integer-buffer-authority.cjs",
+    "tools/native-kernel/test/private-integer-buffer-emitter.cjs",
+    "tools/native-kernel/test/private-integer-buffer-alias.cjs",
+    "tools/native-kernel/test/private-integer-buffer-host-core.cjs",
+    "tools/native-kernel/test/private-integer-buffer-layout.cjs",
+    "bench/pari-class-group-port/check_h1_private_integer_buffer_candidates.cjs",
+    "bench/pari-class-group-port/h1_private_integer_buffer_layout.json",
+    "bench/pari-class-group-port/h1_private_integer_buffer_candidates.json",
+    "bench/pari-class-group-port/h1_private_integer_buffer_candidates_audit.md",
+    "bench/pari-class-group-port/h1_private_integer_buffer_qualification.json",
+    "bench/pari-class-group-port/h1_private_integer_buffer_qualification_audit.md",
+    "bench/pari-class-group-port/h1_private_integer_buffer_qualification_manifest.json",
+    "bench/pari-class-group-port/h1_private_integer_buffer_qualification_manifest.sha256"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "same-source",
+    "oracles": [
+      "authenticated fused H1 hashes, counters, RNG, root, and p192 getfu",
+      "checked dynamic fallback"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "not-applicable",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "bounded instrumented addon build and exact baseline profile",
+      "result": "passed; 323.165s build, 2390424 KiB peak, frozen evidence exact"
+    },
+    {
+      "command": "authenticated capacity-one exact control",
+      "result": "passed; preparation improved 20.91%, frozen evidence exact"
+    },
+    {
+      "command": "bounded noncanonical no-clear diagnostic build and exact profile",
+      "result": "passed; 315.816s build, 2390268 KiB peak, preparation improved 91.43%, frozen evidence exact"
+    },
+    {
+      "command": "node --check bench/pari-class-group-port/check_h1_fused_attribution.cjs",
+      "result": "passed"
+    },
+    {
+      "command": "python3 -m json.tool bench/pari-class-group-port/h1_preparation_shape_result.json",
+      "result": "passed"
+    },
+    {
+      "command": "node --test tools/native-kernel/test/private-integer-buffer-authority.cjs",
+      "result": "passed; closed graph authority and all required revocations"
+    },
+    {
+      "command": "node --test tools/native-kernel/test/private-integer-buffer-authority.cjs tools/native-kernel/test/private-integer-buffer-emitter.cjs",
+      "result": "passed; six authority, history, hash, boundary, revocation, and unchanged-public-path probes"
+    },
+    {
+      "command": "node --test tools/native-kernel/test/private-integer-buffer-authority.cjs tools/native-kernel/test/private-integer-buffer-emitter.cjs tools/native-kernel/test/private-integer-buffer-host-core.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.827,
+      "started_at": "2026-09-17T14:45:22.484Z",
+      "commit": "87cc02df95fad2d9c8989d4d566f5625643c1c86",
+      "workspace_fingerprint": "1adb449889b8d2e760f4f3f8d3c5bc9c0fa994710a5be057788efa5198c72123",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "cc -std=gnu11 -fsyntax-only on generated authorized private-buffer fused host core",
+      "result": "passed; 100159479-byte instrumented core is syntactically valid"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "passed"
+    },
+    {
+      "command": "node --test tools/native-kernel/test/private-integer-buffer-authority.cjs tools/native-kernel/test/private-integer-buffer-emitter.cjs tools/native-kernel/test/private-integer-buffer-host-core.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.774,
+      "started_at": "2026-09-17T14:46:42.796Z",
+      "commit": "87cc02df95fad2d9c8989d4d566f5625643c1c86",
+      "workspace_fingerprint": "94c8f4bd48f1d56ce90a74a678edef588ea77d352f91fae29575e84b56b3edde",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "one-job authority-wired fused H1 build plus profile-only exact replay",
+      "result": "passed; build 333s/2441448 KiB, profile 5s/1006424 KiB; preparation improved 16.95%; all frozen evidence exact"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 13.069,
+      "started_at": "2026-09-17T14:47:10.738Z",
+      "commit": "87cc02df95fad2d9c8989d4d566f5625643c1c86",
+      "workspace_fingerprint": "94c8f4bd48f1d56ce90a74a678edef588ea77d352f91fae29575e84b56b3edde",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/pari-class-group-port/check_h1_private_integer_buffer_candidates.cjs plus frozen-result consistency check",
+      "result": "passed; 348 IntegerBuffers classified as 328 private candidates, 20 public/read-only buffers, and zero rejected; authenticated inventory and candidate hashes exact"
+    },
+    {
+      "command": "node --test tools/native-kernel/test/private-integer-buffer-authority.cjs tools/native-kernel/test/private-integer-buffer-layout.cjs tools/native-kernel/test/private-integer-buffer-emitter.cjs tools/native-kernel/test/private-integer-buffer-host-core.cjs",
+      "result": "passed; 14 authority, layout mutation, alias/raw/escape revocation, canonicalization, public ABI, and target-C probes"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "passed after full-layout wiring"
+    },
+    {
+      "command": "one-job full-layout fused H1 build plus one exact profile under 600s wall and aggregate 4GiB RSS",
+      "result": "passed; build 350.278s/2396592 KiB, profile 98.065s/2378796 KiB including exhaustive post-timing canonical scan; preparation improved 89.23% and inclusive root 41.24%; all 348 IntegerBuffers canonical and all frozen evidence exact"
+    },
+    {
+      "command": "node --test tools/native-kernel/test/private-integer-buffer-authority.cjs tools/native-kernel/test/private-integer-buffer-layout.cjs tools/native-kernel/test/private-integer-buffer-emitter.cjs tools/native-kernel/test/private-integer-buffer-host-core.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.884,
+      "started_at": "2026-09-17T15:20:52.409Z",
+      "commit": "f29195caed3d4cc6027f36bc6ea87dfdc1df2afe",
+      "workspace_fingerprint": "3eb41f24d97300434d7bd2e49f1611c7afce96baa9bdb49d41af13cb5de425bb",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 14.161,
+      "started_at": "2026-09-17T15:20:54.105Z",
+      "commit": "f29195caed3d4cc6027f36bc6ea87dfdc1df2afe",
+      "workspace_fingerprint": "3eb41f24d97300434d7bd2e49f1611c7afce96baa9bdb49d41af13cb5de425bb",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test tools/native-kernel/test/private-integer-buffer-alias.cjs tools/native-kernel/test/private-integer-buffer-authority.cjs tools/native-kernel/test/private-integer-buffer-layout.cjs tools/native-kernel/test/private-integer-buffer-emitter.cjs tools/native-kernel/test/private-integer-buffer-host-core.cjs",
+      "result": "passed; 15 tests including same/partial sizes and limbs overlap across private/private and private/public owners"
+    },
+    {
+      "command": "qualification manifest SHA and scratch receipt mode/hash verification",
+      "result": "passed; manifest SHA b82b26d49bb233915ab5368e4b629f232bdae43fcf7d4671e3fb27e12c30d7f4 and five receipts mode 0444"
+    }
+  ],
+  "handoff": {
+    "summary": "Generalized private IntegerBuffer authority from one named buffer to an authenticated state-layout manifest derived from the complete fused H1 call graph. The static audit classifies all 348 root IntegerBuffers as 328 written private candidates, 20 public/read-only buffers, and zero rejected. Runtime activation now additionally requires every sizes/limbs range across all root IntegerBuffers to be pairwise disjoint; any same or partial private/private or private/public alias fails closed to ordinary clearing. The bounded full-layout fused replay passes with every frozen relation/compact/owner/RNG/counter/root/getfu value exact and all 348 packed buffers exhaustively canonical after publication. Preparation falls from 1.533s to 165ms (89.23%) and the inclusive root from 2.382s to 1.399s (41.24%); compact/getfu is now the 1.106s dominant stage.",
+    "risks": [
+      "Global no-clear violates the public canonical IntegerBuffer ABI and must not be restored.",
+      "Only five candidates have individual cleared-word counters; the exact full-layout gain is measured but 323 per-buffer contributions remain unattributed.",
+      "The performance result is one diagnostic profile, not a paired qualification timing distribution.",
+      "Broader raw-buffer cross-backend qualification remains required before enabling private authority beyond authenticated private roots."
+    ],
+    "next_steps": [
+      "Review and integrate the qualified full-layout authority without broadening it beyond authenticated private roots.",
+      "Attack compact/getfu, now 79.04% of the fused root, as a separately measured optimization hypothesis."
+    ]
+  }
+}

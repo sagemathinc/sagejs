@@ -1,0 +1,181 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "pari-e2e-final-result-replay",
+  "title": "Phase 5 immutable result and cold replay",
+  "lane": "arithmetic-algebra",
+  "status": "review",
+  "owner": "final_result_replay",
+  "objective": "Implement a versioned immutable internal PARI class-group result envelope with atomic idempotent publication and independent fail-closed cold replay over prepared candidates plus optional transform, unit, and generator evidence",
+  "base_commit": "6a43c61902dd7169c0345b089d3785ae520f8eff",
+  "claims": [
+    "bench/pari-class-group-port/class_group_internal_result.py",
+    "bench/pari-class-group-port/check_class_group_internal_result.cjs",
+    "bench/pari-class-group-port/class_group_internal_result.md"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "not-applicable",
+    "oracles": [
+      "Independent canonical decode plus exact integer matrix and transcript replay"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "not-applicable",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "node bench/pari-class-group-port/check_class_group_internal_result.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.156,
+      "started_at": "2026-09-16T23:09:39.331Z",
+      "commit": "6a43c61902dd7169c0345b089d3785ae520f8eff",
+      "workspace_fingerprint": "8ce8c06139759669bfd3c596db8462cb8810f588f9a6da34f94b3df5fc9539db",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm exec pyright bench/pari-class-group-port/class_group_internal_result.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.944,
+      "started_at": "2026-09-16T23:09:40.421Z",
+      "commit": "6a43c61902dd7169c0345b089d3785ae520f8eff",
+      "workspace_fingerprint": "8ce8c06139759669bfd3c596db8462cb8810f588f9a6da34f94b3df5fc9539db",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm exec ruff check bench/pari-class-group-port/class_group_internal_result.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.537,
+      "started_at": "2026-09-16T23:09:43.120Z",
+      "commit": "6a43c61902dd7169c0345b089d3785ae520f8eff",
+      "workspace_fingerprint": "8ce8c06139759669bfd3c596db8462cb8810f588f9a6da34f94b3df5fc9539db",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/pari-class-group-port/check_class_group_internal_result.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.141,
+      "started_at": "2026-09-16T23:11:17.262Z",
+      "commit": "6a43c61902dd7169c0345b089d3785ae520f8eff",
+      "workspace_fingerprint": "c9b9cb1ab540c6a5d5f0b51e17a070b3506c9eaa56a9edbeb058cd27c4edbfae",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 8.738,
+      "started_at": "2026-09-16T23:11:18.155Z",
+      "commit": "6a43c61902dd7169c0345b089d3785ae520f8eff",
+      "workspace_fingerprint": "c9b9cb1ab540c6a5d5f0b51e17a070b3506c9eaa56a9edbeb058cd27c4edbfae",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 59.181,
+      "started_at": "2026-09-16T23:11:37.923Z",
+      "commit": "6a43c61902dd7169c0345b089d3785ae520f8eff",
+      "workspace_fingerprint": "eb3c2741f35414b22743c775c4c0ff89375d163250a8cf075ead46497922a46d",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 1.439,
+      "started_at": "2026-09-16T23:12:42.614Z",
+      "commit": "6a43c61902dd7169c0345b089d3785ae520f8eff",
+      "workspace_fingerprint": "eb3c2741f35414b22743c775c4c0ff89375d163250a8cf075ead46497922a46d",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/pari-class-group-port/check_class_group_internal_result.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.163,
+      "started_at": "2026-09-16T23:27:05.762Z",
+      "commit": "6a43c61902dd7169c0345b089d3785ae520f8eff",
+      "workspace_fingerprint": "edc70155fe024085cc8ab538180fcaa2f1f9c331f5a247ae0c9734a2bda213ea",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm exec pyright bench/pari-class-group-port/class_group_internal_result.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.554,
+      "started_at": "2026-09-16T23:27:06.632Z",
+      "commit": "6a43c61902dd7169c0345b089d3785ae520f8eff",
+      "workspace_fingerprint": "edc70155fe024085cc8ab538180fcaa2f1f9c331f5a247ae0c9734a2bda213ea",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 60.721,
+      "started_at": "2026-09-16T23:27:08.870Z",
+      "commit": "6a43c61902dd7169c0345b089d3785ae520f8eff",
+      "workspace_fingerprint": "75d1a34d1f8d4728520d7bba440fdcbe26803b8df2e752279a0107c4fa0eeed5",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 64.486,
+      "started_at": "2026-09-16T23:29:11.522Z",
+      "commit": "6a43c61902dd7169c0345b089d3785ae520f8eff",
+      "workspace_fingerprint": "9ded80a3439562e0875b43ddd17aade81e7c6d5af665694f58f27fe3001a16da",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1314.759,
+      "started_at": "2026-09-16T23:30:20.118Z",
+      "commit": "6a43c61902dd7169c0345b089d3785ae520f8eff",
+      "workspace_fingerprint": "9ded80a3439562e0875b43ddd17aade81e7c6d5af665694f58f27fe3001a16da",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 12.071,
+      "started_at": "2026-09-16T23:52:26.586Z",
+      "commit": "6a43c61902dd7169c0345b089d3785ae520f8eff",
+      "workspace_fingerprint": "9ded80a3439562e0875b43ddd17aade81e7c6d5af665694f58f27fe3001a16da",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Added the versioned sagejs.pari-class-group/internal-result-v1 boundary. Prepared native owners are detached by explicit logical lengths with column-major matrices normalized to row-major schema data. Cold replay proves two-way relation-lattice/HNF inclusion, exact Smith transformations and inverses, decreasing PARI invariant factors, canonical generator coverage and orders, linked factored-unit norms, and a candidate-selected scaled-log determinant. Publication validates before a locked one-time assignment, is idempotent by canonical bytes, rejects conflicting terminal results, and enforces optional pinned publication authority. The status is deliberately published-partial-v1: schema_components_present is only presence, while phase5_complete and public_complete remain false with five explicit unverified requirements. The focused check covers 55 authenticated mutations, 13 rehashed semantic mutations, one pinned retained-evidence mutation, invalid-before-publication behavior, concurrent idempotence, the independent review's coordinated unrelated-evidence counterexample, and the authentic 303-relation rectangular corridor. Independent re-review found no remaining high-severity issue. Final strict Python and the full 21-minute native correctness/performance gate pass after a clean build.",
+    "risks": [
+      "Ideal HNFs, principal-generator coordinates, torsion coordinates, and factored unit elements are authenticated retained data, not yet independently replayed through number-field ideal/unit arithmetic; the terminal record therefore cannot claim Phase-5 completeness.",
+      "After the clean build, the architecture audit passes FFI, package, numerical, native, Wasm, resource, and CoWasm checks, then stops because the base integration commit's optimizer-opportunity manifest predates its compiler changes. This lane changes only new bench Python/CJS/Markdown files; the integration owner is already regenerating that shared manifest.",
+      "The initial strict run caught and led to correction of doubled-backtick docstring syntax. Final strict Python and the complete native correctness/performance gate pass."
+    ],
+    "next_steps": [
+      "Wire authentic Phase-3 transformation evidence into the two lattice-inclusion witnesses and Smith fields.",
+      "Extend independent replay with exact ideal multiplication/principality, exact unit/torsion arithmetic, rigorous regulator acceptance, factor-base authentication, and the complete buchall_end state before changing phase5_complete.",
+      "Regenerate the shared optimizer-opportunity manifest on the merged integration checkpoint, then rerun the complete architecture audit."
+    ]
+  }
+}

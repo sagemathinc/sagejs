@@ -1,0 +1,96 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "quartic-signed-genback",
+  "title": "Quartic signed genback extension",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "nf_cxlog_inventory",
+  "objective": "Extend authentic mixed-quartic class assembly through the first Uir column requiring prime powers or products, or isolate the next exact primitive",
+  "base_commit": "b96ea2dca265e46fe9a63a0d6b9fd3bc8ba38a6c",
+  "claims": [
+    "bench/pari-class-group-port/quartic_signed_genback.py",
+    "bench/pari-class-group-port/check_quartic_signed_genback.cjs",
+    "bench/pari-class-group-port/quartic_signed_genback_results.md"
+  ],
+  "dependencies": [],
+  "references": [
+    "PARI 2.17.4 src/basemath/buch2.c genback"
+  ],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "Pinned pristine PARI 2.17.4",
+      "native GMP and tagged differential replay"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "fallback",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "node bench/pari-class-group-port/check_quartic_signed_genback.cjs",
+    "pnpm architecture:check",
+    "pnpm parallel:check",
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "node bench/pari-class-group-port/check_quartic_signed_genback.cjs",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 0.042,
+      "started_at": "2026-09-17T01:54:55.559Z",
+      "commit": "b96ea2dca265e46fe9a63a0d6b9fd3bc8ba38a6c",
+      "workspace_fingerprint": "bd31e0cdf2afde0b1a1fbe8d61689466fb6b9291f7775342612fd761d909d4e6",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/pari-class-group-port/check_quartic_signed_genback.cjs",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 0.082,
+      "started_at": "2026-09-17T01:55:00.962Z",
+      "commit": "b96ea2dca265e46fe9a63a0d6b9fd3bc8ba38a6c",
+      "workspace_fingerprint": "bd31e0cdf2afde0b1a1fbe8d61689466fb6b9291f7775342612fd761d909d4e6",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/pari-class-group-port/check_quartic_signed_genback.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 15.152,
+      "started_at": "2026-09-17T01:55:25.191Z",
+      "commit": "b96ea2dca265e46fe9a63a0d6b9fd3bc8ba38a6c",
+      "workspace_fingerprint": "bd31e0cdf2afde0b1a1fbe8d61689466fb6b9291f7775342612fd761d909d4e6",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/pari-class-group-port/check_quartic_signed_genback.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 14.856,
+      "started_at": "2026-09-17T01:56:01.247Z",
+      "commit": "b96ea2dca265e46fe9a63a0d6b9fd3bc8ba38a6c",
+      "workspace_fingerprint": "2daae5538eaa2b4c899ba713468a265c467db0221f64b1f7abb98db70c898b7b",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Implements exact degree-four ideal multiplication, scaled inversion, signed power/product scheduling, multiword composite HNF, and computed non-scalar T2/LLL reduction for the authentic x^4-200000002*x-200000002 Smith column (-2,-1,-1). The connected checker matches pristine PARI's two G columns and seven ordered Ge factors in CPython/JS/GMP/tagged and rejects a mutated candidate atomically.",
+    "risks": [
+      "The focused lane proves one frozen degree-four schedule, not a generic arbitrary-degree genback API.",
+      "Broad test:native/build gates are deferred to the converged integration tree; architecture:check and the focused native checker passed here."
+    ],
+    "next_steps": [
+      "Consume the seven non-scalar Ge factors with mixed-signature quartic nf_cxlog, then finish Ga/GD/ga/clg2 assembly and independent replay."
+    ]
+  }
+}

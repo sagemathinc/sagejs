@@ -1,0 +1,50 @@
+{
+  "schema": "sagejs.rust-class-group/public-cubic-heldout-corpus-config-v1",
+  "panel": "../corpus/qualified-neutral-panel-v1.json",
+  "selectionReceipt": "../corpus/qualification-selection-receipt-v1.json",
+  "partition": "heldOut",
+  "degree": 3,
+  "expectedCaseCount": 12,
+  "proofMode": "conditional-grh",
+  "confirmationPolicy": {
+    "schema": "sagejs.rust-class-group/heldout-cubic-confirmation-policy-v1",
+    "seed": "sagejs-rust-class-group-heldout-cubic-confirmation-v1-2026-09-20",
+    "selectionAlgorithm": "qualified-unused-candidates-seeded-sha256-v1",
+    "excludeOriginalQualificationPanel": true,
+    "freezeBeforeInitialHeldoutExecution": true,
+    "failureCasesRemainPermanentRegressions": true,
+    "fixRequiresUntouchedConfirmationSet": true,
+    "confirmationFailureRequiresNewSeedAndVersion": true,
+    "neverRemoveOrReplaceFailure": true
+  },
+  "externalLimits": {
+    "wallMillisecondsPerCase": 600000,
+    "memoryBytesPerCase": 4294967296
+  },
+  "publicResources": {
+    "maximumTrialDivisor": 10000,
+    "maximumIrreducibilityPrime": 257,
+    "embeddingPrecisionBits": 192,
+    "maximumVisitedIdeals": 1000000,
+    "maximumCandidates": 1000000,
+    "maximumNormalFormEntries": 10000000,
+    "maximumNormalFormOperations": 50000000,
+    "maximumRelationExponent": 256,
+    "maximumVerificationMultiplyAdds": 100000000,
+    "maximumPrincipalFactorTerms": 10000000,
+    "maximumCompactGenerators": 16384,
+    "maximumCompactSurplusRows": 32,
+    "maximumCompactSaturationMinorTrials": 32768,
+    "maximumCompactDependencyEntries": 1000000,
+    "maximumCompactTargetCoefficientBits": 1000000,
+    "logarithmPrecisionBits": 4096,
+    "replayPrecisionBits": 2048,
+    "analyticPrecisionBits": 512,
+    "maximumRelations": 10000,
+    "maximumDependencies": 1000,
+    "maximumKernelCoefficientBits": 4080,
+    "maximumUnitExponentBits": 8192,
+    "maximumReconstructionDenominatorBits": 4096,
+    "maximumAnalyticThreshold": 23994
+  }
+}

@@ -155,6 +155,7 @@ async function inventoryProductionKernels({ root, manifestPath }) {
       root,
       lowerSource,
       initialSourcePath: sourcePath,
+      initialDisplayPath: logicalSource,
       displayPath: (filename) => relative(root, filename).replaceAll("\\", "/"),
     });
     const ir = await lowerSource(source, logicalSource, {

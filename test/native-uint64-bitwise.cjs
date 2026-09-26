@@ -330,7 +330,7 @@ except OverflowError as error:
 
 test("uint64 bitwise IR is canonical, typed, and inspectable", async () => {
   const ir = await lowerSource(source, "uint64-bitwise.py");
-  assert.equal(ir.version, 39);
+  assert.equal(ir.version, 46);
   const operations = ir.functions.flatMap((fn) => walkOperations(fn.body));
   assert.deepEqual(
     new Set(operations
@@ -353,16 +353,27 @@ test("uint64 bitwise IR is canonical, typed, and inspectable", async () => {
   assert.match(core, /\s<<\s/);
   assert.match(core, /\s>>\s/);
 
+  const integerAnd = await lowerSource(
+    "# sagejs: native-bitwise\n" +
+      "from sagejs.native import native\n" +
+      "@native\n" +
+      "def integer_and(left: Integer, right: Integer) -> Integer:\n" +
+      "    return left & right\n",
+    "integer-bitwise.py",
+  );
+  assert.ok(walkOperations(integerAnd.functions[0].body).some(
+    (operation) => operation.kind === "integer.binary" && operation.operation === "and",
+  ));
   await assert.rejects(
     lowerSource(
       "# sagejs: native-bitwise\n" +
         "from sagejs.native import native\n" +
         "@native\n" +
         "def rejected(left: Integer, right: Integer) -> Integer:\n" +
-        "    return left & right\n",
+        "    return left | right\n",
       "integer-bitwise.py",
     ),
-    /uint64 operator & requires uint64 operands/,
+    /uint64 operator \| requires uint64 operands/,
   );
 });
 
@@ -469,7 +480,7 @@ test("uint64 native, JavaScript, and CPython paths agree", async () => {
 
     const explanation = await explainKernel({ sourcePath });
     assert.equal(explanation.eligible, true);
-    assert.equal(explanation.version, 39);
+    assert.equal(explanation.version, 46);
     for (const fn of explanation.functions) {
       assert.deepEqual(fn.analysis.uint64, semantics, fn.name);
     }

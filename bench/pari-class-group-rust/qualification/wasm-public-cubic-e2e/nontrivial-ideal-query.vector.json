@@ -1,0 +1,51 @@
+{
+  "request": {
+    "schema": "sagejs.rust-class-group/public-cubic-arbitrary-ideal-query-request-v1",
+    "completionRequest": {
+      "schema": "sagejs.rust-class-group/public-cubic-e2e-request-v2",
+      "polynomialAscending": ["-29", "-30", "-8", "1"],
+      "proofMode": "conditional-grh",
+      "resources": {
+        "maximumTrialDivisor": 10000,
+        "maximumIrreducibilityPrime": 257,
+        "embeddingPrecisionBits": 192,
+        "maximumVisitedIdeals": 10000,
+        "maximumCandidates": 100000,
+        "maximumNormalFormEntries": 10000000,
+        "maximumNormalFormOperations": 50000000,
+        "maximumRelationExponent": 256,
+        "maximumVerificationMultiplyAdds": 100000000,
+        "maximumPrincipalFactorTerms": 10000000,
+        "maximumCompactGenerators": 16384,
+        "maximumCompactSurplusRows": 64,
+        "maximumCompactSaturationMinorTrials": 32768,
+        "maximumCompactDependencyEntries": 1000000,
+        "maximumCompactTargetCoefficientBits": 1000000,
+        "logarithmPrecisionBits": 1024,
+        "replayPrecisionBits": 512,
+        "analyticPrecisionBits": 256,
+        "maximumRelations": 10000,
+        "maximumDependencies": 1000,
+        "maximumKernelCoefficientBits": 4080,
+        "maximumUnitExponentBits": 8192,
+        "maximumReconstructionDenominatorBits": 4096,
+        "maximumAnalyticThreshold": 23994
+      }
+    },
+    "idealIntegralBasisRows": [["1", "0", "2"], ["0", "1", "2"], ["0", "0", "3"]],
+    "resources": {
+      "embeddingPrecisionBits": 320,
+      "maximumCandidates": 2000,
+      "maximumValuation": 64
+    }
+  },
+  "expected": {
+    "schema": "sagejs.rust-class-group/public-cubic-arbitrary-ideal-query-receipt-v1",
+    "outcome": "complete-conditional-grh-ideal-class",
+    "polynomialAscending": ["-29", "-30", "-8", "1"],
+    "classNumber": "2",
+    "classCoordinates": ["1"],
+    "presentationZero": false,
+    "queriedIdealIntegralBasisRows": [["1", "0", "2"], ["0", "1", "2"], ["0", "0", "3"]]
+  }
+}

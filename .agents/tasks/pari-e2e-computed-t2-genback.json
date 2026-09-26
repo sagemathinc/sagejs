@@ -1,0 +1,92 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "pari-e2e-computed-t2-genback",
+  "title": "Computed cubic T2 genback assembly",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "signed_ideal_inventory",
+  "objective": "Replace the frozen x^3-200*x+7 signed-genback T2 candidate tape with source-transparent Sage.js rounded-T2 multiplication and exact PARI LLL scheduling for all five reductions",
+  "base_commit": "89f56812e485f660c575f5a8e2484c7df4f68037",
+  "claims": [
+    "bench/pari-class-group-port/signed_genback_computed_t2.py",
+    "bench/pari-class-group-port/check_signed_genback_computed_t2.cjs",
+    "bench/pari-class-group-port/signed_genback_computed_t2.md"
+  ],
+  "dependencies": [
+    "pari-e2e-signed-genback-assembly"
+  ],
+  "references": [
+    "PARI 2.17.4 base4.c idealred0/idealpseudomin and lll.c ZM_lll"
+  ],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "gmp",
+      "tagged",
+      "Pristine PARI 2.17.4 exact T2/LLL trace"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "fallback",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "node bench/pari-class-group-port/check_signed_genback_computed_t2.cjs",
+    "pnpm test:baselib:strict",
+    "pnpm architecture:check",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "node bench/pari-class-group-port/check_signed_genback_computed_t2.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 30.261,
+      "started_at": "2026-09-17T00:55:51.441Z",
+      "commit": "89f56812e485f660c575f5a8e2484c7df4f68037",
+      "workspace_fingerprint": "c8fbfebf93f79cae9d17c742e06ec9cb2ee14831edcd56070386b54988a1f2fd",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 106.273,
+      "started_at": "2026-09-17T00:56:52.016Z",
+      "commit": "89f56812e485f660c575f5a8e2484c7df4f68037",
+      "workspace_fingerprint": "c8fbfebf93f79cae9d17c742e06ec9cb2ee14831edcd56070386b54988a1f2fd",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 21.722,
+      "started_at": "2026-09-17T00:58:48.716Z",
+      "commit": "89f56812e485f660c575f5a8e2484c7df4f68037",
+      "workspace_fingerprint": "c8fbfebf93f79cae9d17c742e06ec9cb2ee14831edcd56070386b54988a1f2fd",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Replaced the authenticated x^3-200*x+7 candidate input with an ordinary source-transparent implementation of scaled cubic ideal inversion, rounded-T2 basis multiplication, connected FLATTER/fast/DPE LLL selection, and the exact five-step signed-genback schedule. The composition derives [-3,-1] from the real Smith transform, records exact J/B/U/y witnesses, and reaches the established class assembly with no PARI candidate or factor runtime input. Pristine PARI 2.17.4, CPython, JavaScript, GMP, and tagged results agree through h=24 and Ga/GD/ga.",
+    "risks": [
+      "The surrounding scheduler deliberately admits only the frozen two-prime relation [-3,-1], although the single-candidate primitive is not answer-specific.",
+      "The connected LLL entry is full-rank degree three and rejects cases requiring its unported heuristic or proved precision fallbacks.",
+      "The rounded T2 matrix remains prepared input, and cubic scaled inversion retains the modulus-below-2^64 restriction.",
+      "The current transactional composition computes signed ideal arithmetic once to derive candidates and again inside the established assembly; fusion is a performance follow-up."
+    ],
+    "next_steps": [
+      "Fuse computed candidate selection directly into generic signed idealpowred/genback to remove duplicate ideal arithmetic while retaining the same witness owners.",
+      "Generalize the computed scheduler beyond [-3,-1] and lift the degree-three and LLL fallback boundaries against new authenticated traces.",
+      "Connect prepared-field construction of nf_get_roundG so the rounded T2 matrix is no longer supplied at this boundary."
+    ]
+  }
+}

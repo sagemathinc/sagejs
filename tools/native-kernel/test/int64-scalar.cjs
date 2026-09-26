@@ -1,0 +1,426 @@
+"use strict";
+
+const assert = require("node:assert/strict");
+const { mkdtempSync, readFileSync, rmSync, writeFileSync } = require("node:fs");
+const { tmpdir } = require("node:os");
+const { join, resolve } = require("node:path");
+const { spawnSync } = require("node:child_process");
+const test = require("node:test");
+
+const { generateHostCore } = require("../c-backend.cjs");
+const { compileKernel } = require("../compiler.cjs");
+const { analyzeExactModule } = require("../exact-analysis.cjs");
+const { generateFmpzFunctions } = require("../fmpz-backend.cjs");
+const { lowerSource } = require("../ir.cjs");
+const { classifyWasmFunction } = require("../wasm-bridge.cjs");
+
+const root = resolve(__dirname, "../../..");
+const sagejs = join(root, "bin", "sagejs");
+const witnessPath = join(__dirname, "int64_scalar_witness.py");
+const witnessSource = readFileSync(witnessPath, "utf8");
+const exactAugmentedSource = String.raw`
+@native
+def int64_buffer_augmented_exact(
+    values: Int64Buffer, index: int64, increment: int
+) -> int:
+    values[index] += increment
+    return values[index]
+
+@native
+def int64_times_exact(scalar: int64, value: int) -> int:
+    return scalar * value
+`;
+const integerBufferIndexSource = String.raw`
+from sagejs.native import (
+    IntegerBuffer,
+    integer_buffer_get_int64,
+    integer_buffer_mod_addmul_range_from,
+)
+
+@native
+def integer_buffer_int64_index(
+    values: IntegerBuffer, index: int64, replacement: int
+) -> int:
+    previous = values[index]
+    values[index] = replacement
+    return previous
+
+@native
+def integer_buffer_int64_expression_index(
+    values: IntegerBuffer, row: int64, columns: int64, column: int64
+) -> int:
+    return values[row * columns + column]
+
+@native
+def integer_buffer_slot_copy(
+    values: IntegerBuffer, source: int64, destination: int64
+) -> int:
+    values[destination] = values[source]
+    return values[destination]
+
+@native
+def integer_buffer_checked_word(values: IntegerBuffer, index: int64) -> int64:
+    return integer_buffer_get_int64(values, index)
+
+@native
+def integer_buffer_modular_range_update(
+    destination: IntegerBuffer,
+    destination_start: int64,
+    source: IntegerBuffer,
+    source_start: int64,
+    length: int64,
+    multiplier: int64,
+    modulus: int64,
+) -> int64:
+    return integer_buffer_mod_addmul_range_from(
+        destination,
+        destination_start,
+        source,
+        source_start,
+        length,
+        multiplier,
+        modulus,
+    )
+`;
+
+function operations(body) {
+  const result = [];
+  function visit(items) {
+    for (const operation of items || []) {
+      result.push(operation);
+      visit(operation.body);
+      visit(operation.alternative);
+      visit(operation.condition?.operations);
+    }
+  }
+  visit(body);
+  return result;
+}
+
+function emittedFunction(source, marker) {
+  let start = source.indexOf(marker);
+  while (start !== -1 &&
+      source.slice(start, source.indexOf("\n", start)).endsWith(";")) {
+    start = source.indexOf(marker, start + marker.length);
+  }
+  assert.notEqual(start, -1, `missing emitted function ${marker}`);
+  const stop = source.indexOf("\n}\n", start);
+  assert.notEqual(stop, -1, `unterminated emitted function ${marker}`);
+  return source.slice(start, stop + 3);
+}
+
+function run(command, args, options = {}) {
+  const result = spawnSync(command, args, {
+    cwd: root,
+    encoding: "utf8",
+    timeout: 120_000,
+    ...options,
+    env: { ...process.env, ...options.env },
+  });
+  if (result.error) throw result.error;
+  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
+  return result.stdout;
+}
+
+test("int64 lowers to checked signed-word IR and isolated C", async () => {
+  const ir = await lowerSource(
+    `${witnessSource}\n${exactAugmentedSource}\n${integerBufferIndexSource}`,
+    witnessPath,
+  );
+  analyzeExactModule(ir.functions);
+  const arithmetic = operations(ir.functions.find(
+    (fn) => fn.name === "int64_arithmetic",
+  ).body);
+  const helper = operations(ir.functions.find(
+    (fn) => fn.name === "int64_helper",
+  ).body);
+  assert.ok(helper.some((op) =>
+    op.kind === "int64.binary" && op.operation === "mul"
+  ));
+  assert.ok(arithmetic.some((op) =>
+    op.kind === "int64.binary" && op.operation === "floordiv"
+  ));
+  assert.ok(arithmetic.some((op) =>
+    op.kind === "int64.binary" && op.operation === "mod"
+  ));
+  const conversion = operations(ir.functions.find(
+    (fn) => fn.name === "exact_to_int64",
+  ).body);
+  assert.ok(conversion.some((op) => op.kind === "int64.from_integer_checked"));
+  const exactConversion = ir.functions.find((fn) => fn.name === "int64_to_exact");
+  assert.ok(operations(exactConversion.body).some((op) =>
+    op.kind === "integer.from_int64"
+  ));
+  exactConversion.analysis.backend = { kind: "fmpz" };
+  const fmpz = generateFmpzFunctions(ir.functions).functions;
+  assert.match(fmpz, /fmpz_set_(?:si|signed_uiui)/);
+  assert.doesNotMatch(fmpz, /\bmpz_init/);
+  assert.ok(operations(ir.functions.find(
+    (fn) => fn.name === "int64_range_sum",
+  ).body).some((op) => op.kind === "loop.range_int64"));
+  const buffer = operations(ir.functions.find(
+    (fn) => fn.name === "int64_buffer_roundtrip",
+  ).body);
+  assert.ok(buffer.some((op) => op.kind === "int64.buffer.get" &&
+    op.indexType === "int64"));
+  assert.ok(buffer.some((op) => op.kind === "int64.buffer.set" &&
+    op.indexType === "int64"));
+  assert.equal(buffer.some((op) => op.kind === "integer.from_int64"), false);
+  const exactBuffer = operations(ir.functions.find(
+    (fn) => fn.name === "int64_buffer_exact",
+  ).body);
+  assert.ok(exactBuffer.some((op) => op.kind === "int64.buffer.get" &&
+    op.valueType === "Integer"));
+  const integerBuffer = operations(ir.functions.find(
+    (fn) => fn.name === "integer_buffer_int64_index",
+  ).body);
+  assert.ok(integerBuffer.some((op) => op.kind === "integer.buffer.get" &&
+    op.indexType === "int64"));
+  assert.ok(integerBuffer.some((op) => op.kind === "integer.buffer.set" &&
+    op.indexType === "int64"));
+  const integerBufferExpression = operations(ir.functions.find(
+    (fn) => fn.name === "integer_buffer_int64_expression_index",
+  ).body);
+  assert.ok(integerBufferExpression.some((op) =>
+    op.kind === "integer.buffer.get" && op.indexType === "int64"));
+  assert.equal(integerBufferExpression.some((op) =>
+    op.kind === "integer.from_int64"), false);
+  const slotCopy = operations(ir.functions.find(
+    (fn) => fn.name === "integer_buffer_slot_copy",
+  ).body);
+  assert.ok(slotCopy.some((op) => op.kind === "integer.buffer.slot_copy"));
+  const checkedWord = operations(ir.functions.find(
+    (fn) => fn.name === "integer_buffer_checked_word",
+  ).body);
+  assert.ok(checkedWord.some((op) =>
+    op.kind === "integer.buffer.get_int64" && op.indexType === "int64"
+  ));
+  assert.equal(slotCopy.filter((op) => op.kind === "integer.buffer.get").length, 1);
+  const modularRange = operations(ir.functions.find(
+    (fn) => fn.name === "integer_buffer_modular_range_update",
+  ).body);
+  assert.ok(modularRange.some((op) =>
+    op.kind === "integer.buffer.mod_addmul_range_from"
+  ));
+  const augmentedExact = operations(ir.functions.find(
+    (fn) => fn.name === "int64_buffer_augmented_exact",
+  ).body);
+  const augmentedLoad = augmentedExact.find((op) =>
+    op.kind === "int64.buffer.get" && op.buffer === "values"
+  );
+  assert.equal(augmentedLoad.valueType, "int64");
+  const augmentedLoadLocal = ir.functions.find(
+    (fn) => fn.name === "int64_buffer_augmented_exact",
+  ).locals.find((local) => local.name === augmentedLoad.target);
+  assert.equal(augmentedLoadLocal.type, "int64");
+  assert.ok(augmentedExact.some((op) =>
+    op.kind === "integer.from_int64" && op.source === augmentedLoad.target
+  ));
+  const mixedProduct = operations(ir.functions.find(
+    (fn) => fn.name === "int64_times_exact",
+  ).body);
+  assert.ok(mixedProduct.some((op) => op.kind === "integer.mul_int64"));
+  assert.equal(mixedProduct.some((op) => op.kind === "integer.from_int64"), false);
+  const checkedLiteral = operations(ir.functions.find(
+    (fn) => fn.name === "checked_int64_literal",
+  ).body);
+  assert.ok(checkedLiteral.some((op) => op.kind === "int64.constant"));
+  assert.equal(checkedLiteral.some((op) => op.kind.startsWith("integer.")), false);
+  const checkedLength = operations(ir.functions.find(
+    (fn) => fn.name === "checked_int64_length",
+  ).body);
+  assert.ok(checkedLength.some((op) => op.kind === "int64.from_uint64_checked"));
+  assert.equal(checkedLength.some((op) => op.kind === "integer.from_uint64"), false);
+  const checkedUnsigned = operations(ir.functions.find(
+    (fn) => fn.name === "checked_uint64_int64",
+  ).body);
+  assert.ok(checkedUnsigned.some((op) => op.kind === "uint64.from_int64_checked"));
+  assert.equal(checkedUnsigned.some((op) => op.kind === "integer.from_int64"), false);
+
+  const core = generateHostCore(ir, { moduleIdentity: "0123456789abcdef" });
+  assert.equal(core.audit.isolated, true);
+  assert.match(core.source, /sagejs_word_mul_int64/);
+  assert.match(core.source, /== INT64_MIN && .* == -1/);
+  assert.match(core.source, /sagejs_word_fdiv_int64/);
+  const packedUpdate = emittedFunction(
+    core.source,
+    "static int native_int64_buffer_roundtrip(",
+  );
+  assert.match(packedUpdate, /sagejs_int64_buffer_index/);
+  assert.match(packedUpdate, /sagejs_word_add_int64/);
+  assert.doesNotMatch(packedUpdate, /\bmpz_/);
+  const taggedExactUpdate = emittedFunction(
+    core.source,
+    "static int tagged_int64_buffer_augmented_exact(",
+  );
+  assert.match(
+    taggedExactUpdate,
+    /sagejs_local_tagged_sagejs_native_tmp_\d+ = sagejs_local_tagged_values\.data/,
+  );
+  assert.doesNotMatch(
+    taggedExactUpdate,
+    /sagejs_tagged_set_small\(sagejs_local_tagged_sagejs_native_tmp_\d+,/,
+  );
+  const integerBufferIndex = emittedFunction(
+    core.source,
+    "static int native_integer_buffer_int64_index(",
+  );
+  assert.match(integerBufferIndex, /sagejs_integer_buffer_index/);
+  assert.doesNotMatch(integerBufferIndex, /sagejs_integer_buffer_index_mpz/);
+  const integerBufferSlotCopy = emittedFunction(
+    core.source,
+    "static int native_integer_buffer_slot_copy(",
+  );
+  assert.match(integerBufferSlotCopy, /sagejs_integer_buffer_copy_slot/);
+  const integerBufferModularRange = emittedFunction(
+    core.source,
+    "static int native_integer_buffer_modular_range_update(",
+  );
+  assert.match(integerBufferModularRange, /sagejs_word_mul_int64/);
+  assert.match(integerBufferModularRange, /sagejs_integer_buffer_set_int64/);
+  const mixedProductFunction = emittedFunction(
+    core.source,
+    "static int native_int64_times_exact(",
+  );
+  assert.match(mixedProductFunction, /sagejs_mpz_mul_int64/);
+  assert.doesNotMatch(core.source, /\b(?:napi_|PyObject|Py_|JSValue|v8::)/);
+  for (const fn of ir.functions) {
+    assert.equal(classifyWasmFunction(fn, ir).supported, true, fn.name);
+  }
+});
+
+test("int64 agrees in native, dynamic, and CPython execution", async () => {
+  const temporary = mkdtempSync(join(tmpdir(), "sagejs-int64-scalar-"));
+  const sourcePath = join(temporary, "int64_scalar.py");
+  const cacheRoot = join(temporary, "cache");
+  const checks = String.raw`
+from sagejs.native import (
+    int64_buffer,
+    integer_buffer_values,
+    is_compiled,
+    kernel_integer_buffer,
+)
+
+assert int64_arithmetic(-7, 3) == (-5, -3, 2)
+assert int64_arithmetic(7, -3) == (11, -3, -2)
+assert int64_binary(-7, -3) == (-10, -4, 21)
+assert int64_range_sum(-5, 6, 2) == 0
+assert exact_to_int64(-(1 << 63)) == -(1 << 63)
+assert exact_to_int64((1 << 63) - 1) == (1 << 63) - 1
+values = int64_buffer([-7, 11, 23])
+assert int64_buffer_roundtrip(values, -2, 5) == 16
+assert values[-2] == 16
+assert int64_buffer_augmented_exact(values, -2, 7) == 23
+assert values[-2] == 23
+assert int64_buffer_exact(values, 0) == (1 << 80) - 7
+assert int64_times_exact(-7, 1 << 100) == -(7 << 100)
+assert checked_int64_literal() == -1
+assert checked_int64_length(values) == 3
+assert checked_uint64_int64(7) == 7
+exact_values = kernel_integer_buffer(
+    integer_buffer_slot_copy, [1 << 100, -7, (1 << 127) - 1]
+)
+assert integer_buffer_slot_copy(exact_values, 0, 1) == 1 << 100
+assert integer_buffer_slot_copy(exact_values, -1, 0) == (1 << 127) - 1
+assert [int(value) for value in integer_buffer_values(exact_values)] == [
+    (1 << 127) - 1,
+    1 << 100,
+    (1 << 127) - 1,
+]
+word_values = kernel_integer_buffer(integer_buffer_checked_word, [-7, 11])
+assert integer_buffer_checked_word(word_values, -1) == 11
+word_overflow = kernel_integer_buffer(integer_buffer_checked_word, [1 << 80])
+try:
+    integer_buffer_checked_word(word_overflow, 0)
+    raise AssertionError("out-of-range IntegerBuffer word conversion succeeded")
+except OverflowError:
+    pass
+modular_destination = kernel_integer_buffer(
+    integer_buffer_modular_range_update, [1, 2, 3, 4]
+)
+modular_source = kernel_integer_buffer(
+    integer_buffer_modular_range_update, [5, 6, 7, 8]
+)
+assert integer_buffer_modular_range_update(
+    modular_destination, 1, modular_source, 0, 3, -3, 11
+) == 0
+assert [int(value) for value in integer_buffer_values(modular_destination)] == [
+    1, 9, 7, 5
+]
+overlap = kernel_integer_buffer(
+    integer_buffer_modular_range_update, [1, 2, 3, 4, 5, 6, 7, 8]
+)
+assert integer_buffer_modular_range_update(overlap, 4, overlap, 0, 3, 2, 11) == 0
+assert [int(value) for value in integer_buffer_values(overlap)] == [
+    1, 2, 3, 4, 7, 10, 2, 8
+]
+try:
+    checked_uint64_int64(-1)
+    raise AssertionError("negative uint64 conversion succeeded")
+except OverflowError:
+    pass
+for rejected in (-(1 << 63) - 1, 1 << 63):
+    try:
+        exact_to_int64(rejected)
+        raise AssertionError("out-of-range int64 conversion succeeded")
+    except OverflowError:
+        pass
+if is_compiled(int64_helper):
+    for call in (
+        lambda: int64_helper(1 << 63, 1),
+        lambda: int64_helper(-(1 << 63) - 1, 1),
+        lambda: int64_binary((1 << 63) - 1, 1),
+        lambda: int64_binary(-(1 << 63), 1),
+        lambda: int64_binary((1 << 62), 2),
+        lambda: int64_unary(-(1 << 63)),
+        lambda: int64_arithmetic(-(1 << 63), -1),
+    ):
+        try:
+            call()
+            raise AssertionError("int64 overflow succeeded")
+        except OverflowError:
+            pass
+print("compiled=" + str(is_compiled(int64_helper)))
+print("INT64_SCALAR_OK")
+`;
+  writeFileSync(
+    sourcePath,
+    `${witnessSource}\n${exactAugmentedSource}\n${integerBufferIndexSource}\n${checks}`,
+  );
+  try {
+    await compileKernel({ sourcePath, cacheRoot });
+    const native = run(process.execPath, [sagejs, sourcePath], {
+      env: { SAGEJS_NATIVE_CACHE_DIR: cacheRoot, SAGEJS_NATIVE_REQUIRED: "1" },
+    });
+    const javascript = run(process.execPath, [sagejs, sourcePath], {
+      env: {
+        SAGEJS_NATIVE_CACHE_DIR: cacheRoot,
+        SAGEJS_NATIVE_MODE: "javascript",
+      },
+    });
+    const dynamic = run(process.execPath, [sagejs, sourcePath], {
+      env: {
+        SAGEJS_NATIVE_CACHE_DIR: join(temporary, "dynamic-cache"),
+        SAGEJS_NATIVE_DISABLE: "1",
+      },
+    });
+    assert.match(native, /compiled=True/);
+    assert.match(javascript, /compiled=True/);
+    assert.match(dynamic, /compiled=False/);
+    assert.match(native, /INT64_SCALAR_OK/);
+    assert.match(javascript, /INT64_SCALAR_OK/);
+    assert.match(dynamic, /INT64_SCALAR_OK/);
+
+    const python = process.env.PYTHON ||
+      (process.platform === "win32" ? "python" : "python3");
+    const pythonPath = join(root, "src", "lib");
+    const result = run(python, ["-I", "-c", [
+      "import sys",
+      `sys.path.insert(0, ${JSON.stringify(pythonPath)})`,
+      `exec(open(${JSON.stringify(sourcePath)}).read())`,
+    ].join("\n")]);
+    assert.match(result, /INT64_SCALAR_OK/);
+  } finally {
+    rmSync(temporary, { recursive: true, force: true });
+  }
+});

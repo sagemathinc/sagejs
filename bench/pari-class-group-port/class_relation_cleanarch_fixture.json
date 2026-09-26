@@ -1,0 +1,15 @@
+{
+  "schema": 1,
+  "source_fixture": "unit-bridge-cubic-fixtures.json",
+  "source_fixture_sha256": "83ce9a256e29b06530e8de2846d274e093f2021c4a547496ccf8122b310061e7",
+  "pari": {
+    "version": "2.17.4",
+    "archive_sha256": "02651d99c391007d384b3fadbc20abc6916b77036f9e496c99e9ce8688ca4b53",
+    "buch2_sha256": "904ced8034732c7fcfe1da393e23950aac0862b085150fdc24ce1e31beb7d1ac"
+  },
+  "precision": 192,
+  "columns": 7,
+  "oracle_trace_sha256": "6a97da1a439c939ac8d79890389882a31602a5dd39c9d47d9f2f22615e2aaf11",
+  "cleaned_sha256": "497660f7907d0744f2945cf5994ff4c602cf82a3716a4a6ce0d52e05067b3c45",
+  "retry": [1, 192, 256, 64, 10, 64]
+}

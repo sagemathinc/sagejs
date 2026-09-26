@@ -1,0 +1,67 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "pari-e2e-quartic-assembly",
+  "title": "Mixed quartic class-group assembly",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "nf_cxlog_inventory",
+  "objective": "Extend the class_group_gen composition to the frozen mixed quartic through the largest exact connected cut, or isolate the first generic-degree blocker",
+  "base_commit": "1196fd4fdc5fdaa2a3fd1273d32c594bfb299ffa",
+  "claims": [
+    "bench/pari-class-group-port/quartic_class_group_assembly.py",
+    "bench/pari-class-group-port/check_quartic_class_group_assembly.cjs",
+    "bench/pari-class-group-port/quartic_class_group_assembly_results.md"
+  ],
+  "dependencies": [],
+  "references": [
+    "PARI 2.17.4 src/basemath/buch2.c class_group_gen/genback"
+  ],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "Pinned pristine PARI 2.17.4",
+      "native GMP and tagged differential replay"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "fallback",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native",
+    "node bench/pari-class-group-port/check_quartic_class_group_assembly.cjs"
+  ],
+  "runs": [
+    {
+      "command": "node bench/pari-class-group-port/check_quartic_class_group_assembly.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 8.867,
+      "started_at": "2026-09-17T01:35:32.313Z",
+      "commit": "1196fd4fdc5fdaa2a3fd1273d32c594bfb299ffa",
+      "workspace_fingerprint": "e58a9645e91ed21b708366dd9c8b4fb8dee61ccba3bf619515e5f73840c7be09",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Connected the authentic frozen mixed quartic x^4-2000022*x-2000042 through Smith/Uir, two degree-four inverse-prime HNFs, scalar Ge, nf_cxlog's exact-zero branch, M1/M2, Ga/GD/ga, and final class-[2,2] publication. A pristine PARI 2.17.4 oracle independently replays both principal corrections and Smith order identities; CPython, JavaScript, GMP, and tagged outputs agree exactly.",
+    "risks": [
+      "The source intentionally admits only the authentic two-generator Uir=-I branch; it is not a generic quartic signed-exponent genback implementation.",
+      "Positive rational Ge makes Ga exact zero, so non-scalar mixed-signature cxlog and its complex-norm low-precision frontier remain outside this cut.",
+      "Broad test:native and baselib suites were deferred to the converged integration lane under host resource coordination."
+    ],
+    "next_steps": [
+      "Select a mixed-quartic fixture whose Uir requires prime powers or products and extend signed genback without runtime candidate tapes.",
+      "Select a mixed-signature non-scalar Ge factor and connect the complex-norm low-precision nf_cxlog branch.",
+      "Run broad architecture, strict-baselib, and native gates after integration."
+    ]
+  }
+}

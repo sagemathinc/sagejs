@@ -1,0 +1,4704 @@
+{
+  "schema": "sagejs.rust-class-group/balanced-neutral-panel-v1",
+  "status": "degree-balanced-awaiting-private-oracle-selection",
+  "spec": "qualification-corpus-spec-v1.json",
+  "candidatePool": "neutral-candidate-inputs-v1.json",
+  "eligibilityEvidence": "neutral-eligibility-v1.json",
+  "answerVisibility": "none",
+  "qualificationClaims": {
+    "degreeQuotasSatisfied": true,
+    "signatureQuotasSatisfied": false,
+    "timingQuotasSatisfied": false,
+    "traitQuotasSatisfied": false
+  },
+  "partitions": {
+    "open": {
+      "cases": [
+        {
+          "schema": "sagejs.rust-class-group.neutral-input/v1",
+          "inputId": "sha256:5594f99af821e0c7633c475702019de396c95ca48fae4a0c64a96df43553d573",
+          "fieldId": "generated-d2-0003-e578b7ea6b57",
+          "field": {
+            "variable": "x",
+            "coefficientsAscending": [
+              "-218",
+              "-4",
+              "1"
+            ],
+            "degree": 2,
+            "monic": true,
+            "irreducible": true
+          },
+          "preparation": {
+            "kind": "public-polynomial"
+          },
+          "request": {
+            "proof": "conditional-grh",
+            "output": "class-and-unit-group",
+            "mapPolicy": "construct-eagerly",
+            "unitPolicy": "compact-complete",
+            "limits": {
+              "wallMilliseconds": "600000",
+              "memoryBytes": "4294967296",
+              "relationCandidates": "100000000",
+              "precisionBits": 4096,
+              "continuationPasses": 100
+            }
+          },
+          "randomness": {
+            "algorithm": "chacha20-v1",
+            "seed": "625f3fa7e97eabcdc7795b10e91a1c451c81adf65723a441a5105dcbbe8dcc15"
+          },
+          "containsOracleAnswers": false
+        },
+        {
+          "schema": "sagejs.rust-class-group.neutral-input/v1",
+          "inputId": "sha256:15d39711306502d97a1c50f06bf0a0007e1744caea27563586498ec407d4df39",
+          "fieldId": "generated-d2-0005-fe596d734bc9",
+          "field": {
+            "variable": "x",
+            "coefficientsAscending": [
+              "-1020",
+              "0",
+              "1"
+            ],
+            "degree": 2,
+            "monic": true,
+            "irreducible": true
+          },
+          "preparation": {
+            "kind": "public-polynomial"
+          },
+          "request": {
+            "proof": "conditional-grh",
+            "output": "class-and-unit-group",
+            "mapPolicy": "construct-eagerly",
+            "unitPolicy": "compact-complete",
+            "limits": {
+              "wallMilliseconds": "600000",
+              "memoryBytes": "4294967296",
+              "relationCandidates": "100000000",
+              "precisionBits": 4096,
+              "continuationPasses": 100
+            }
+          },
+          "randomness": {
+            "algorithm": "chacha20-v1",
+            "seed": "ad10c56ecd401b29502aa162833cd5a809ab0d0724ad1d87914c0ecd182e20a3"
+          },
+          "containsOracleAnswers": false
+        },
+        {
+          "schema": "sagejs.rust-class-group.neutral-input/v1",
+          "inputId": "sha256:e264966d83688adacbe322f786eeaeeec2f633a62c0655aee69e5c21cbbbf769",
+          "fieldId": "generated-d2-0007-5fe8739af99d",
+          "field": {
+            "variable": "x",
+            "coefficientsAscending": [
+              "-4027",
+              "1",
+              "1"
+            ],
+            "degree": 2,
+            "monic": true,
+            "irreducible": true
+          },
+          "preparation": {
+            "kind": "public-polynomial"
+          },
+          "request": {
+            "proof": "conditional-grh",
+            "output": "class-and-unit-group",
+            "mapPolicy": "construct-eagerly",
+            "unitPolicy": "compact-complete",
+            "limits": {
+              "wallMilliseconds": "600000",
+              "memoryBytes": "4294967296",
+              "relationCandidates": "100000000",
+              "precisionBits": 4096,
+              "continuationPasses": 100
+            }
+          },
+          "randomness": {
+            "algorithm": "chacha20-v1",
+            "seed": "907bd97e08a98dc7e846e5570a38699946da58b205c95f2e7b7a59d611c6c389"
+          },
+          "containsOracleAnswers": false
+        },
+        {
+          "schema": "sagejs.rust-class-group.neutral-input/v1",
+          "inputId": "sha256:ab6ca788afacd6beba3277cda41f0465b1e58089d88b55d2e910a6d866f2e09e",
+          "fieldId": "generated-d2-0009-98cce5309ca4",
+          "field": {
+            "variable": "x",
+            "coefficientsAscending": [
+              "-16506",
+              "1",
+              "1"
+            ],
+            "degree": 2,
+            "monic": true,
+            "irreducible": true
+          },
+          "preparation": {
+            "kind": "public-polynomial"
+          },
+          "request": {
+            "proof": "conditional-grh",
+            "output": "class-and-unit-group",
+            "mapPolicy": "construct-eagerly",
+            "unitPolicy": "compact-complete",
+            "limits": {
+              "wallMilliseconds": "600000",
+              "memoryBytes": "4294967296",
+              "relationCandidates": "100000000",
+              "precisionBits": 4096,
+              "continuationPasses": 100
+            }
+          },
+          "randomness": {
+            "algorithm": "chacha20-v1",
+            "seed": "8dfb85a97e4444185de08e43db89197916cd9ee264e12863d30f841333f3d67b"
+          },
+          "containsOracleAnswers": false
+        },
+        {
+          "schema": "sagejs.rust-class-group.neutral-input/v1",
+          "inputId": "sha256:94ac7829a07c3a7172d09e13b0a79fcb4cab2a4d1c52a79977ee5554ba174351",
+          "fieldId": "generated-d2-0019-3093339aa404",
+          "field": {
+            "variable": "x",
+            "coefficientsAscending": [
+              "-29",
+              "3",
+              "1"
+            ],
+            "degree": 2,
+            "monic": true,
+            "irreducible": true
+          },
+          "preparation": {
+            "kind": "public-polynomial"
+          },
+          "request": {
+            "proof": "conditional-grh",
+            "output": "class-and-unit-group",
+            "mapPolicy": "construct-eagerly",
+            "unitPolicy": "compact-complete",
+            "limits": {
+              "wallMilliseconds": "600000",
+              "memoryBytes": "4294967296",
+              "relationCandidates": "100000000",
+              "precisionBits": 4096,
+              "continuationPasses": 100
+            }
+          },
+          "randomness": {
+            "algorithm": "chacha20-v1",
+            "seed": "77d81b6fd455b34d7bbed934697cf7dcb0c9d1df4c0d54caca91e3973c08475b"
+          },
+          "containsOracleAnswers": false
+        },
+        {
+          "schema": "sagejs.rust-class-group.neutral-input/v1",
+          "inputId": "sha256:4b770e695a7fa65c0b8c4aa0dea408495373efe95307367905ed06a02bc4398e",
+          "fieldId": "generated-d2-0028-080f18330ac3",
+          "field": {
+            "variable": "x",
+            "coefficientsAscending": [
+              "162550",
+              "-252",
+              "1"
+            ],
+            "degree": 2,
+            "monic": true,
+            "irreducible": true
+          },
+          "preparation": {
+            "kind": "public-polynomial"
+          },
+          "request": {
+            "proof": "conditional-grh",
+            "output": "class-and-unit-group",
+            "mapPolicy": "construct-eagerly",
+            "unitPolicy": "compact-complete",
+            "limits": {
+              "wallMilliseconds": "600000",
+              "memoryBytes": "4294967296",
+              "relationCandidates": "100000000",
+              "precisionBits": 4096,
+              "continuationPasses": 100
+            }
+          },
+          "randomness": {
+            "algorithm": "chacha20-v1",
+            "seed": "6b8e71c34b250bf3e78922aeb0771eb0829229bac6965cb27a3a883f1a5ce5f3"
+          },
+          "containsOracleAnswers": false
+        },
+        {
+          "schema": "sagejs.rust-class-group.neutral-input/v1",
+          "inputId": "sha256:770884cd4afedddb697007133f6f7098574515c56301a09c40f7608f415de537",
+          "fieldId": "generated-d2-0036-72aed0af860d",
+          "field": {
+            "variable": "x",
+            "coefficientsAscending": [
+              "41947118",
+              "-4098",
+              "1"
+            ],
+            "degree": 2,
+            "monic": true,
+            "irreducible": true
+          },
+          "preparation": {
+            "kind": "public-polynomial"
+          },
+          "request": {
+            "proof": "conditional-grh",
+            "output": "class-and-unit-group",
+            "mapPolicy": "construct-eagerly",
+            "unitPolicy": "compact-complete",
+            "limits": {
+              "wallMilliseconds": "600000",
+              "memoryBytes": "4294967296",
+              "relationCandidates": "100000000",
+              "precisionBits": 4096,
+              "continuationPasses": 100
+            }
+          },
+          "randomness": {
+            "algorithm": "chacha20-v1",
+            "seed": "0029667166f3da04c15410927e45abae5b5fabd3fad903b642458fe499613b21"
+          },
+          "containsOracleAnswers": false
+        },
+        {
+          "schema": "sagejs.rust-class-group.neutral-input/v1",
+          "inputId": "sha256:2629a09b0c0ed49e79512747c4cd9fc9a14523a9b32f652d2840b6c54b445584",
+          "fieldId": "generated-d2-0037-71c5881c1dbd",
+          "field": {
+            "variable": "x",
+            "coefficientsAscending": [
+              "-52",
+              "1",
+              "1"
+            ],
+            "degree": 2,
+            "monic": true,
+            "irreducible": true
+          },
+          "preparation": {
+            "kind": "public-polynomial"
+          },
+          "request": {
+            "proof": "conditional-grh",
+            "output": "class-and-unit-group",
+            "mapPolicy": "construct-eagerly",
+            "unitPolicy": "compact-complete",
+            "limits": {
+              "wallMilliseconds": "600000",
+              "memoryBytes": "4294967296",
+              "relationCandidates": "100000000",
+              "precisionBits": 4096,
+              "continuationPasses": 100
+            }
+          },
+          "randomness": {
+            "algorithm": "chacha20-v1",
+            "seed": "7867cb925761e642098df2046b4c12c220fa610093b74e8332cd014a9391c0da"
+          },
+          "containsOracleAnswers": false
+        },
+        {
+          "schema": "sagejs.rust-class-group.neutral-input/v1",
+          "inputId": "sha256:bb33649d1a398d57c1751f0c1849ab20268b11186eb55e6abe9c5b175d7f6bce",
+          "fieldId": "generated-d2-0042-3dc102a4d8fd",
+          "field": {
+            "variable": "x",
+            "coefficientsAscending": [
+              "10155",
+              "-62",
+              "1"
+            ],
+            "degree": 2,
+            "monic": true,
+            "irreducible": true
+          },
+          "preparation": {
+            "kind": "public-polynomial"
+          },
+          "request": {
+            "proof": "conditional-grh",
+            "output": "class-and-unit-group",
+            "mapPolicy": "construct-eagerly",
+            "unitPolicy": "compact-complete",
+            "limits": {
+              "wallMilliseconds": "600000",
+              "memoryBytes": "4294967296",
+              "relationCandidates": "100000000",
+              "precisionBits": 4096,
+              "continuationPasses": 100
+            }
+          },
+          "randomness": {
+            "algorithm": "chacha20-v1",
+            "seed": "dfe4eab595cb9f05a076b26ba6298bda4202f36d6f14b71c3008886daf9d8144"
+          },
+          "containsOracleAnswers": false
+        },
+        {
+          "schema": "sagejs.rust-class-group.neutral-input/v1",
+          "inputId": "sha256:11d7d0cbafa4b5c917876fffff6ed3f8fd1f07203ed8dfe2c5d9269659211cfb",
+          "fieldId": "generated-d2-0047-19beae1ec62f",
+          "field": {
+            "variable": "x",
+            "coefficientsAscending": [
+              "-65767",
+              "1",
+              "1"
+            ],
+            "degree": 2,
+            "monic": true,
+            "irreducible": true
+          },
+          "preparation": {
+            "kind": "public-polynomial"
+          },
+          "request": {
+            "proof": "conditional-grh",
+            "output": "class-and-unit-group",
+            "mapPolicy": "construct-eagerly",
+            "unitPolicy": "compact-complete",
+            "limits": {
+              "wallMilliseconds": "600000",
+              "memoryBytes": "4294967296",
+              "relationCandidates": "100000000",
+              "precisionBits": 4096,
+              "continuationPasses": 100
+            }
+          },
+          "randomness": {
+            "algorithm": "chacha20-v1",
+            "seed": "93860b5e1b2341887bf28ae20cfeb4a8c54c759937177c4a04b8fabfd1fe450f"
+          },
+          "containsOracleAnswers": false
+        },
+        {
+          "schema": "sagejs.rust-class-group.neutral-input/v1",
+          "inputId": "sha256:6a0ff46d1a62dac6257af6564d5ac0b3c6e87954c9f97cb1de0ad9b808db057e",
+          "fieldId": "generated-d2-0049-8fc54c320d45",
+          "field": {
+            "variable": "x",
+            "coefficientsAscending": [
+              "-263143",
+              "0",
+              "1"
+            ],
+            "degree": 2,
+            "monic": true,
+            "irreducible": true
+          },
+          "preparation": {
+            "kind": "public-polynomial"
+          },
+          "request": {
+            "proof": "conditional-grh",
+            "output": "class-and-unit-group",
+            "mapPolicy": "construct-eagerly",
+            "unitPolicy": "compact-complete",
+            "limits": {
+              "wallMilliseconds": "600000",
+              "memoryBytes": "4294967296",
+              "relationCandidates": "100000000",
+              "precisionBits": 4096,
+              "continuationPasses": 100
+            }
+          },
+          "randomness": {
+            "algorithm": "chacha20-v1",
+            "seed": "330797913792ca2aeff0dfe7bb906c13f3d4f3100860025ba75b478ee1dcb015"
+          },
+          "containsOracleAnswers": false
+        },
+        {
+          "schema": "sagejs.rust-class-group.neutral-input/v1",
+          "inputId": "sha256:6920df04715f3badd0fda3c4f1d3a6270f61b8657bf2fbf34c0f6f95df5c8375",
+          "fieldId": "generated-d2-0056-ca3d24d58a38",
+          "field": {
+            "variable": "x",
+            "coefficientsAscending": [
+              "596",
+              "-14",
+              "1"
+            ],
+            "degree": 2,
+            "monic": true,
+            "irreducible": true
+          },
+          "preparation": {
+            "kind": "public-polynomial"
+          },
+          "request": {
+            "proof": "conditional-grh",
+            "output": "class-and-unit-group",
+            "mapPolicy": "construct-eagerly",
+            "unitPolicy": "compact-complete",
+            "limits": {
+              "wallMilliseconds": "600000",
+              "memoryBytes": "4294967296",
+              "relationCandidates": "100000000",
+              "precisionBits": 4096,
+              "continuationPasses": 100
+            }
+          },
+          "randomness": {
+            "algorithm": "chacha20-v1",
+            "seed": "6aacf97a258cd50ac663e12ca8d944cd77fbb681cbc904b9802fcbb399fcea8f"
+          },
+          "containsOracleAnswers": false
+        },
+        {
+          "schema": "sagejs.rust-class-group.neutral-input/v1",
+          "inputId": "sha256:f88039b5ac4f0f9e7acb95da970bdccfa9410d41b169a108e6656c3dc9e4a1de",
+          "fieldId": "generated-d3-0010-a6ee1623294b",
+          "field": {
+            "variable": "x",
+            "coefficientsAscending": [
+              "-162320",
+              "162564",
+              "-251",
+              "1"
+            ],
+            "degree": 3,
+            "monic": true,
+            "irreducible": true
+          },
+          "preparation": {
+            "kind": "public-polynomial"
+          },
+          "request": {
+            "proof": "conditional-grh",
+            "output": "class-and-unit-group",
+            "mapPolicy": "construct-eagerly",
+            "unitPolicy": "compact-complete",
+            "limits": {
+              "wallMilliseconds": "600000",
+              "memoryBytes": "4294967296",
+              "relationCandidates": "100000000",
+              "precisionBits": 4096,
+              "continuationPasses": 100
+            }
+          },
+          "randomness": {
+            "algorithm": "chacha20-v1",
+            "seed": "0bc6c76e962bab713dfbcc7dcf3065358782ff3e1f26c2f13233c8dafdb82027"
+          },
+          "containsOracleAnswers": false
+        },
+        {
+          "schema": "sagejs.rust-class-group.neutral-input/v1",
+          "inputId": "sha256:1eee624b31e875c7831533d3c698f26948e6a3453a154c9668b20cb49fba3997",
+          "fieldId": "generated-d3-0024-5ec686536776",
+          "field": {
+            "variable": "x",
+            "coefficientsAscending": [
+              "-19607",
+              "9921",
+              "-64",
+              "1"
+            ],
+            "degree": 3,
+            "monic": true,
+            "irreducible": true
+          },
+          "preparation": {
+            "kind": "public-polynomial"
+          },
+          "request": {
+            "proof": "conditional-grh",
+            "output": "class-and-unit-group",
+            "mapPolicy": "construct-eagerly",
+            "unitPolicy": "compact-complete",
+            "limits": {
+              "wallMilliseconds": "600000",
+              "memoryBytes": "4294967296",
+              "relationCandidates": "100000000",
+              "precisionBits": 4096,
+              "continuationPasses": 100
+            }
+          },
+          "randomness": {
+            "algorithm": "chacha20-v1",
+            "seed": "4b6f0fe76e5aca35fdc74849597a834f74734afb1a0c46979fab47eded0a9f9b"
+          },
+          "containsOracleAnswers": false
+        },
+        {
+          "schema": "sagejs.rust-class-group.neutral-input/v1",
+          "inputId": "sha256:54a1d1158c4ad1033e27bc23ab85d70ec17c996ac29f16fed78d2ba68341db5c",
+          "fieldId": "generated-d3-0062-fc8a3403cece",
+          "field": {
+            "variable": "x",
+            "coefficientsAscending": [
+              "80106",
+              "39817",
+              "-124",
+              "1"
+            ],
+            "degree": 3,
+            "monic": true,
+            "irreducible": true
+          },
+          "preparation": {
+            "kind": "public-polynomial"
+          },
+          "request": {
+            "proof": "conditional-grh",
+            "output": "class-and-unit-group",
+            "mapPolicy": "construct-eagerly",
+            "unitPolicy": "compact-complete",
+            "limits": {
+              "wallMilliseconds": "600000",
+              "memoryBytes": "4294967296",
+              "relationCandidates": "100000000",
+              "precisionBits": 4096,
+              "continuationPasses": 100
+            }
+          },
+          "randomness": {
+            "algorithm": "chacha20-v1",
+            "seed": "46a284d9d77577a94ce5d164b8d5bb2a5058c7bc80615ecf9f3e7b8b37d827f0"
+          },
+          "containsOracleAnswers": false
+        },
+        {
+          "schema": "sagejs.rust-class-group.neutral-input/v1",
+          "inputId": "sha256:5a4c5453fe9c49477dc1963a9c47cef6b509c1b6c747c6a5326d60672d14a017",
+          "fieldId": "generated-d4-0001-1033841f8384",
+          "field": {
+            "variable": "x",
+            "coefficientsAscending": [
+              "21162",
+              "-1587",
+              "-569",
+              "3",
+              "1"
+            ],
+            "degree": 4,
+            "monic": true,
+            "irreducible": true
+          },
+          "preparation": {
+            "kind": "public-polynomial"
+          },
+          "request": {
+            "proof": "conditional-grh",
+            "output": "class-and-unit-group",
+            "mapPolicy": "construct-eagerly",
+            "unitPolicy": "compact-complete",
+            "limits": {
+              "wallMilliseconds": "600000",
+              "memoryBytes": "4294967296",
+              "relationCandidates": "100000000",
+              "precisionBits": 4096,
+              "continuationPasses": 100
+            }
+          },
+          "randomness": {
+            "algorithm": "chacha20-v1",
+            "seed": "554482e6a5c20445ef3788bf9d8cb45d0c0d6ec69a41e8941e97936595e31fd2"
+          },
+          "containsOracleAnswers": false
+        },
+        {
+          "schema": "sagejs.rust-class-group.neutral-input/v1",
+          "inputId": "sha256:406ed114ed735c886f34fb3be135fbebb9c69ca1f3f7e56b191f851988966b65",
+          "fieldId": "generated-d4-0014-6745ebcc03d8",
+          "field": {
+            "variable": "x",
+            "coefficientsAscending": [
+              "-2671756031",
+              "4421912",
+              "146198",
+              "-248",
+              "1"
+            ],
+            "degree": 4,
+            "monic": true,
+            "irreducible": true
+          },
+          "preparation": {
+            "kind": "public-polynomial"
+          },
+          "request": {
+            "proof": "conditional-grh",
+            "output": "class-and-unit-group",
+            "mapPolicy": "construct-eagerly",
+            "unitPolicy": "compact-complete",
+            "limits": {
+              "wallMilliseconds": "600000",
+              "memoryBytes": "4294967296",
+              "relationCandidates": "100000000",
+              "precisionBits": 4096,
+              "continuationPasses": 100
+            }
+          },
+          "randomness": {
+            "algorithm": "chacha20-v1",
+            "seed": "209b9cf0f796eb69b85de0f5f0ff19c2368661a03a545bcc51713c6fd6e47d6a"
+          },
+          "containsOracleAnswers": false
+        },
+        {
+          "schema": "sagejs.rust-class-group.neutral-input/v1",
+          "inputId": "sha256:7d0e44002cff4bbc1010f3ea5cd1160c25be65f4107413868424c0db37cbbe0f",
+          "fieldId": "generated-d4-0022-cf3697671414",
+          "field": {
+            "variable": "x",
+            "coefficientsAscending": [
+              "9866634592244",
+              "1048576",
+              "-10458132",
+              "-1",
+              "1"
+            ],
+            "degree": 4,
+            "monic": true,
+            "irreducible": true
+          },
+          "preparation": {
+            "kind": "public-polynomial"
+          },
+          "request": {
+            "proof": "conditional-grh",
+            "output": "class-and-unit-group",
+            "mapPolicy": "construct-eagerly",
+            "unitPolicy": "compact-complete",
+            "limits": {
+              "wallMilliseconds": "600000",
+              "memoryBytes": "4294967296",
+              "relationCandidates": "100000000",
+              "precisionBits": 4096,
+              "continuationPasses": 100
+            }
+          },
+          "randomness": {
+            "algorithm": "chacha20-v1",
+            "seed": "d2683f939ba293e0d1ecdadd26d3d3e72ccc9f50a20d8c7433b439e1b703e07e"
+          },
+          "containsOracleAnswers": false
+        },
+        {
+          "schema": "sagejs.rust-class-group.neutral-input/v1",
+          "inputId": "sha256:9f446fc1780ab293f9a04b1015e2cf7885d78f3b60bcb208ab431822d2265f17",
+          "fieldId": "generated-d4-0029-33c743d1e7c5",
+          "field": {
+            "variable": "x",
+            "coefficientsAscending": [
+              "-37424",
+              "344",
+              "460",
+              "-13",
+              "1"
+            ],
+            "degree": 4,
+            "monic": true,
+            "irreducible": true
+          },
+          "preparation": {
+            "kind": "public-polynomial"
+          },
+          "request": {
+            "proof": "conditional-grh",
+            "output": "class-and-unit-group",
+            "mapPolicy": "construct-eagerly",
+            "unitPolicy": "compact-complete",
+            "limits": {
+              "wallMilliseconds": "600000",
+              "memoryBytes": "4294967296",
+              "relationCandidates": "100000000",
+              "precisionBits": 4096,
+              "continuationPasses": 100
+            }
+          },
+          "randomness": {
+            "algorithm": "chacha20-v1",
+            "seed": "04fce8e1e22088e145ac868839abb62c9efe6a94189e2311184a574a926bb580"
+          },
+          "containsOracleAnswers": false
+        },
+        {
+          "schema": "sagejs.rust-class-group.neutral-input/v1",
+          "inputId": "sha256:f3055085dc82c577233844be252a26d453ba739386931e76e84f9fa85c04c8fd",
+          "fieldId": "generated-d4-0034-e5c0a04c454c",
+          "field": {
+            "variable": "x",
+            "coefficientsAscending": [
+              "7605522",
+              "-7872",
+              "-9613",
+              "0",
+              "1"
+            ],
+            "degree": 4,
+            "monic": true,
+            "irreducible": true
+          },
+          "preparation": {
+            "kind": "public-polynomial"
+          },
+          "request": {
+            "proof": "conditional-grh",
+            "output": "class-and-unit-group",
+            "mapPolicy": "construct-eagerly",
+            "unitPolicy": "compact-complete",
+            "limits": {
+              "wallMilliseconds": "600000",
+              "memoryBytes": "4294967296",
+              "relationCandidates": "100000000",
+              "precisionBits": 4096,
+              "continuationPasses": 100
+            }
+          },
+          "randomness": {
+            "algorithm": "chacha20-v1",
+            "seed": "f0505c757c40bbbc728ba0d702f7ac3d9e85f53f367a32929e01bf2eb21992cd"
+          },
+          "containsOracleAnswers": false
+        },
+        {
+          "schema": "sagejs.rust-class-group.neutral-input/v1",
+          "inputId": "sha256:1a86758110691588a1ae9d82179bc6881997fd9faf2236282194c75d5a485024",
+          "fieldId": "generated-d4-0037-44c72bc6e1e5",
+          "field": {
+            "variable": "x",
+            "coefficientsAscending": [
+              "147043280",
+              "84101",
+              "-39997",
+              "-5",
+              "1"
+            ],
+            "degree": 4,
+            "monic": true,
+            "irreducible": true
+          },
+          "preparation": {
+            "kind": "public-polynomial"
+          },
+          "request": {
+            "proof": "conditional-grh",
+            "output": "class-and-unit-group",
+            "mapPolicy": "construct-eagerly",
+            "unitPolicy": "compact-complete",
+            "limits": {
+              "wallMilliseconds": "600000",
+              "memoryBytes": "4294967296",
+              "relationCandidates": "100000000",
+              "precisionBits": 4096,
+              "continuationPasses": 100
+            }
+          },
+          "randomness": {
+            "algorithm": "chacha20-v1",
+            "seed": "64263b1a29591109578441042225667c0e1dbdb0319aea4cdf2533ecebc89e45"
+          },
+          "containsOracleAnswers": false
+        },
+        {
+          "schema": "sagejs.rust-class-group.neutral-input/v1",
+          "inputId": "sha256:59ea846c5826d9dedfb8d8b8ada2a0eb3d15db46c8e8648242ba76a0c53165e2",
+          "fieldId": "generated-d4-0043-0ce0c5d81cbf",
+          "field": {
+            "variable": "x",
+            "coefficientsAscending": [
+              "37903788055",
+              "-1626136",
+              "-649998",
+              "1",
+              "1"
+            ],
+            "degree": 4,
+            "monic": true,
+            "irreducible": true
+          },
+          "preparation": {
+            "kind": "public-polynomial"
+          },
+          "request": {
+            "proof": "conditional-grh",
+            "output": "class-and-unit-group",
+            "mapPolicy": "construct-eagerly",
+            "unitPolicy": "compact-complete",
+            "limits": {
+              "wallMilliseconds": "600000",
+              "memoryBytes": "4294967296",
+              "relationCandidates": "100000000",
+              "precisionBits": 4096,
+              "continuationPasses": 100
+            }
+          },
+          "randomness": {
+            "algorithm": "chacha20-v1",
+            "seed": "8000972067b2096be06862b67822cbb7fc5a1b5e056c63ba2f7d00920df8fe83"
+          },
+          "containsOracleAnswers": false
+        },
+        {
+          "schema": "sagejs.rust-class-group.neutral-input/v1",
+          "inputId": "sha256:a8c526d80615a32c511a20a6156f5e63060996854ebf8a79a1ee7762b233f318",
+          "fieldId": "generated-d4-0046-868d04bb534f",
+          "field": {
+            "variable": "x",
+            "coefficientsAscending": [
+              "616460721636",
+              "-3916811",
+              "-2613769",
+              "-1",
+              "1"
+            ],
+            "degree": 4,
+            "monic": true,
+            "irreducible": true
+          },
+          "preparation": {
+            "kind": "public-polynomial"
+          },
+          "request": {
+            "proof": "conditional-grh",
+            "output": "class-and-unit-group",
+            "mapPolicy": "construct-eagerly",
+            "unitPolicy": "compact-complete",
+            "limits": {
+              "wallMilliseconds": "600000",
+              "memoryBytes": "4294967296",
+              "relationCandidates": "100000000",
+              "precisionBits": 4096,
+              "continuationPasses": 100
+            }
+          },
+          "randomness": {
+            "algorithm": "chacha20-v1",
+            "seed": "f6cbafd9378b9660f778a2d612a67c550d6a4b4c868924dd9e3a5fb12ee3e0ec"
+          },
+          "containsOracleAnswers": false
+        },
+        {
+          "schema": "sagejs.rust-class-group.neutral-input/v1",
+          "inputId": "sha256:60b6855eb6f6396ae6ba6b4ffd222bfe6456eb114c05968f4f87d988c855c953",
+          "fieldId": "generated-d4-0053-892a83e64199",
+          "field": {
+            "variable": "x",
+            "coefficientsAscending": [
+              "-176007759790052",
+              "17146314752",
+              "37750784",
+              "-4097",
+              "1"
+            ],
+            "degree": 4,
+            "monic": true,
+            "irreducible": true
+          },
+          "preparation": {
+            "kind": "public-polynomial"
+          },
+          "request": {
+            "proof": "conditional-grh",
+            "output": "class-and-unit-group",
+            "mapPolicy": "construct-eagerly",
+            "unitPolicy": "compact-complete",
+            "limits": {
+              "wallMilliseconds": "600000",
+              "memoryBytes": "4294967296",
+              "relationCandidates": "100000000",
+              "precisionBits": 4096,
+              "continuationPasses": 100
+            }
+          },
+          "randomness": {
+            "algorithm": "chacha20-v1",
+            "seed": "14e38107cd507de36bb135c64e17448b14cdca3c471819456c4ecd1b2252e50b"
+          },
+          "containsOracleAnswers": false
+        },
+        {
+          "schema": "sagejs.rust-class-group.neutral-input/v1",
+          "inputId": "sha256:c251855b04de03ede16fa3d73a670a5df297fdc89a8acc03f8308655c7c1d119",
+          "fieldId": "generated-d4-0056-40f903591b5d",
+          "field": {
+            "variable": "x",
+            "coefficientsAscending": [
+              "-22429",
+              "-720",
+              "637",
+              "-18",
+              "1"
+            ],
+            "degree": 4,
+            "monic": true,
+            "irreducible": true
+          },
+          "preparation": {
+            "kind": "public-polynomial"
+          },
+          "request": {
+            "proof": "conditional-grh",
+            "output": "class-and-unit-group",
+            "mapPolicy": "construct-eagerly",
+            "unitPolicy": "compact-complete",
+            "limits": {
+              "wallMilliseconds": "600000",
+              "memoryBytes": "4294967296",
+              "relationCandidates": "100000000",
+              "precisionBits": 4096,
+              "continuationPasses": 100
+            }
+          },
+          "randomness": {
+            "algorithm": "chacha20-v1",
+            "seed": "874ff13fbccd08341a62b3bdb5aebcb90cf6f59e054b62c3fd66c84daad16ad6"
+          },
+          "containsOracleAnswers": false
+        },
+        {
+          "schema": "sagejs.rust-class-group.neutral-input/v1",
+          "inputId": "sha256:de9963ec2e765e72facd699b603a2234be14c684a574d7adabf9a8afb8c41629",
+          "fieldId": "generated-d4-0058-3ae9653f81a4",
+          "field": {
+            "variable": "x",
+            "coefficientsAscending": [
+              "415350",
+              "-2608",
+              "-2185",
+              "4",
+              "1"
+            ],
+            "degree": 4,
+            "monic": true,
+            "irreducible": true
+          },
+          "preparation": {
+            "kind": "public-polynomial"
+          },
+          "request": {
+            "proof": "conditional-grh",
+            "output": "class-and-unit-group",
+            "mapPolicy": "construct-eagerly",
+            "unitPolicy": "compact-complete",
+            "limits": {
+              "wallMilliseconds": "600000",
+              "memoryBytes": "4294967296",
+              "relationCandidates": "100000000",
+              "precisionBits": 4096,
+              "continuationPasses": 100
+            }
+          },
+          "randomness": {
+            "algorithm": "chacha20-v1",
+            "seed": "61ae55d9a7521d9bc72fac4d47152632fcec0b79de24bab9bd5a05b8f3060788"
+          },
+          "containsOracleAnswers": false
+        },
+        {
+          "schema": "sagejs.rust-class-group.neutral-input/v1",
+          "inputId": "sha256:3efb52f4cc1d1201f8bacf41a2c674f8192ddf92982e77a3dd28422c64f8438d",
+          "fieldId": "generated-d4-0064-1395ed767f2a",
+          "field": {
+            "variable": "x",
+            "coefficientsAscending": [
+              "138652052",
+              "-139876",
+              "-38934",
+              "4",
+              "1"
+            ],
+            "degree": 4,
+            "monic": true,
+            "irreducible": true
+          },
+          "preparation": {
+            "kind": "public-polynomial"
+          },
+          "request": {
+            "proof": "conditional-grh",
+            "output": "class-and-unit-group",
+            "mapPolicy": "construct-eagerly",
+            "unitPolicy": "compact-complete",
+            "limits": {
+              "wallMilliseconds": "600000",
+              "memoryBytes": "4294967296",
+              "relationCandidates": "100000000",
+              "precisionBits": 4096,
+              "continuationPasses": 100
+            }
+          },
+          "randomness": {
+            "algorithm": "chacha20-v1",
+            "seed": "cc31bda78496fdaf06f44a8cdffb53d67295c8f97f8dfa39763bdb7d5a4522ed"
+          },
+          "containsOracleAnswers": false
+        },
+        {
+          "schema": "sagejs.rust-class-group.neutral-input/v1",
+          "inputId": "sha256:8cbada4d3419f355a8b6b355325c7a1359cfeb69dd5e2628af24a34792fb8748",
+          "fieldId": "generated-d5-0010-f4c3329e4bfd",
+          "field": {
+            "variable": "x",
+            "coefficientsAscending": [
+              "-995968006",
+              "996203128",
+              "-156502",
+              "-78629",
+              "2",
+              "1"
+            ],
+            "degree": 5,
+            "monic": true,
+            "irreducible": true
+          },
+          "preparation": {
+            "kind": "public-polynomial"
+          },
+          "request": {
+            "proof": "conditional-grh",
+            "output": "class-and-unit-group",
+            "mapPolicy": "construct-eagerly",
+            "unitPolicy": "compact-complete",
+            "limits": {
+              "wallMilliseconds": "600000",
+              "memoryBytes": "4294967296",
+              "relationCandidates": "100000000",
+              "precisionBits": 4096,
+              "continuationPasses": 100
+            }
+          },
+          "randomness": {
+            "algorithm": "chacha20-v1",
+            "seed": "ae53fba208833bdd192559dff1538eeb05446348a8a950af783e91d2b951ad72"
+          },
+          "containsOracleAnswers": false
+        },
+        {
+          "schema": "sagejs.rust-class-group.neutral-input/v1",
+          "inputId": "sha256:9fd614e258637d5d77df6be7c113271d8822ad31f2636c1fc1360f8706dbf320",
+          "fieldId": "generated-d5-0017-9e405cdaac64",
+          "field": {
+            "variable": "x",
+            "coefficientsAscending": [
+              "340386109450",
+              "-170456789996",
+              "131084276",
+              "392705",
+              "-514",
+              "1"
+            ],
+            "degree": 5,
+            "monic": true,
+            "irreducible": true
+          },
+          "preparation": {
+            "kind": "public-polynomial"
+          },
+          "request": {
+            "proof": "conditional-grh",
+            "output": "class-and-unit-group",
+            "mapPolicy": "construct-eagerly",
+            "unitPolicy": "compact-complete",
+            "limits": {
+              "wallMilliseconds": "600000",
+              "memoryBytes": "4294967296",
+              "relationCandidates": "100000000",
+              "precisionBits": 4096,
+              "continuationPasses": 100
+            }
+          },
+          "randomness": {
+            "algorithm": "chacha20-v1",
+            "seed": "1744402fb67bbac8cd6570dee762e600f5d7306311381392dc044f24a93e5976"
+          },
+          "containsOracleAnswers": false
+        },
+        {
+          "schema": "sagejs.rust-class-group.neutral-input/v1",
+          "inputId": "sha256:ae84dba2744b67450e54dc4f6a77dfb900aa47b6c5822aff4dc8b4d06cf7c880",
+          "fieldId": "generated-d5-0026-c4e4b52da1f1",
+          "field": {
+            "variable": "x",
+            "coefficientsAscending": [
+              "-702657194741789",
+              "-702588424994815",
+              "68794900494",
+              "25149438",
+              "-4095",
+              "1"
+            ],
+            "degree": 5,
+            "monic": true,
+            "irreducible": true
+          },
+          "preparation": {
+            "kind": "public-polynomial"
+          },
+          "request": {
+            "proof": "conditional-grh",
+            "output": "class-and-unit-group",
+            "mapPolicy": "construct-eagerly",
+            "unitPolicy": "compact-complete",
+            "limits": {
+              "wallMilliseconds": "600000",
+              "memoryBytes": "4294967296",
+              "relationCandidates": "100000000",
+              "precisionBits": 4096,
+              "continuationPasses": 100
+            }
+          },
+          "randomness": {
+            "algorithm": "chacha20-v1",
+            "seed": "9745c725fbc1ed7b46c895aaf0cf86203a7c9052e7746447b2d32b744cd9ba49"
+          },
+          "containsOracleAnswers": false
+        },
+        {
+          "schema": "sagejs.rust-class-group.neutral-input/v1",
+          "inputId": "sha256:ad52e8b750ae4e38ef590679b876e84ff4cfda2bc696636f57e8363ab94dd4df",
+          "fieldId": "generated-d5-0027-82b45b32f1f1",
+          "field": {
+            "variable": "x",
+            "coefficientsAscending": [
+              "17320518604595665",
+              "8658097355551089",
+              "-1080520740724",
+              "226291762",
+              "-12278",
+              "1"
+            ],
+            "degree": 5,
+            "monic": true,
+            "irreducible": true
+          },
+          "preparation": {
+            "kind": "public-polynomial"
+          },
+          "request": {
+            "proof": "conditional-grh",
+            "output": "class-and-unit-group",
+            "mapPolicy": "construct-eagerly",
+            "unitPolicy": "compact-complete",
+            "limits": {
+              "wallMilliseconds": "600000",
+              "memoryBytes": "4294967296",
+              "relationCandidates": "100000000",
+              "precisionBits": 4096,
+              "continuationPasses": 100
+            }
+          },
+          "randomness": {
+            "algorithm": "chacha20-v1",
+            "seed": "db59d329a4af7144b3d31a96b4acb537991c8b05b9e7fb22b87b8592176e55f8"
+          },
+          "containsOracleAnswers": false
+        },
+        {
+          "schema": "sagejs.rust-class-group.neutral-input/v1",
+          "inputId": "sha256:ffa9e6721a17ad32a7de3e1d0226c833fde1032db94fff4c829f180f5a1cfc64",
+          "fieldId": "generated-d5-0029-a8f81cc5249a",
+          "field": {
+            "variable": "x",
+            "coefficientsAscending": [
+              "-124784",
+              "-120400",
+              "4813",
+              "399",
+              "-13",
+              "1"
+            ],
+            "degree": 5,
+            "monic": true,
+            "irreducible": true
+          },
+          "preparation": {
+            "kind": "public-polynomial"
+          },
+          "request": {
+            "proof": "conditional-grh",
+            "output": "class-and-unit-group",
+            "mapPolicy": "construct-eagerly",
+            "unitPolicy": "compact-complete",
+            "limits": {
+              "wallMilliseconds": "600000",
+              "memoryBytes": "4294967296",
+              "relationCandidates": "100000000",
+              "precisionBits": 4096,
+              "continuationPasses": 100
+            }
+          },
+          "randomness": {
+            "algorithm": "chacha20-v1",
+            "seed": "96536135640159e48cde0c524c2c777cd79e502c2f745e29a48d7736cfa61364"
+          },
+          "containsOracleAnswers": false
+        },
+        {
+          "schema": "sagejs.rust-class-group.neutral-input/v1",
+          "inputId": "sha256:78fd10eb2e971ded73f737f2c5047e507942b2598ca0d411d01453be25a0c4cf",
+          "fieldId": "generated-d5-0040-e31de1644828",
+          "field": {
+            "variable": "x",
+            "coefficientsAscending": [
+              "-33166513317",
+              "16582220324",
+              "1164340",
+              "-323085",
+              "-4",
+              "1"
+            ],
+            "degree": 5,
+            "monic": true,
+            "irreducible": true
+          },
+          "preparation": {
+            "kind": "public-polynomial"
+          },
+          "request": {
+            "proof": "conditional-grh",
+            "output": "class-and-unit-group",
+            "mapPolicy": "construct-eagerly",
+            "unitPolicy": "compact-complete",
+            "limits": {
+              "wallMilliseconds": "600000",
+              "memoryBytes": "4294967296",
+              "relationCandidates": "100000000",
+              "precisionBits": 4096,
+              "continuationPasses": 100
+            }
+          },
+          "randomness": {
+            "algorithm": "chacha20-v1",
+            "seed": "871bf3fcfc9b868fd680fee2b6199fffae705ed27739f57a234c799f4a466dde"
+          },
+          "containsOracleAnswers": false
+        },
+        {
+          "schema": "sagejs.rust-class-group.neutral-input/v1",
+          "inputId": "sha256:63e69cbd36a3b6e693391066e3a294d7e4232b517063d096179e17d633151863",
+          "fieldId": "generated-d5-0052-4cba3a9c03a8",
+          "field": {
+            "variable": "x",
+            "coefficientsAscending": [
+              "-27",
+              "1123565155393590",
+              "-16752649",
+              "-83820559",
+              "1",
+              "1"
+            ],
+            "degree": 5,
+            "monic": true,
+            "irreducible": true
+          },
+          "preparation": {
+            "kind": "public-polynomial"
+          },
+          "request": {
+            "proof": "conditional-grh",
+            "output": "class-and-unit-group",
+            "mapPolicy": "construct-eagerly",
+            "unitPolicy": "compact-complete",
+            "limits": {
+              "wallMilliseconds": "600000",
+              "memoryBytes": "4294967296",
+              "relationCandidates": "100000000",
+              "precisionBits": 4096,
+              "continuationPasses": 100
+            }
+          },
+          "randomness": {
+            "algorithm": "chacha20-v1",
+            "seed": "b3a0b9959e4b6fa1f0f12a057b8b2287087a2707e40299def81c5b96114f3606"
+          },
+          "containsOracleAnswers": false
+        },
+        {
+          "schema": "sagejs.rust-class-group.neutral-input/v1",
+          "inputId": "sha256:a8b95173becbb35dbd4fe062a6231f46dba3c30417b3aad520f14fef1452fe30",
+          "fieldId": "generated-d5-0055-a04f43022de5",
+          "field": {
+            "variable": "x",
+            "coefficientsAscending": [
+              "29",
+              "201600",
+              "-1320",
+              "-1078",
+              "3",
+              "1"
+            ],
+            "degree": 5,
+            "monic": true,
+            "irreducible": true
+          },
+          "preparation": {
+            "kind": "public-polynomial"
+          },
+          "request": {
+            "proof": "conditional-grh",
+            "output": "class-and-unit-group",
+            "mapPolicy": "construct-eagerly",
+            "unitPolicy": "compact-complete",
+            "limits": {
+              "wallMilliseconds": "600000",
+              "memoryBytes": "4294967296",
+              "relationCandidates": "100000000",
+              "precisionBits": 4096,
+              "continuationPasses": 100
+            }
+          },
+          "randomness": {
+            "algorithm": "chacha20-v1",
+            "seed": "430c801123fa407f82f42682e50e2b2d450c12662d0b33d66edc083e9751a218"
+          },
+          "containsOracleAnswers": false
+        },
+        {
+          "schema": "sagejs.rust-class-group.neutral-input/v1",
+          "inputId": "sha256:2beacb4e2863c780a1005f9012dfe78f94c532eee2431f3bb053da20e80ef5a2",
+          "fieldId": "generated-d5-0056-98024dd13e50",
+          "field": {
+            "variable": "x",
+            "coefficientsAscending": [
+              "-208965",
+              "-98980",
+              "3418",
+              "309",
+              "-12",
+              "1"
+            ],
+            "degree": 5,
+            "monic": true,
+            "irreducible": true
+          },
+          "preparation": {
+            "kind": "public-polynomial"
+          },
+          "request": {
+            "proof": "conditional-grh",
+            "output": "class-and-unit-group",
+            "mapPolicy": "construct-eagerly",
+            "unitPolicy": "compact-complete",
+            "limits": {
+              "wallMilliseconds": "600000",
+              "memoryBytes": "4294967296",
+              "relationCandidates": "100000000",
+              "precisionBits": 4096,
+              "continuationPasses": 100
+            }
+          },
+          "randomness": {
+            "algorithm": "chacha20-v1",
+            "seed": "317eb08a424449eabb2aaa8795c328a25f2bbb1fa551ea0ec115843932c3fb3a"
+          },
+          "containsOracleAnswers": false
+        },
+        {
+          "schema": "sagejs.rust-class-group.neutral-input/v1",
+          "inputId": "sha256:66689678173e03b9119fa257e1f66f6662cde6f34338d066672975fda8a04ee6",
+          "fieldId": "generated-d5-0058-8b3b54b8c013",
+          "field": {
+            "variable": "x",
+            "coefficientsAscending": [
+              "-6679774",
+              "3357754",
+              "125",
+              "-4535",
+              "-1",
+              "1"
+            ],
+            "degree": 5,
+            "monic": true,
+            "irreducible": true
+          },
+          "preparation": {
+            "kind": "public-polynomial"
+          },
+          "request": {
+            "proof": "conditional-grh",
+            "output": "class-and-unit-group",
+            "mapPolicy": "construct-eagerly",
+            "unitPolicy": "compact-complete",
+            "limits": {
+              "wallMilliseconds": "600000",
+              "memoryBytes": "4294967296",
+              "relationCandidates": "100000000",
+              "precisionBits": 4096,
+              "continuationPasses": 100
+            }
+          },
+          "randomness": {
+            "algorithm": "chacha20-v1",
+            "seed": "e0368de9b811d4f6c4bd68df2164d14d1e01f261588a01afac51ae45b9ea28fd"
+          },
+          "containsOracleAnswers": false
+        },
+        {
+          "schema": "sagejs.rust-class-group.neutral-input/v1",
+          "inputId": "sha256:2ae58e5a88c3ee11c27bb74b79895d1e2f7d741b7d685e42b632c15f6d26c713",
+          "fieldId": "generated-d5-0062-b5107d1fb0ed",
+          "field": {
+            "variable": "x",
+            "coefficientsAscending": [
+              "72820768",
+              "-36885600",
+              "224572",
+              "6646",
+              "-68",
+              "1"
+            ],
+            "degree": 5,
+            "monic": true,
+            "irreducible": true
+          },
+          "preparation": {
+            "kind": "public-polynomial"
+          },
+          "request": {
+            "proof": "conditional-grh",
+            "output": "class-and-unit-group",
+            "mapPolicy": "construct-eagerly",
+            "unitPolicy": "compact-complete",
+            "limits": {
+              "wallMilliseconds": "600000",
+              "memoryBytes": "4294967296",
+              "relationCandidates": "100000000",
+              "precisionBits": 4096,
+              "continuationPasses": 100
+            }
+          },
+          "randomness": {
+            "algorithm": "chacha20-v1",
+            "seed": "ca3897c9c850e773db57540e2dfdd63f18a6710cc5c749d75ca9455433f9637d"
+          },
+          "containsOracleAnswers": false
+        },
+        {
+          "schema": "sagejs.rust-class-group.neutral-input/v1",
+          "inputId": "sha256:b5cd1c1de61a41cb856812db2306d9a7ce99dd47af946ddbcaba30e99cfd8fe6",
+          "fieldId": "generated-d5-0070-1a42bf0be0f0",
+          "field": {
+            "variable": "x",
+            "coefficientsAscending": [
+              "268227595588",
+              "268228374394",
+              "-517145",
+              "-1295915",
+              "1",
+              "1"
+            ],
+            "degree": 5,
+            "monic": true,
+            "irreducible": true
+          },
+          "preparation": {
+            "kind": "public-polynomial"
+          },
+          "request": {
+            "proof": "conditional-grh",
+            "output": "class-and-unit-group",
+            "mapPolicy": "construct-eagerly",
+            "unitPolicy": "compact-complete",
+            "limits": {
+              "wallMilliseconds": "600000",
+              "memoryBytes": "4294967296",
+              "relationCandidates": "100000000",
+              "precisionBits": 4096,
+              "continuationPasses": 100
+            }
+          },
+          "randomness": {
+            "algorithm": "chacha20-v1",
+            "seed": "a878f15d739dcb13944087a31ba11cb2bdae9808313174bd1a7224561ab263e0"
+          },
+          "containsOracleAnswers": false
+        },
+        {
+          "schema": "sagejs.rust-class-group.neutral-input/v1",
+          "inputId": "sha256:7874ff3e962b08e29a094a0315559f532ec5fa3757472557f306af979dd37a98",
+          "fieldId": "generated-d6-0002-a4377af76ff6",
+          "field": {
+            "variable": "x",
+            "coefficientsAscending": [
+              "16727038",
+              "-1347456",
+              "-294952",
+              "9076",
+              "54",
+              "-13",
+              "1"
+            ],
+            "degree": 6,
+            "monic": true,
+            "irreducible": true
+          },
+          "preparation": {
+            "kind": "public-polynomial"
+          },
+          "request": {
+            "proof": "conditional-grh",
+            "output": "class-and-unit-group",
+            "mapPolicy": "construct-eagerly",
+            "unitPolicy": "compact-complete",
+            "limits": {
+              "wallMilliseconds": "600000",
+              "memoryBytes": "4294967296",
+              "relationCandidates": "100000000",
+              "precisionBits": 4096,
+              "continuationPasses": 100
+            }
+          },
+          "randomness": {
+            "algorithm": "chacha20-v1",
+            "seed": "6b65ca2fde5db4609e5bb5c321082cb153ff0ab1bff488dbe626526fca8855d8"
+          },
+          "containsOracleAnswers": false
+        },
+        {
+          "schema": "sagejs.rust-class-group.neutral-input/v1",
+          "inputId": "sha256:1ebf616c37773bc779170f35bc8bf7df957f704a967795a25020d62e41c4e300",
+          "fieldId": "generated-d6-0006-969e15c15553",
+          "field": {
+            "variable": "x",
+            "coefficientsAscending": [
+              "1266186236",
+              "-16594432",
+              "-5087352",
+              "73782",
+              "296",
+              "-35",
+              "1"
+            ],
+            "degree": 6,
+            "monic": true,
+            "irreducible": true
+          },
+          "preparation": {
+            "kind": "public-polynomial"
+          },
+          "request": {
+            "proof": "conditional-grh",
+            "output": "class-and-unit-group",
+            "mapPolicy": "construct-eagerly",
+            "unitPolicy": "compact-complete",
+            "limits": {
+              "wallMilliseconds": "600000",
+              "memoryBytes": "4294967296",
+              "relationCandidates": "100000000",
+              "precisionBits": 4096,
+              "continuationPasses": 100
+            }
+          },
+          "randomness": {
+            "algorithm": "chacha20-v1",
+            "seed": "7ca7d609a12a85e3f29239dd47722b83fda385afb7f8b009f6361da26ac2393a"
+          },
+          "containsOracleAnswers": false
+        },
+        {
+          "schema": "sagejs.rust-class-group.neutral-input/v1",
+          "inputId": "sha256:9984860c5fbc1322434568149ac456981e79853c27f1c3f7010cb9930b56dd63",
+          "fieldId": "generated-d6-0015-3f74914cbec6",
+          "field": {
+            "variable": "x",
+            "coefficientsAscending": [
+              "-30807170995725",
+              "141393664898",
+              "7111966333",
+              "-30708084",
+              "213768",
+              "-382",
+              "1"
+            ],
+            "degree": 6,
+            "monic": true,
+            "irreducible": true
+          },
+          "preparation": {
+            "kind": "public-polynomial"
+          },
+          "request": {
+            "proof": "conditional-grh",
+            "output": "class-and-unit-group",
+            "mapPolicy": "construct-eagerly",
+            "unitPolicy": "compact-complete",
+            "limits": {
+              "wallMilliseconds": "600000",
+              "memoryBytes": "4294967296",
+              "relationCandidates": "100000000",
+              "precisionBits": 4096,
+              "continuationPasses": 100
+            }
+          },
+          "randomness": {
+            "algorithm": "chacha20-v1",
+            "seed": "7f4338a78d9d7845d5000b15bfeb3e6884f2705df3ebe331f95612b7ddccfaff"
+          },
+          "containsOracleAnswers": false
+        },
+        {
+          "schema": "sagejs.rust-class-group.neutral-input/v1",
+          "inputId": "sha256:e565ab67c2b5e008a9d50509c778cd2ece8692c594ec813efd7fb85c1dfc80ca",
+          "fieldId": "generated-d6-0016-8209107d844f",
+          "field": {
+            "variable": "x",
+            "coefficientsAscending": [
+              "3861470318461591",
+              "-17036110641560",
+              "102670415109",
+              "-245204058",
+              "669318",
+              "-754",
+              "1"
+            ],
+            "degree": 6,
+            "monic": true,
+            "irreducible": true
+          },
+          "preparation": {
+            "kind": "public-polynomial"
+          },
+          "request": {
+            "proof": "conditional-grh",
+            "output": "class-and-unit-group",
+            "mapPolicy": "construct-eagerly",
+            "unitPolicy": "compact-complete",
+            "limits": {
+              "wallMilliseconds": "600000",
+              "memoryBytes": "4294967296",
+              "relationCandidates": "100000000",
+              "precisionBits": 4096,
+              "continuationPasses": 100
+            }
+          },
+          "randomness": {
+            "algorithm": "chacha20-v1",
+            "seed": "f8c67af46d2681e1d4b376d877e49de12716b1ddb237e8a2337144ac83375ade"
+          },
+          "containsOracleAnswers": false
+        },
+        {
+          "schema": "sagejs.rust-class-group.neutral-input/v1",
+          "inputId": "sha256:85d88448cd6c0037ae575ca97e9d39a6e3bd0f6d775cd2e7b4ca0cc219dafe96",
+          "fieldId": "generated-d6-0030-fe726131253f",
+          "field": {
+            "variable": "x",
+            "coefficientsAscending": [
+              "102921172562580173159",
+              "-20338157414246800",
+              "-99615934005213",
+              "21426630672",
+              "20453",
+              "-2048",
+              "1"
+            ],
+            "degree": 6,
+            "monic": true,
+            "irreducible": true
+          },
+          "preparation": {
+            "kind": "public-polynomial"
+          },
+          "request": {
+            "proof": "conditional-grh",
+            "output": "class-and-unit-group",
+            "mapPolicy": "construct-eagerly",
+            "unitPolicy": "compact-complete",
+            "limits": {
+              "wallMilliseconds": "600000",
+              "memoryBytes": "4294967296",
+              "relationCandidates": "100000000",
+              "precisionBits": 4096,
+              "continuationPasses": 100
+            }
+          },
+          "randomness": {
+            "algorithm": "chacha20-v1",
+            "seed": "0e18f71a7733bb9b393fcb91fd0fd7620e4f399ff63bb64d3d5e9334f0c76432"
+          },
+          "containsOracleAnswers": false
+        },
+        {
+          "schema": "sagejs.rust-class-group.neutral-input/v1",
+          "inputId": "sha256:980c2d374b42ee94b15e165f5344b9645b21707db175bbee88fba9aa796201d0",
+          "fieldId": "generated-d6-0033-1734d35a1a3d",
+          "field": {
+            "variable": "x",
+            "coefficientsAscending": [
+              "-16516859257425458385282",
+              "-4105244450448260",
+              "4543504783070239",
+              "184303702",
+              "-146616380",
+              "-2",
+              "1"
+            ],
+            "degree": 6,
+            "monic": true,
+            "irreducible": true
+          },
+          "preparation": {
+            "kind": "public-polynomial"
+          },
+          "request": {
+            "proof": "conditional-grh",
+            "output": "class-and-unit-group",
+            "mapPolicy": "construct-eagerly",
+            "unitPolicy": "compact-complete",
+            "limits": {
+              "wallMilliseconds": "600000",
+              "memoryBytes": "4294967296",
+              "relationCandidates": "100000000",
+              "precisionBits": 4096,
+              "continuationPasses": 100
+            }
+          },
+          "randomness": {
+            "algorithm": "chacha20-v1",
+            "seed": "e4dbbd9af1a0b5f74c0a75945638f57fadf05827786db290a620ea7c4f9c20c0"
+          },
+          "containsOracleAnswers": false
+        },
+        {
+          "schema": "sagejs.rust-class-group.neutral-input/v1",
+          "inputId": "sha256:365cdb6e4ceb4093a0a357b81ee7f7cbd13861b35cd91072c6aad2cf709cf62e",
+          "fieldId": "generated-d6-0034-72f6324182d5",
+          "field": {
+            "variable": "x",
+            "coefficientsAscending": [
+              "6622254907291294236702",
+              "-649363096967790576",
+              "-1599274923802672",
+              "171505283044",
+              "16389",
+              "-4090",
+              "1"
+            ],
+            "degree": 6,
+            "monic": true,
+            "irreducible": true
+          },
+          "preparation": {
+            "kind": "public-polynomial"
+          },
+          "request": {
+            "proof": "conditional-grh",
+            "output": "class-and-unit-group",
+            "mapPolicy": "construct-eagerly",
+            "unitPolicy": "compact-complete",
+            "limits": {
+              "wallMilliseconds": "600000",
+              "memoryBytes": "4294967296",
+              "relationCandidates": "100000000",
+              "precisionBits": 4096,
+              "continuationPasses": 100
+            }
+          },
+          "randomness": {
+            "algorithm": "chacha20-v1",
+            "seed": "05e31e40aa6b864c244c550f0a1bf509868a1cfd06db0e696e6504cf0883a7f0"
+          },
+          "containsOracleAnswers": false
+        },
+        {
+          "schema": "sagejs.rust-class-group.neutral-input/v1",
+          "inputId": "sha256:68fc7e6ccb795045517986ec95c6b3a28569974041fbfb302859ea4eaf0e0331",
+          "fieldId": "generated-d6-0040-faf9a4160309",
+          "field": {
+            "variable": "x",
+            "coefficientsAscending": [
+              "10627129619",
+              "-371347116",
+              "19470933",
+              "-383114",
+              "9110",
+              "-86",
+              "1"
+            ],
+            "degree": 6,
+            "monic": true,
+            "irreducible": true
+          },
+          "preparation": {
+            "kind": "public-polynomial"
+          },
+          "request": {
+            "proof": "conditional-grh",
+            "output": "class-and-unit-group",
+            "mapPolicy": "construct-eagerly",
+            "unitPolicy": "compact-complete",
+            "limits": {
+              "wallMilliseconds": "600000",
+              "memoryBytes": "4294967296",
+              "relationCandidates": "100000000",
+              "precisionBits": 4096,
+              "continuationPasses": 100
+            }
+          },
+          "randomness": {
+            "algorithm": "chacha20-v1",
+            "seed": "8cb0a03ab02a3c5579357365477a654c73250cbd6eedb33ab5f1a86bdec5561d"
+          },
+          "containsOracleAnswers": false
+        },
+        {
+          "schema": "sagejs.rust-class-group.neutral-input/v1",
+          "inputId": "sha256:9f4628a4cd8a26461a365abb9c55aba06203f787596e89cd9c79de5e4db69231",
+          "fieldId": "generated-d6-0053-e70464194f0e",
+          "field": {
+            "variable": "x",
+            "coefficientsAscending": [
+              "-929159431999972",
+              "-180668993500",
+              "66827174825",
+              "2060960",
+              "-563242",
+              "-4",
+              "1"
+            ],
+            "degree": 6,
+            "monic": true,
+            "irreducible": true
+          },
+          "preparation": {
+            "kind": "public-polynomial"
+          },
+          "request": {
+            "proof": "conditional-grh",
+            "output": "class-and-unit-group",
+            "mapPolicy": "construct-eagerly",
+            "unitPolicy": "compact-complete",
+            "limits": {
+              "wallMilliseconds": "600000",
+              "memoryBytes": "4294967296",
+              "relationCandidates": "100000000",
+              "precisionBits": 4096,
+              "continuationPasses": 100
+            }
+          },
+          "randomness": {
+            "algorithm": "chacha20-v1",
+            "seed": "a6762ff3bc92a78bc58991bf8b56485534ee4c29155687bf9d893699d46ff4df"
+          },
+          "containsOracleAnswers": false
+        },
+        {
+          "schema": "sagejs.rust-class-group.neutral-input/v1",
+          "inputId": "sha256:2b582651a22c8d529a240797e1cd4ac19e638b25b665499ae489a2b998851b7c",
+          "fieldId": "generated-d6-0057-cfa6659b6f0d",
+          "field": {
+            "variable": "x",
+            "coefficientsAscending": [
+              "-61490253387781650",
+              "-747302157484",
+              "1092431250604",
+              "-910855",
+              "-2273585",
+              "-1",
+              "1"
+            ],
+            "degree": 6,
+            "monic": true,
+            "irreducible": true
+          },
+          "preparation": {
+            "kind": "public-polynomial"
+          },
+          "request": {
+            "proof": "conditional-grh",
+            "output": "class-and-unit-group",
+            "mapPolicy": "construct-eagerly",
+            "unitPolicy": "compact-complete",
+            "limits": {
+              "wallMilliseconds": "600000",
+              "memoryBytes": "4294967296",
+              "relationCandidates": "100000000",
+              "precisionBits": 4096,
+              "continuationPasses": 100
+            }
+          },
+          "randomness": {
+            "algorithm": "chacha20-v1",
+            "seed": "86eb2d7f8c4461ec1e8726ad9b252d302460139eed414b95b5043809db1e0429"
+          },
+          "containsOracleAnswers": false
+        },
+        {
+          "schema": "sagejs.rust-class-group.neutral-input/v1",
+          "inputId": "sha256:671858ae3fcbdfbd54db4cf98934afdcd0b2acffabdb9f5bc15cd8e7d528b224",
+          "fieldId": "generated-d6-0064-c0f875e7b709",
+          "field": {
+            "variable": "x",
+            "coefficientsAscending": [
+              "1076560661903266426367",
+              "-590035306559899040",
+              "439398448811346",
+              "-130264888538",
+              "43882647",
+              "-6128",
+              "1"
+            ],
+            "degree": 6,
+            "monic": true,
+            "irreducible": true
+          },
+          "preparation": {
+            "kind": "public-polynomial"
+          },
+          "request": {
+            "proof": "conditional-grh",
+            "output": "class-and-unit-group",
+            "mapPolicy": "construct-eagerly",
+            "unitPolicy": "compact-complete",
+            "limits": {
+              "wallMilliseconds": "600000",
+              "memoryBytes": "4294967296",
+              "relationCandidates": "100000000",
+              "precisionBits": 4096,
+              "continuationPasses": 100
+            }
+          },
+          "randomness": {
+            "algorithm": "chacha20-v1",
+            "seed": "7f8a47cb6c1ab53e02e408408591b3f4d67138e9a3be6b6ae7c28baa21c5ba91"
+          },
+          "containsOracleAnswers": false
+        },
+        {
+          "schema": "sagejs.rust-class-group.neutral-input/v1",
+          "inputId": "sha256:3b3500deb249a5400f2ae4e41b4faea6a558a216b384f7926ecc942a39bdebc0",
+          "fieldId": "generated-d6-0067-f530fd7429cb",
+          "field": {
+            "variable": "x",
+            "coefficientsAscending": [
+              "-565474307904431911951",
+              "141728096878299149",
+              "481604067520491",
+              "-128568147948",
+              "55497758",
+              "-6137",
+              "1"
+            ],
+            "degree": 6,
+            "monic": true,
+            "irreducible": true
+          },
+          "preparation": {
+            "kind": "public-polynomial"
+          },
+          "request": {
+            "proof": "conditional-grh",
+            "output": "class-and-unit-group",
+            "mapPolicy": "construct-eagerly",
+            "unitPolicy": "compact-complete",
+            "limits": {
+              "wallMilliseconds": "600000",
+              "memoryBytes": "4294967296",
+              "relationCandidates": "100000000",
+              "precisionBits": 4096,
+              "continuationPasses": 100
+            }
+          },
+          "randomness": {
+            "algorithm": "chacha20-v1",
+            "seed": "6a22b6dd23a37b77526494f3b14de8eaf4a1c257269f611b68dcbb0a874aaa11"
+          },
+          "containsOracleAnswers": false
+        },
+        {
+          "schema": "sagejs.rust-class-group.neutral-input/v1",
+          "inputId": "sha256:bc8831a57ab00b58c00132a9ca10d71367551710590152089f72e6c71f6d41f3",
+          "fieldId": "h1-real-cubic",
+          "field": {
+            "variable": "x",
+            "coefficientsAscending": [
+              "20034",
+              "-20018",
+              "0",
+              "1"
+            ],
+            "degree": 3,
+            "monic": true,
+            "irreducible": true
+          },
+          "preparation": {
+            "kind": "public-polynomial"
+          },
+          "request": {
+            "proof": "conditional-grh",
+            "output": "class-and-unit-group",
+            "mapPolicy": "construct-eagerly",
+            "unitPolicy": "compact-complete",
+            "limits": {
+              "wallMilliseconds": "600000",
+              "memoryBytes": "4294967296",
+              "relationCandidates": "100000000",
+              "precisionBits": 4096,
+              "continuationPasses": 100
+            }
+          },
+          "randomness": {
+            "algorithm": "chacha20-v1",
+            "seed": "f4b58eaa3f58d5f0a2697810e3107dd08049f0e9f14a7282bcdd96cbc74537f4"
+          },
+          "containsOracleAnswers": false
+        },
+        {
+          "schema": "sagejs.rust-class-group.neutral-input/v1",
+          "inputId": "sha256:2908e457744856c59f336072956378d992b2c6a10b4b09f1ff8c13554b51e596",
+          "fieldId": "row1-index-3-cubic",
+          "field": {
+            "variable": "x",
+            "coefficientsAscending": [
+              "20018",
+              "-20010",
+              "0",
+              "1"
+            ],
+            "degree": 3,
+            "monic": true,
+            "irreducible": true
+          },
+          "preparation": {
+            "kind": "public-polynomial"
+          },
+          "request": {
+            "proof": "conditional-grh",
+            "output": "class-and-unit-group",
+            "mapPolicy": "construct-eagerly",
+            "unitPolicy": "compact-complete",
+            "limits": {
+              "wallMilliseconds": "600000",
+              "memoryBytes": "4294967296",
+              "relationCandidates": "100000000",
+              "precisionBits": 4096,
+              "continuationPasses": 100
+            }
+          },
+          "randomness": {
+            "algorithm": "chacha20-v1",
+            "seed": "5900f56e79ace5c380509c9c9ae97e7061a50722f1b026f5c82f138af8cf4314"
+          },
+          "containsOracleAnswers": false
+        },
+        {
+          "schema": "sagejs.rust-class-group.neutral-input/v1",
+          "inputId": "sha256:534915028f9c853a7d74b5d9d6f7a054ee9085f42b93f1f3d7d2dc37a6d94cb7",
+          "fieldId": "row6-continuation-cubic",
+          "field": {
+            "variable": "x",
+            "coefficientsAscending": [
+              "2000000000018",
+              "-2000000000010",
+              "0",
+              "1"
+            ],
+            "degree": 3,
+            "monic": true,
+            "irreducible": true
+          },
+          "preparation": {
+            "kind": "public-polynomial"
+          },
+          "request": {
+            "proof": "conditional-grh",
+            "output": "class-and-unit-group",
+            "mapPolicy": "construct-eagerly",
+            "unitPolicy": "compact-complete",
+            "limits": {
+              "wallMilliseconds": "600000",
+              "memoryBytes": "4294967296",
+              "relationCandidates": "100000000",
+              "precisionBits": 4096,
+              "continuationPasses": 100
+            }
+          },
+          "randomness": {
+            "algorithm": "chacha20-v1",
+            "seed": "dcfd72c856e82484029dc9a7472a86fc673a51539fad3e686d0bbff74260480b"
+          },
+          "containsOracleAnswers": false
+        },
+        {
+          "schema": "sagejs.rust-class-group.neutral-input/v1",
+          "inputId": "sha256:dee72a59fffc8e2d0fbe6d0cd7f99f8cb1b499777e31e4b416c97f783a22826c",
+          "fieldId": "small-class-number-2",
+          "field": {
+            "variable": "x",
+            "coefficientsAscending": [
+              "-29",
+              "-30",
+              "-8",
+              "1"
+            ],
+            "degree": 3,
+            "monic": true,
+            "irreducible": true
+          },
+          "preparation": {
+            "kind": "public-polynomial"
+          },
+          "request": {
+            "proof": "conditional-grh",
+            "output": "class-and-unit-group",
+            "mapPolicy": "construct-eagerly",
+            "unitPolicy": "compact-complete",
+            "limits": {
+              "wallMilliseconds": "600000",
+              "memoryBytes": "4294967296",
+              "relationCandidates": "100000000",
+              "precisionBits": 4096,
+              "continuationPasses": 100
+            }
+          },
+          "randomness": {
+            "algorithm": "chacha20-v1",
+            "seed": "bc0f904bae4717c8c41f50454b944176cce0a301319ee72fd8c58885650c0c3b"
+          },
+          "containsOracleAnswers": false
+        },
+        {
+          "schema": "sagejs.rust-class-group.neutral-input/v1",
+          "inputId": "sha256:a14d070926c7fc0fd9effa55f05d83a7f17f02120d19e87e131bf1fd00c173ab",
+          "fieldId": "small-class-number-3",
+          "field": {
+            "variable": "x",
+            "coefficientsAscending": [
+              "-26",
+              "-30",
+              "-8",
+              "1"
+            ],
+            "degree": 3,
+            "monic": true,
+            "irreducible": true
+          },
+          "preparation": {
+            "kind": "public-polynomial"
+          },
+          "request": {
+            "proof": "conditional-grh",
+            "output": "class-and-unit-group",
+            "mapPolicy": "construct-eagerly",
+            "unitPolicy": "compact-complete",
+            "limits": {
+              "wallMilliseconds": "600000",
+              "memoryBytes": "4294967296",
+              "relationCandidates": "100000000",
+              "precisionBits": 4096,
+              "continuationPasses": 100
+            }
+          },
+          "randomness": {
+            "algorithm": "chacha20-v1",
+            "seed": "e96f3e2c2a79883eec117a1759019001a488e4a36c7cff68f4950c472a9582db"
+          },
+          "containsOracleAnswers": false
+        },
+        {
+          "schema": "sagejs.rust-class-group.neutral-input/v1",
+          "inputId": "sha256:45f933e2c59f5241c3789eb5dfae6758f98b5a4f7c121ba632ad568005f0fb61",
+          "fieldId": "small-class-number-4",
+          "field": {
+            "variable": "x",
+            "coefficientsAscending": [
+              "-37",
+              "-30",
+              "-8",
+              "1"
+            ],
+            "degree": 3,
+            "monic": true,
+            "irreducible": true
+          },
+          "preparation": {
+            "kind": "public-polynomial"
+          },
+          "request": {
+            "proof": "conditional-grh",
+            "output": "class-and-unit-group",
+            "mapPolicy": "construct-eagerly",
+            "unitPolicy": "compact-complete",
+            "limits": {
+              "wallMilliseconds": "600000",
+              "memoryBytes": "4294967296",
+              "relationCandidates": "100000000",
+              "precisionBits": 4096,
+              "continuationPasses": 100
+            }
+          },
+          "randomness": {
+            "algorithm": "chacha20-v1",
+            "seed": "88238a01a60c10a8ceaa84dd1846096bdaa0b7c6edc6e8194e8c8c121d224d67"
+          },
+          "containsOracleAnswers": false
+        },
+        {
+          "schema": "sagejs.rust-class-group.neutral-input/v1",
+          "inputId": "sha256:33bc571fafd76d3bcea0a1baf8786027e647413f817275cbeed7c6270453b4bd",
+          "fieldId": "small-class-number-6",
+          "field": {
+            "variable": "x",
+            "coefficientsAscending": [
+              "-34",
+              "-30",
+              "-8",
+              "1"
+            ],
+            "degree": 3,
+            "monic": true,
+            "irreducible": true
+          },
+          "preparation": {
+            "kind": "public-polynomial"
+          },
+          "request": {
+            "proof": "conditional-grh",
+            "output": "class-and-unit-group",
+            "mapPolicy": "construct-eagerly",
+            "unitPolicy": "compact-complete",
+            "limits": {
+              "wallMilliseconds": "600000",
+              "memoryBytes": "4294967296",
+              "relationCandidates": "100000000",
+              "precisionBits": 4096,
+              "continuationPasses": 100
+            }
+          },
+          "randomness": {
+            "algorithm": "chacha20-v1",
+            "seed": "83ad858769e383f1d1b59704f12ba8926ec357fae3c1f8eaf7371b54c6d37cf1"
+          },
+          "containsOracleAnswers": false
+        },
+        {
+          "schema": "sagejs.rust-class-group.neutral-input/v1",
+          "inputId": "sha256:46d1f7d25459484548a624f46fb66b3c1bd979ce4cd5cbfd7000b3491a3149d9",
+          "fieldId": "small-discriminant-49",
+          "field": {
+            "variable": "x",
+            "coefficientsAscending": [
+              "1",
+              "-2",
+              "-1",
+              "1"
+            ],
+            "degree": 3,
+            "monic": true,
+            "irreducible": true
+          },
+          "preparation": {
+            "kind": "public-polynomial"
+          },
+          "request": {
+            "proof": "conditional-grh",
+            "output": "class-and-unit-group",
+            "mapPolicy": "construct-eagerly",
+            "unitPolicy": "compact-complete",
+            "limits": {
+              "wallMilliseconds": "600000",
+              "memoryBytes": "4294967296",
+              "relationCandidates": "100000000",
+              "precisionBits": 4096,
+              "continuationPasses": 100
+            }
+          },
+          "randomness": {
+            "algorithm": "chacha20-v1",
+            "seed": "c7361c815c656ae71411740da46197e51886565ca16d8b23db0eabb1b2630076"
+          },
+          "containsOracleAnswers": false
+        },
+        {
+          "schema": "sagejs.rust-class-group.neutral-input/v1",
+          "inputId": "sha256:b8fa8bdd0384496ef637039d87b175137874f0ace7de9671df1c31e4ea4f4527",
+          "fieldId": "small-x3-x-1",
+          "field": {
+            "variable": "x",
+            "coefficientsAscending": [
+              "-1",
+              "-1",
+              "0",
+              "1"
+            ],
+            "degree": 3,
+            "monic": true,
+            "irreducible": true
+          },
+          "preparation": {
+            "kind": "public-polynomial"
+          },
+          "request": {
+            "proof": "conditional-grh",
+            "output": "class-and-unit-group",
+            "mapPolicy": "construct-eagerly",
+            "unitPolicy": "compact-complete",
+            "limits": {
+              "wallMilliseconds": "600000",
+              "memoryBytes": "4294967296",
+              "relationCandidates": "100000000",
+              "precisionBits": 4096,
+              "continuationPasses": 100
+            }
+          },
+          "randomness": {
+            "algorithm": "chacha20-v1",
+            "seed": "780f0520c6f66647a8ec9a15ae56fab72aaecd783ac23ebde1dd4d63f4228b00"
+          },
+          "containsOracleAnswers": false
+        }
+      ]
+    },
+    "heldOut": {
+      "cases": [
+        {
+          "schema": "sagejs.rust-class-group.neutral-input/v1",
+          "inputId": "sha256:3713d947663e634b92977524a822c014fe771d43412e243229f4bace9705cf11",
+          "fieldId": "generated-d2-0010-d60809a99f42",
+          "field": {
+            "variable": "x",
+            "coefficientsAscending": [
+              "163075",
+              "-250",
+              "1"
+            ],
+            "degree": 2,
+            "monic": true,
+            "irreducible": true
+          },
+          "preparation": {
+            "kind": "public-polynomial"
+          },
+          "request": {
+            "proof": "conditional-grh",
+            "output": "class-and-unit-group",
+            "mapPolicy": "construct-eagerly",
+            "unitPolicy": "compact-complete",
+            "limits": {
+              "wallMilliseconds": "600000",
+              "memoryBytes": "4294967296",
+              "relationCandidates": "100000000",
+              "precisionBits": 4096,
+              "continuationPasses": 100
+            }
+          },
+          "randomness": {
+            "algorithm": "chacha20-v1",
+            "seed": "8782b483d63e0430b0192d2e9908d40aa477d9ed41a0605ed484a8c2c8a4cf3e"
+          },
+          "containsOracleAnswers": false
+        },
+        {
+          "schema": "sagejs.rust-class-group.neutral-input/v1",
+          "inputId": "sha256:07eb728a499960bd744bfa9389725fa1d1258852eab1b9c1f6187ec8b9ff5084",
+          "fieldId": "generated-d2-0011-4b38eab8e7eb",
+          "field": {
+            "variable": "x",
+            "coefficientsAscending": [
+              "-65528",
+              "2",
+              "1"
+            ],
+            "degree": 2,
+            "monic": true,
+            "irreducible": true
+          },
+          "preparation": {
+            "kind": "public-polynomial"
+          },
+          "request": {
+            "proof": "conditional-grh",
+            "output": "class-and-unit-group",
+            "mapPolicy": "construct-eagerly",
+            "unitPolicy": "compact-complete",
+            "limits": {
+              "wallMilliseconds": "600000",
+              "memoryBytes": "4294967296",
+              "relationCandidates": "100000000",
+              "precisionBits": 4096,
+              "continuationPasses": 100
+            }
+          },
+          "randomness": {
+            "algorithm": "chacha20-v1",
+            "seed": "4e2cefd58ad6b425c16755f021ae4e16dc49eba1079623b37d47708c058bdb31"
+          },
+          "containsOracleAnswers": false
+        },
+        {
+          "schema": "sagejs.rust-class-group.neutral-input/v1",
+          "inputId": "sha256:d0db83395d98fbab8e84f3f08fcc166bd8f0f7d089449c2d279b8459e97d8ca1",
+          "fieldId": "generated-d2-0016-5b099fba555d",
+          "field": {
+            "variable": "x",
+            "coefficientsAscending": [
+              "10477561",
+              "-2046",
+              "1"
+            ],
+            "degree": 2,
+            "monic": true,
+            "irreducible": true
+          },
+          "preparation": {
+            "kind": "public-polynomial"
+          },
+          "request": {
+            "proof": "conditional-grh",
+            "output": "class-and-unit-group",
+            "mapPolicy": "construct-eagerly",
+            "unitPolicy": "compact-complete",
+            "limits": {
+              "wallMilliseconds": "600000",
+              "memoryBytes": "4294967296",
+              "relationCandidates": "100000000",
+              "precisionBits": 4096,
+              "continuationPasses": 100
+            }
+          },
+          "randomness": {
+            "algorithm": "chacha20-v1",
+            "seed": "f24a5bf53312cf9c71ee54548857120fc15ed00d50224a1cfa034bfa578c99e4"
+          },
+          "containsOracleAnswers": false
+        },
+        {
+          "schema": "sagejs.rust-class-group.neutral-input/v1",
+          "inputId": "sha256:6643d6c69373a93b19a2bb65a7145d18296c056f237b2a8ce6e084db526ffe31",
+          "fieldId": "generated-d2-0017-171f9f1c7c81",
+          "field": {
+            "variable": "x",
+            "coefficientsAscending": [
+              "-4190195",
+              "4",
+              "1"
+            ],
+            "degree": 2,
+            "monic": true,
+            "irreducible": true
+          },
+          "preparation": {
+            "kind": "public-polynomial"
+          },
+          "request": {
+            "proof": "conditional-grh",
+            "output": "class-and-unit-group",
+            "mapPolicy": "construct-eagerly",
+            "unitPolicy": "compact-complete",
+            "limits": {
+              "wallMilliseconds": "600000",
+              "memoryBytes": "4294967296",
+              "relationCandidates": "100000000",
+              "precisionBits": 4096,
+              "continuationPasses": 100
+            }
+          },
+          "randomness": {
+            "algorithm": "chacha20-v1",
+            "seed": "e1aa0d88a62c53159469e773cd91f91e10b39ec60c83f870fa4ed8a1936cdccf"
+          },
+          "containsOracleAnswers": false
+        },
+        {
+          "schema": "sagejs.rust-class-group.neutral-input/v1",
+          "inputId": "sha256:72dad326dd88788a8d859b1c665152cbbb222317bc7abda1235e10eecdeecb4f",
+          "fieldId": "generated-d2-0034-300ea41ead97",
+          "field": {
+            "variable": "x",
+            "coefficientsAscending": [
+              "10479607",
+              "-2042",
+              "1"
+            ],
+            "degree": 2,
+            "monic": true,
+            "irreducible": true
+          },
+          "preparation": {
+            "kind": "public-polynomial"
+          },
+          "request": {
+            "proof": "conditional-grh",
+            "output": "class-and-unit-group",
+            "mapPolicy": "construct-eagerly",
+            "unitPolicy": "compact-complete",
+            "limits": {
+              "wallMilliseconds": "600000",
+              "memoryBytes": "4294967296",
+              "relationCandidates": "100000000",
+              "precisionBits": 4096,
+              "continuationPasses": 100
+            }
+          },
+          "randomness": {
+            "algorithm": "chacha20-v1",
+            "seed": "10e3b93b27a9f060227230fadf18cb6a1cd746615102ee2ec766eedcf64ed38a"
+          },
+          "containsOracleAnswers": false
+        },
+        {
+          "schema": "sagejs.rust-class-group.neutral-input/v1",
+          "inputId": "sha256:f86ca7542da483cb02bd2c589bef65a954901fdbb44197a53e59d2f5c364e5d1",
+          "fieldId": "generated-d2-0038-eef8be027edb",
+          "field": {
+            "variable": "x",
+            "coefficientsAscending": [
+              "605",
+              "-14",
+              "1"
+            ],
+            "degree": 2,
+            "monic": true,
+            "irreducible": true
+          },
+          "preparation": {
+            "kind": "public-polynomial"
+          },
+          "request": {
+            "proof": "conditional-grh",
+            "output": "class-and-unit-group",
+            "mapPolicy": "construct-eagerly",
+            "unitPolicy": "compact-complete",
+            "limits": {
+              "wallMilliseconds": "600000",
+              "memoryBytes": "4294967296",
+              "relationCandidates": "100000000",
+              "precisionBits": 4096,
+              "continuationPasses": 100
+            }
+          },
+          "randomness": {
+            "algorithm": "chacha20-v1",
+            "seed": "8b838115ba816cce303b0b10a6c75f9dc40c2f8378f00345c6a97d54a55963c1"
+          },
+          "containsOracleAnswers": false
+        },
+        {
+          "schema": "sagejs.rust-class-group.neutral-input/v1",
+          "inputId": "sha256:dca8bbaa77a5c4dcdbdd2f849e23589efe56acd0aab4b5e118f84f00676b3371",
+          "fieldId": "generated-d2-0044-369df26dbc7e",
+          "field": {
+            "variable": "x",
+            "coefficientsAscending": [
+              "40302",
+              "-124",
+              "1"
+            ],
+            "degree": 2,
+            "monic": true,
+            "irreducible": true
+          },
+          "preparation": {
+            "kind": "public-polynomial"
+          },
+          "request": {
+            "proof": "conditional-grh",
+            "output": "class-and-unit-group",
+            "mapPolicy": "construct-eagerly",
+            "unitPolicy": "compact-complete",
+            "limits": {
+              "wallMilliseconds": "600000",
+              "memoryBytes": "4294967296",
+              "relationCandidates": "100000000",
+              "precisionBits": 4096,
+              "continuationPasses": 100
+            }
+          },
+          "randomness": {
+            "algorithm": "chacha20-v1",
+            "seed": "4d2708cf3d7196d2c0fc61960068897cc6e1177b9050029a64185a2b15d9bc3c"
+          },
+          "containsOracleAnswers": false
+        },
+        {
+          "schema": "sagejs.rust-class-group.neutral-input/v1",
+          "inputId": "sha256:635b87b22852d43e6378e502c863bc2dbc32fe8156c453b511eed3f4ac4998db",
+          "fieldId": "generated-d2-0054-2fd4f6d803b9",
+          "field": {
+            "variable": "x",
+            "coefficientsAscending": [
+              "41922537",
+              "-4098",
+              "1"
+            ],
+            "degree": 2,
+            "monic": true,
+            "irreducible": true
+          },
+          "preparation": {
+            "kind": "public-polynomial"
+          },
+          "request": {
+            "proof": "conditional-grh",
+            "output": "class-and-unit-group",
+            "mapPolicy": "construct-eagerly",
+            "unitPolicy": "compact-complete",
+            "limits": {
+              "wallMilliseconds": "600000",
+              "memoryBytes": "4294967296",
+              "relationCandidates": "100000000",
+              "precisionBits": 4096,
+              "continuationPasses": 100
+            }
+          },
+          "randomness": {
+            "algorithm": "chacha20-v1",
+            "seed": "b6c2c73ada51c525e0a9c044e447afb899f67c787008249577ff738a098f9ce2"
+          },
+          "containsOracleAnswers": false
+        },
+        {
+          "schema": "sagejs.rust-class-group.neutral-input/v1",
+          "inputId": "sha256:66d34ac111047ec4481dc74ab5f834db71a36125b53bad015b63af1104928bb0",
+          "fieldId": "generated-d2-0058-5229c1255df7",
+          "field": {
+            "variable": "x",
+            "coefficientsAscending": [
+              "2282",
+              "-28",
+              "1"
+            ],
+            "degree": 2,
+            "monic": true,
+            "irreducible": true
+          },
+          "preparation": {
+            "kind": "public-polynomial"
+          },
+          "request": {
+            "proof": "conditional-grh",
+            "output": "class-and-unit-group",
+            "mapPolicy": "construct-eagerly",
+            "unitPolicy": "compact-complete",
+            "limits": {
+              "wallMilliseconds": "600000",
+              "memoryBytes": "4294967296",
+              "relationCandidates": "100000000",
+              "precisionBits": 4096,
+              "continuationPasses": 100
+            }
+          },
+          "randomness": {
+            "algorithm": "chacha20-v1",
+            "seed": "fd2854d3b5413d341b951906ce4917c517011a09b74d0e69c2dc547c8d6e9cfe"
+          },
+          "containsOracleAnswers": false
+        },
+        {
+          "schema": "sagejs.rust-class-group.neutral-input/v1",
+          "inputId": "sha256:6f8cc5b4d22d0d5df4ab34decb8eb9de48de8904853f1d0bdf33a4bd7534807c",
+          "fieldId": "generated-d2-0062-d564595d5143",
+          "field": {
+            "variable": "x",
+            "coefficientsAscending": [
+              "40293",
+              "-130",
+              "1"
+            ],
+            "degree": 2,
+            "monic": true,
+            "irreducible": true
+          },
+          "preparation": {
+            "kind": "public-polynomial"
+          },
+          "request": {
+            "proof": "conditional-grh",
+            "output": "class-and-unit-group",
+            "mapPolicy": "construct-eagerly",
+            "unitPolicy": "compact-complete",
+            "limits": {
+              "wallMilliseconds": "600000",
+              "memoryBytes": "4294967296",
+              "relationCandidates": "100000000",
+              "precisionBits": 4096,
+              "continuationPasses": 100
+            }
+          },
+          "randomness": {
+            "algorithm": "chacha20-v1",
+            "seed": "51669aa35201a010ed8de4e63dd6787c241b572743fdfbf25b13d384b31473ca"
+          },
+          "containsOracleAnswers": false
+        },
+        {
+          "schema": "sagejs.rust-class-group.neutral-input/v1",
+          "inputId": "sha256:f0e3437802baf096774def233905657c26bc3752bade85e69014bc9a11651401",
+          "fieldId": "generated-d2-0063-e637fc717faa",
+          "field": {
+            "variable": "x",
+            "coefficientsAscending": [
+              "-16223",
+              "-1",
+              "1"
+            ],
+            "degree": 2,
+            "monic": true,
+            "irreducible": true
+          },
+          "preparation": {
+            "kind": "public-polynomial"
+          },
+          "request": {
+            "proof": "conditional-grh",
+            "output": "class-and-unit-group",
+            "mapPolicy": "construct-eagerly",
+            "unitPolicy": "compact-complete",
+            "limits": {
+              "wallMilliseconds": "600000",
+              "memoryBytes": "4294967296",
+              "relationCandidates": "100000000",
+              "precisionBits": 4096,
+              "continuationPasses": 100
+            }
+          },
+          "randomness": {
+            "algorithm": "chacha20-v1",
+            "seed": "fc4749a56e7ef13d20923965763ead30426dad6251c775d03a509fea0dfd3da0"
+          },
+          "containsOracleAnswers": false
+        },
+        {
+          "schema": "sagejs.rust-class-group.neutral-input/v1",
+          "inputId": "sha256:1d1078e343e30f6111442f2b55b5f343d9f03884de073ef29ce84edd39ddf62c",
+          "fieldId": "generated-d2-0070-ab8302ecdc97",
+          "field": {
+            "variable": "x",
+            "coefficientsAscending": [
+              "10483677",
+              "-2046",
+              "1"
+            ],
+            "degree": 2,
+            "monic": true,
+            "irreducible": true
+          },
+          "preparation": {
+            "kind": "public-polynomial"
+          },
+          "request": {
+            "proof": "conditional-grh",
+            "output": "class-and-unit-group",
+            "mapPolicy": "construct-eagerly",
+            "unitPolicy": "compact-complete",
+            "limits": {
+              "wallMilliseconds": "600000",
+              "memoryBytes": "4294967296",
+              "relationCandidates": "100000000",
+              "precisionBits": 4096,
+              "continuationPasses": 100
+            }
+          },
+          "randomness": {
+            "algorithm": "chacha20-v1",
+            "seed": "870e74cd3bcfa25f19e30440ba9c1d3e767af39c215e4d682baed1205ee0eb24"
+          },
+          "containsOracleAnswers": false
+        },
+        {
+          "schema": "sagejs.rust-class-group.neutral-input/v1",
+          "inputId": "sha256:7c20deb0e43d50729f268fa77cfed9972e3dc163c9e8dfd7f26974c89ee5b446",
+          "fieldId": "generated-d3-0002-7db82abb5115",
+          "field": {
+            "variable": "x",
+            "coefficientsAscending": [
+              "1128",
+              "541",
+              "-10",
+              "1"
+            ],
+            "degree": 3,
+            "monic": true,
+            "irreducible": true
+          },
+          "preparation": {
+            "kind": "public-polynomial"
+          },
+          "request": {
+            "proof": "conditional-grh",
+            "output": "class-and-unit-group",
+            "mapPolicy": "construct-eagerly",
+            "unitPolicy": "compact-complete",
+            "limits": {
+              "wallMilliseconds": "600000",
+              "memoryBytes": "4294967296",
+              "relationCandidates": "100000000",
+              "precisionBits": 4096,
+              "continuationPasses": 100
+            }
+          },
+          "randomness": {
+            "algorithm": "chacha20-v1",
+            "seed": "7844c747964d0a5ddeabd8864444069f7f843187a6d4b174e26eff8bacb3a114"
+          },
+          "containsOracleAnswers": false
+        },
+        {
+          "schema": "sagejs.rust-class-group.neutral-input/v1",
+          "inputId": "sha256:400b4c9865a69efe981a862abca0719df4dc6eec349706c96bc789cd646b6730",
+          "fieldId": "generated-d3-0012-d6fd4141859d",
+          "field": {
+            "variable": "x",
+            "coefficientsAscending": [
+              "-7",
+              "652805",
+              "-514",
+              "1"
+            ],
+            "degree": 3,
+            "monic": true,
+            "irreducible": true
+          },
+          "preparation": {
+            "kind": "public-polynomial"
+          },
+          "request": {
+            "proof": "conditional-grh",
+            "output": "class-and-unit-group",
+            "mapPolicy": "construct-eagerly",
+            "unitPolicy": "compact-complete",
+            "limits": {
+              "wallMilliseconds": "600000",
+              "memoryBytes": "4294967296",
+              "relationCandidates": "100000000",
+              "precisionBits": 4096,
+              "continuationPasses": 100
+            }
+          },
+          "randomness": {
+            "algorithm": "chacha20-v1",
+            "seed": "9e02a10f522c6e279ea9592a1c40b0d7b4d1c38576e26c969384cefb3096da74"
+          },
+          "containsOracleAnswers": false
+        },
+        {
+          "schema": "sagejs.rust-class-group.neutral-input/v1",
+          "inputId": "sha256:49bdfa09a00b180f4fd93e132ebadc9a0c6eddfb80d73f4e54696753d258fda6",
+          "fieldId": "generated-d3-0015-8a2ac6c14b3a",
+          "field": {
+            "variable": "x",
+            "coefficientsAscending": [
+              "8376329",
+              "-4188154",
+              "-5",
+              "1"
+            ],
+            "degree": 3,
+            "monic": true,
+            "irreducible": true
+          },
+          "preparation": {
+            "kind": "public-polynomial"
+          },
+          "request": {
+            "proof": "conditional-grh",
+            "output": "class-and-unit-group",
+            "mapPolicy": "construct-eagerly",
+            "unitPolicy": "compact-complete",
+            "limits": {
+              "wallMilliseconds": "600000",
+              "memoryBytes": "4294967296",
+              "relationCandidates": "100000000",
+              "precisionBits": 4096,
+              "continuationPasses": 100
+            }
+          },
+          "randomness": {
+            "algorithm": "chacha20-v1",
+            "seed": "e259a091f8ec83495f189cbb32e380eeb0b769c82d2aa9440f3b9a56f41695b8"
+          },
+          "containsOracleAnswers": false
+        },
+        {
+          "schema": "sagejs.rust-class-group.neutral-input/v1",
+          "inputId": "sha256:8117984c9c66afea2902fbd42ed68975f72207c668d6ba30d6ba77f5b51c7d0d",
+          "fieldId": "generated-d3-0020-16d771bab607",
+          "field": {
+            "variable": "x",
+            "coefficientsAscending": [
+              "-1119",
+              "574",
+              "-12",
+              "1"
+            ],
+            "degree": 3,
+            "monic": true,
+            "irreducible": true
+          },
+          "preparation": {
+            "kind": "public-polynomial"
+          },
+          "request": {
+            "proof": "conditional-grh",
+            "output": "class-and-unit-group",
+            "mapPolicy": "construct-eagerly",
+            "unitPolicy": "compact-complete",
+            "limits": {
+              "wallMilliseconds": "600000",
+              "memoryBytes": "4294967296",
+              "relationCandidates": "100000000",
+              "precisionBits": 4096,
+              "continuationPasses": 100
+            }
+          },
+          "randomness": {
+            "algorithm": "chacha20-v1",
+            "seed": "9c000f282da571d326d846d7bf700e545ced0db518571befeb39ce28ccee20d3"
+          },
+          "containsOracleAnswers": false
+        },
+        {
+          "schema": "sagejs.rust-class-group.neutral-input/v1",
+          "inputId": "sha256:cfe5d291e9c4d4945e68d1df7dfdeefe0d8a8071a85a9c1be888df7821355499",
+          "fieldId": "generated-d3-0041-9570b8c82fb9",
+          "field": {
+            "variable": "x",
+            "coefficientsAscending": [
+              "-7542",
+              "-3784",
+              "1",
+              "1"
+            ],
+            "degree": 3,
+            "monic": true,
+            "irreducible": true
+          },
+          "preparation": {
+            "kind": "public-polynomial"
+          },
+          "request": {
+            "proof": "conditional-grh",
+            "output": "class-and-unit-group",
+            "mapPolicy": "construct-eagerly",
+            "unitPolicy": "compact-complete",
+            "limits": {
+              "wallMilliseconds": "600000",
+              "memoryBytes": "4294967296",
+              "relationCandidates": "100000000",
+              "precisionBits": 4096,
+              "continuationPasses": 100
+            }
+          },
+          "randomness": {
+            "algorithm": "chacha20-v1",
+            "seed": "0bac25f83ac572eca48c21743c934d37d5da2bf0aaebc75bdbb2a2af693efbd0"
+          },
+          "containsOracleAnswers": false
+        },
+        {
+          "schema": "sagejs.rust-class-group.neutral-input/v1",
+          "inputId": "sha256:e0914a97256928e06150ed5b492904cec5d049932e011235e9085c0bc4cf810d",
+          "fieldId": "generated-d3-0044-13fbe624e8b7",
+          "field": {
+            "variable": "x",
+            "coefficientsAscending": [
+              "-81439",
+              "40956",
+              "-126",
+              "1"
+            ],
+            "degree": 3,
+            "monic": true,
+            "irreducible": true
+          },
+          "preparation": {
+            "kind": "public-polynomial"
+          },
+          "request": {
+            "proof": "conditional-grh",
+            "output": "class-and-unit-group",
+            "mapPolicy": "construct-eagerly",
+            "unitPolicy": "compact-complete",
+            "limits": {
+              "wallMilliseconds": "600000",
+              "memoryBytes": "4294967296",
+              "relationCandidates": "100000000",
+              "precisionBits": 4096,
+              "continuationPasses": 100
+            }
+          },
+          "randomness": {
+            "algorithm": "chacha20-v1",
+            "seed": "a975e632049b10e1af6c20d1c578807f1cceb4b5a462d2af97fba2994985415d"
+          },
+          "containsOracleAnswers": false
+        },
+        {
+          "schema": "sagejs.rust-class-group.neutral-input/v1",
+          "inputId": "sha256:a71fcb936f78cd03c12eec2c4581d122c43675e7703b16f3238af8a452e448b5",
+          "fieldId": "generated-d3-0049-a1eb949e9e84",
+          "field": {
+            "variable": "x",
+            "coefficientsAscending": [
+              "-1045478",
+              "-1045501",
+              "4",
+              "1"
+            ],
+            "degree": 3,
+            "monic": true,
+            "irreducible": true
+          },
+          "preparation": {
+            "kind": "public-polynomial"
+          },
+          "request": {
+            "proof": "conditional-grh",
+            "output": "class-and-unit-group",
+            "mapPolicy": "construct-eagerly",
+            "unitPolicy": "compact-complete",
+            "limits": {
+              "wallMilliseconds": "600000",
+              "memoryBytes": "4294967296",
+              "relationCandidates": "100000000",
+              "precisionBits": 4096,
+              "continuationPasses": 100
+            }
+          },
+          "randomness": {
+            "algorithm": "chacha20-v1",
+            "seed": "93b2a31964ba2c6d9788ff2a0082f8241f3c4d0b161fac02928bb8dc3a28aab5"
+          },
+          "containsOracleAnswers": false
+        },
+        {
+          "schema": "sagejs.rust-class-group.neutral-input/v1",
+          "inputId": "sha256:f9c9511516212d119b0e359c61580943d861a62430cd7779f8a284f90328540c",
+          "fieldId": "generated-d3-0058-9e396552ed78",
+          "field": {
+            "variable": "x",
+            "coefficientsAscending": [
+              "-30",
+              "2285",
+              "-26",
+              "1"
+            ],
+            "degree": 3,
+            "monic": true,
+            "irreducible": true
+          },
+          "preparation": {
+            "kind": "public-polynomial"
+          },
+          "request": {
+            "proof": "conditional-grh",
+            "output": "class-and-unit-group",
+            "mapPolicy": "construct-eagerly",
+            "unitPolicy": "compact-complete",
+            "limits": {
+              "wallMilliseconds": "600000",
+              "memoryBytes": "4294967296",
+              "relationCandidates": "100000000",
+              "precisionBits": 4096,
+              "continuationPasses": 100
+            }
+          },
+          "randomness": {
+            "algorithm": "chacha20-v1",
+            "seed": "c7ce7ad1e49cd95a4aab395d7a5c747679def75da1ecc30b97f13cd7727f4205"
+          },
+          "containsOracleAnswers": false
+        },
+        {
+          "schema": "sagejs.rust-class-group.neutral-input/v1",
+          "inputId": "sha256:943c5e742419b73bfc5f88aa5a8773e0720bd1f9c7c2570142dce0bbdef1d51e",
+          "fieldId": "generated-d3-0060-34d35ac2cb30",
+          "field": {
+            "variable": "x",
+            "coefficientsAscending": [
+              "-19503",
+              "9856",
+              "-62",
+              "1"
+            ],
+            "degree": 3,
+            "monic": true,
+            "irreducible": true
+          },
+          "preparation": {
+            "kind": "public-polynomial"
+          },
+          "request": {
+            "proof": "conditional-grh",
+            "output": "class-and-unit-group",
+            "mapPolicy": "construct-eagerly",
+            "unitPolicy": "compact-complete",
+            "limits": {
+              "wallMilliseconds": "600000",
+              "memoryBytes": "4294967296",
+              "relationCandidates": "100000000",
+              "precisionBits": 4096,
+              "continuationPasses": 100
+            }
+          },
+          "randomness": {
+            "algorithm": "chacha20-v1",
+            "seed": "e864fda2fdb0427eab2cdb7718e8f9b19c0f89f4ea82c52b37383c40ded146c7"
+          },
+          "containsOracleAnswers": false
+        },
+        {
+          "schema": "sagejs.rust-class-group.neutral-input/v1",
+          "inputId": "sha256:c140ce4f5c7917b173e93ecfcede3f00d16f085a83e377c3236b0d297e3d45da",
+          "fieldId": "generated-d3-0064-9e74aadbc897",
+          "field": {
+            "variable": "x",
+            "coefficientsAscending": [
+              "326627",
+              "162814",
+              "-256",
+              "1"
+            ],
+            "degree": 3,
+            "monic": true,
+            "irreducible": true
+          },
+          "preparation": {
+            "kind": "public-polynomial"
+          },
+          "request": {
+            "proof": "conditional-grh",
+            "output": "class-and-unit-group",
+            "mapPolicy": "construct-eagerly",
+            "unitPolicy": "compact-complete",
+            "limits": {
+              "wallMilliseconds": "600000",
+              "memoryBytes": "4294967296",
+              "relationCandidates": "100000000",
+              "precisionBits": 4096,
+              "continuationPasses": 100
+            }
+          },
+          "randomness": {
+            "algorithm": "chacha20-v1",
+            "seed": "ef6e2929c7feff20d5f32038be4b03107dd92045fa9f6d1109122b2a73baa6d8"
+          },
+          "containsOracleAnswers": false
+        },
+        {
+          "schema": "sagejs.rust-class-group.neutral-input/v1",
+          "inputId": "sha256:5830504b24b06a5aeb61a3bea35add7fce3527477bf640014f081aed63fa35ce",
+          "fieldId": "generated-d3-0065-334927bc260e",
+          "field": {
+            "variable": "x",
+            "coefficientsAscending": [
+              "519210",
+              "-259582",
+              "-5",
+              "1"
+            ],
+            "degree": 3,
+            "monic": true,
+            "irreducible": true
+          },
+          "preparation": {
+            "kind": "public-polynomial"
+          },
+          "request": {
+            "proof": "conditional-grh",
+            "output": "class-and-unit-group",
+            "mapPolicy": "construct-eagerly",
+            "unitPolicy": "compact-complete",
+            "limits": {
+              "wallMilliseconds": "600000",
+              "memoryBytes": "4294967296",
+              "relationCandidates": "100000000",
+              "precisionBits": 4096,
+              "continuationPasses": 100
+            }
+          },
+          "randomness": {
+            "algorithm": "chacha20-v1",
+            "seed": "d50fd313079012faf21d7b4ee0f05ae2c07aadd13cb47fd071fa529773dc97ec"
+          },
+          "containsOracleAnswers": false
+        },
+        {
+          "schema": "sagejs.rust-class-group.neutral-input/v1",
+          "inputId": "sha256:cbc3cd06e95bed68c7952dc8ecb42cd7c5a566ad225998c0945a2bfdc6a3132c",
+          "fieldId": "generated-d3-0068-912ac72fc77a",
+          "field": {
+            "variable": "x",
+            "coefficientsAscending": [
+              "-35",
+              "2616325",
+              "-1026",
+              "1"
+            ],
+            "degree": 3,
+            "monic": true,
+            "irreducible": true
+          },
+          "preparation": {
+            "kind": "public-polynomial"
+          },
+          "request": {
+            "proof": "conditional-grh",
+            "output": "class-and-unit-group",
+            "mapPolicy": "construct-eagerly",
+            "unitPolicy": "compact-complete",
+            "limits": {
+              "wallMilliseconds": "600000",
+              "memoryBytes": "4294967296",
+              "relationCandidates": "100000000",
+              "precisionBits": 4096,
+              "continuationPasses": 100
+            }
+          },
+          "randomness": {
+            "algorithm": "chacha20-v1",
+            "seed": "672f61f9bfa127f885ad91563b7502e6fae5a0149a58eb836db5a3093edf6bd4"
+          },
+          "containsOracleAnswers": false
+        },
+        {
+          "schema": "sagejs.rust-class-group.neutral-input/v1",
+          "inputId": "sha256:16949dccdbb2ca2051c50bff0918a885b75cb04791cb86d333dc253b263c0a3c",
+          "fieldId": "generated-d4-0002-f8cafc6457a8",
+          "field": {
+            "variable": "x",
+            "coefficientsAscending": [
+              "-46082",
+              "512",
+              "584",
+              "-17",
+              "1"
+            ],
+            "degree": 4,
+            "monic": true,
+            "irreducible": true
+          },
+          "preparation": {
+            "kind": "public-polynomial"
+          },
+          "request": {
+            "proof": "conditional-grh",
+            "output": "class-and-unit-group",
+            "mapPolicy": "construct-eagerly",
+            "unitPolicy": "compact-complete",
+            "limits": {
+              "wallMilliseconds": "600000",
+              "memoryBytes": "4294967296",
+              "relationCandidates": "100000000",
+              "precisionBits": 4096,
+              "continuationPasses": 100
+            }
+          },
+          "randomness": {
+            "algorithm": "chacha20-v1",
+            "seed": "3a3aa12a9ce3e79e3d9170a300cc2d7f377156e986a53a4439c1899f279e6cb9"
+          },
+          "containsOracleAnswers": false
+        },
+        {
+          "schema": "sagejs.rust-class-group.neutral-input/v1",
+          "inputId": "sha256:022688cd2283b40019e31c0ae525f2256b60415ca18652c3a9df841d7289fe10",
+          "fieldId": "generated-d4-0004-a78f1ece5bc7",
+          "field": {
+            "variable": "x",
+            "coefficientsAscending": [
+              "411837",
+              "-6148",
+              "-2185",
+              "4",
+              "1"
+            ],
+            "degree": 4,
+            "monic": true,
+            "irreducible": true
+          },
+          "preparation": {
+            "kind": "public-polynomial"
+          },
+          "request": {
+            "proof": "conditional-grh",
+            "output": "class-and-unit-group",
+            "mapPolicy": "construct-eagerly",
+            "unitPolicy": "compact-complete",
+            "limits": {
+              "wallMilliseconds": "600000",
+              "memoryBytes": "4294967296",
+              "relationCandidates": "100000000",
+              "precisionBits": 4096,
+              "continuationPasses": 100
+            }
+          },
+          "randomness": {
+            "algorithm": "chacha20-v1",
+            "seed": "9b6c41e6a74a34a94c6d10d4c95f8bdc579c692c517314c9228a065f97078681"
+          },
+          "containsOracleAnswers": false
+        },
+        {
+          "schema": "sagejs.rust-class-group.neutral-input/v1",
+          "inputId": "sha256:81db2fdad6bb75fc05a84001264e978fe65af2bd4e5fa6f23c3096c9d02ea06d",
+          "fieldId": "generated-d4-0009-2f1d22b23ab5",
+          "field": {
+            "variable": "x",
+            "coefficientsAscending": [
+              "475987011",
+              "-3921492",
+              "53074",
+              "-188",
+              "1"
+            ],
+            "degree": 4,
+            "monic": true,
+            "irreducible": true
+          },
+          "preparation": {
+            "kind": "public-polynomial"
+          },
+          "request": {
+            "proof": "conditional-grh",
+            "output": "class-and-unit-group",
+            "mapPolicy": "construct-eagerly",
+            "unitPolicy": "compact-complete",
+            "limits": {
+              "wallMilliseconds": "600000",
+              "memoryBytes": "4294967296",
+              "relationCandidates": "100000000",
+              "precisionBits": 4096,
+              "continuationPasses": 100
+            }
+          },
+          "randomness": {
+            "algorithm": "chacha20-v1",
+            "seed": "1fc6d1dfa3e66664c3394996633079f0f644347a00c6fc76b3d98ada7d1c587c"
+          },
+          "containsOracleAnswers": false
+        },
+        {
+          "schema": "sagejs.rust-class-group.neutral-input/v1",
+          "inputId": "sha256:8d400cc21c26531c18441af88ffd6deab104961c2d3120be7dbcd9fded7b339f",
+          "fieldId": "generated-d4-0010-3a3ca441155a",
+          "field": {
+            "variable": "x",
+            "coefficientsAscending": [
+              "140876444",
+              "-130225",
+              "-39507",
+              "1",
+              "1"
+            ],
+            "degree": 4,
+            "monic": true,
+            "irreducible": true
+          },
+          "preparation": {
+            "kind": "public-polynomial"
+          },
+          "request": {
+            "proof": "conditional-grh",
+            "output": "class-and-unit-group",
+            "mapPolicy": "construct-eagerly",
+            "unitPolicy": "compact-complete",
+            "limits": {
+              "wallMilliseconds": "600000",
+              "memoryBytes": "4294967296",
+              "relationCandidates": "100000000",
+              "precisionBits": 4096,
+              "continuationPasses": 100
+            }
+          },
+          "randomness": {
+            "algorithm": "chacha20-v1",
+            "seed": "ae7e9110467598b7c6a099e7591f3d15abb45a420340dd6113e3b277df66d65c"
+          },
+          "containsOracleAnswers": false
+        },
+        {
+          "schema": "sagejs.rust-class-group.neutral-input/v1",
+          "inputId": "sha256:9481b4b012b6e87fb6b9df9ec45675b9fc21a7005658d8e02bc0a85f77c68034",
+          "fieldId": "generated-d4-0011-6570ffba60e5",
+          "field": {
+            "variable": "x",
+            "coefficientsAscending": [
+              "-157029005",
+              "516734",
+              "36174",
+              "-121",
+              "1"
+            ],
+            "degree": 4,
+            "monic": true,
+            "irreducible": true
+          },
+          "preparation": {
+            "kind": "public-polynomial"
+          },
+          "request": {
+            "proof": "conditional-grh",
+            "output": "class-and-unit-group",
+            "mapPolicy": "construct-eagerly",
+            "unitPolicy": "compact-complete",
+            "limits": {
+              "wallMilliseconds": "600000",
+              "memoryBytes": "4294967296",
+              "relationCandidates": "100000000",
+              "precisionBits": 4096,
+              "continuationPasses": 100
+            }
+          },
+          "randomness": {
+            "algorithm": "chacha20-v1",
+            "seed": "7745d97ad4b91d6ca652ad85a656076bf9bbca4fd07c586cbfda78ad37f56f4c"
+          },
+          "containsOracleAnswers": false
+        },
+        {
+          "schema": "sagejs.rust-class-group.neutral-input/v1",
+          "inputId": "sha256:c48cd53af101dbae5a75aaeb8acbdb9b04ceaa84ed5eada02b514fa7fcaf2f96",
+          "fieldId": "generated-d4-0021-39cf13d782ad",
+          "field": {
+            "variable": "x",
+            "coefficientsAscending": [
+              "33651659981137",
+              "-16797907790",
+              "14100542",
+              "-3062",
+              "1"
+            ],
+            "degree": 4,
+            "monic": true,
+            "irreducible": true
+          },
+          "preparation": {
+            "kind": "public-polynomial"
+          },
+          "request": {
+            "proof": "conditional-grh",
+            "output": "class-and-unit-group",
+            "mapPolicy": "construct-eagerly",
+            "unitPolicy": "compact-complete",
+            "limits": {
+              "wallMilliseconds": "600000",
+              "memoryBytes": "4294967296",
+              "relationCandidates": "100000000",
+              "precisionBits": 4096,
+              "continuationPasses": 100
+            }
+          },
+          "randomness": {
+            "algorithm": "chacha20-v1",
+            "seed": "62011713e13fc8cee47809bc81f38769542966bbf883f774749d6a845b57ee4b"
+          },
+          "containsOracleAnswers": false
+        },
+        {
+          "schema": "sagejs.rust-class-group.neutral-input/v1",
+          "inputId": "sha256:89565b4b75fd7d2e842f44460ce675c0056cd83fe2e35a53e9672c6a7e1f223e",
+          "fieldId": "generated-d4-0024-1ce2ec48583d",
+          "field": {
+            "variable": "x",
+            "coefficientsAscending": [
+              "540572647639197",
+              "-135132117006",
+              "56559639",
+              "-6144",
+              "1"
+            ],
+            "degree": 4,
+            "monic": true,
+            "irreducible": true
+          },
+          "preparation": {
+            "kind": "public-polynomial"
+          },
+          "request": {
+            "proof": "conditional-grh",
+            "output": "class-and-unit-group",
+            "mapPolicy": "construct-eagerly",
+            "unitPolicy": "compact-complete",
+            "limits": {
+              "wallMilliseconds": "600000",
+              "memoryBytes": "4294967296",
+              "relationCandidates": "100000000",
+              "precisionBits": 4096,
+              "continuationPasses": 100
+            }
+          },
+          "randomness": {
+            "algorithm": "chacha20-v1",
+            "seed": "4d1dffcf04cda1ed5c562851ed979c889104313f4f1c86d1d0e16e02373bc250"
+          },
+          "containsOracleAnswers": false
+        },
+        {
+          "schema": "sagejs.rust-class-group.neutral-input/v1",
+          "inputId": "sha256:a139dace63b45902189067656bf923b20d0f13c787c605be6ffdde1183a46d25",
+          "fieldId": "generated-d4-0025-80a92c57f863",
+          "field": {
+            "variable": "x",
+            "coefficientsAscending": [
+              "158020621271054",
+              "-67043344",
+              "-41902092",
+              "0",
+              "1"
+            ],
+            "degree": 4,
+            "monic": true,
+            "irreducible": true
+          },
+          "preparation": {
+            "kind": "public-polynomial"
+          },
+          "request": {
+            "proof": "conditional-grh",
+            "output": "class-and-unit-group",
+            "mapPolicy": "construct-eagerly",
+            "unitPolicy": "compact-complete",
+            "limits": {
+              "wallMilliseconds": "600000",
+              "memoryBytes": "4294967296",
+              "relationCandidates": "100000000",
+              "precisionBits": 4096,
+              "continuationPasses": 100
+            }
+          },
+          "randomness": {
+            "algorithm": "chacha20-v1",
+            "seed": "b184c54651f4cfdaa69461d90f37a6c95f407d073d214c9cf46ade94de4266a9"
+          },
+          "containsOracleAnswers": false
+        },
+        {
+          "schema": "sagejs.rust-class-group.neutral-input/v1",
+          "inputId": "sha256:760277d62ba6596071471abd569a8d6689c23f4b70973605ee257f05dafe4313",
+          "fieldId": "generated-d4-0033-20c2a53a997e",
+          "field": {
+            "variable": "x",
+            "coefficientsAscending": [
+              "25695538",
+              "-403032",
+              "12045",
+              "-84",
+              "1"
+            ],
+            "degree": 4,
+            "monic": true,
+            "irreducible": true
+          },
+          "preparation": {
+            "kind": "public-polynomial"
+          },
+          "request": {
+            "proof": "conditional-grh",
+            "output": "class-and-unit-group",
+            "mapPolicy": "construct-eagerly",
+            "unitPolicy": "compact-complete",
+            "limits": {
+              "wallMilliseconds": "600000",
+              "memoryBytes": "4294967296",
+              "relationCandidates": "100000000",
+              "precisionBits": 4096,
+              "continuationPasses": 100
+            }
+          },
+          "randomness": {
+            "algorithm": "chacha20-v1",
+            "seed": "d44a887312463c5aa5c85b3218c1bc3dc71f45d70dd99c189627dfdb8ffb0528"
+          },
+          "containsOracleAnswers": false
+        },
+        {
+          "schema": "sagejs.rust-class-group.neutral-input/v1",
+          "inputId": "sha256:55e19c87d7ece1a9b3d44208fbf81069190a8838e606b250d382b546aac4456e",
+          "fieldId": "generated-d4-0036-9c26fa71dfd8",
+          "field": {
+            "variable": "x",
+            "coefficientsAscending": [
+              "484168509",
+              "-3885632",
+              "53141",
+              "-188",
+              "1"
+            ],
+            "degree": 4,
+            "monic": true,
+            "irreducible": true
+          },
+          "preparation": {
+            "kind": "public-polynomial"
+          },
+          "request": {
+            "proof": "conditional-grh",
+            "output": "class-and-unit-group",
+            "mapPolicy": "construct-eagerly",
+            "unitPolicy": "compact-complete",
+            "limits": {
+              "wallMilliseconds": "600000",
+              "memoryBytes": "4294967296",
+              "relationCandidates": "100000000",
+              "precisionBits": 4096,
+              "continuationPasses": 100
+            }
+          },
+          "randomness": {
+            "algorithm": "chacha20-v1",
+            "seed": "98ccec8803abfe3b45d70e3645f934716751268175c8c8c0952217c1988949ae"
+          },
+          "containsOracleAnswers": false
+        },
+        {
+          "schema": "sagejs.rust-class-group.neutral-input/v1",
+          "inputId": "sha256:033aa663ab0b4e230aee68a58f70a3a372d475fb228077583c52139c32cb9477",
+          "fieldId": "generated-d4-0041-879ef1a3e535",
+          "field": {
+            "variable": "x",
+            "coefficientsAscending": [
+              "-2613279978",
+              "4617990",
+              "146556",
+              "-255",
+              "1"
+            ],
+            "degree": 4,
+            "monic": true,
+            "irreducible": true
+          },
+          "preparation": {
+            "kind": "public-polynomial"
+          },
+          "request": {
+            "proof": "conditional-grh",
+            "output": "class-and-unit-group",
+            "mapPolicy": "construct-eagerly",
+            "unitPolicy": "compact-complete",
+            "limits": {
+              "wallMilliseconds": "600000",
+              "memoryBytes": "4294967296",
+              "relationCandidates": "100000000",
+              "precisionBits": 4096,
+              "continuationPasses": 100
+            }
+          },
+          "randomness": {
+            "algorithm": "chacha20-v1",
+            "seed": "6efdf641da7f1171d35051df248529649caa19a217cc6832e0358423ebfa242c"
+          },
+          "containsOracleAnswers": false
+        },
+        {
+          "schema": "sagejs.rust-class-group.neutral-input/v1",
+          "inputId": "sha256:8b5289bfd336f5c03974bec8ebd4c2be8182283bbba6393d5ebd58401f56461e",
+          "fieldId": "generated-d4-0071-0e3d4d88c822",
+          "field": {
+            "variable": "x",
+            "coefficientsAscending": [
+              "-43117117408",
+              "33949186",
+              "586756",
+              "-514",
+              "1"
+            ],
+            "degree": 4,
+            "monic": true,
+            "irreducible": true
+          },
+          "preparation": {
+            "kind": "public-polynomial"
+          },
+          "request": {
+            "proof": "conditional-grh",
+            "output": "class-and-unit-group",
+            "mapPolicy": "construct-eagerly",
+            "unitPolicy": "compact-complete",
+            "limits": {
+              "wallMilliseconds": "600000",
+              "memoryBytes": "4294967296",
+              "relationCandidates": "100000000",
+              "precisionBits": 4096,
+              "continuationPasses": 100
+            }
+          },
+          "randomness": {
+            "algorithm": "chacha20-v1",
+            "seed": "76eb46ccb6fe5cbeefecfb1099db55d74e3e8614dbb97db4738b60545578885b"
+          },
+          "containsOracleAnswers": false
+        },
+        {
+          "schema": "sagejs.rust-class-group.neutral-input/v1",
+          "inputId": "sha256:f4de837a77bccebbd887007ae26f38e5702058374197fe6c6382b1e004868855",
+          "fieldId": "generated-d5-0002-1c19dba466c1",
+          "field": {
+            "variable": "x",
+            "coefficientsAscending": [
+              "-210394",
+              "-98944",
+              "3890",
+              "356",
+              "-11",
+              "1"
+            ],
+            "degree": 5,
+            "monic": true,
+            "irreducible": true
+          },
+          "preparation": {
+            "kind": "public-polynomial"
+          },
+          "request": {
+            "proof": "conditional-grh",
+            "output": "class-and-unit-group",
+            "mapPolicy": "construct-eagerly",
+            "unitPolicy": "compact-complete",
+            "limits": {
+              "wallMilliseconds": "600000",
+              "memoryBytes": "4294967296",
+              "relationCandidates": "100000000",
+              "precisionBits": 4096,
+              "continuationPasses": 100
+            }
+          },
+          "randomness": {
+            "algorithm": "chacha20-v1",
+            "seed": "a622e5095e3392ace9e491c06484114d56b1dfd2b925b442efd010124fbaaec9"
+          },
+          "containsOracleAnswers": false
+        },
+        {
+          "schema": "sagejs.rust-class-group.neutral-input/v1",
+          "inputId": "sha256:580b4945a69c6b02f36e08dd2b2d8228f17c97fd91ce33d64ea7f004c6784c07",
+          "fieldId": "generated-d5-0015-b42fbf7030ee",
+          "field": {
+            "variable": "x",
+            "coefficientsAscending": [
+              "129534136429",
+              "129274298236",
+              "-258963659",
+              "873763",
+              "-761",
+              "1"
+            ],
+            "degree": 5,
+            "monic": true,
+            "irreducible": true
+          },
+          "preparation": {
+            "kind": "public-polynomial"
+          },
+          "request": {
+            "proof": "conditional-grh",
+            "output": "class-and-unit-group",
+            "mapPolicy": "construct-eagerly",
+            "unitPolicy": "compact-complete",
+            "limits": {
+              "wallMilliseconds": "600000",
+              "memoryBytes": "4294967296",
+              "relationCandidates": "100000000",
+              "precisionBits": 4096,
+              "continuationPasses": 100
+            }
+          },
+          "randomness": {
+            "algorithm": "chacha20-v1",
+            "seed": "a5d9759eaf83f106bac5721cc1130e2dfc2e3bdbb6bf68cb514184c575aec5f7"
+          },
+          "containsOracleAnswers": false
+        },
+        {
+          "schema": "sagejs.rust-class-group.neutral-input/v1",
+          "inputId": "sha256:0ac141fe215bb1109918e08b0dd9e3e0516446e81033f6122271910fdd2eb88e",
+          "fieldId": "generated-d5-0018-73d729690f4d",
+          "field": {
+            "variable": "x",
+            "coefficientsAscending": [
+              "4201251729470",
+              "2096435134596",
+              "-2088323984",
+              "3517488",
+              "-1526",
+              "1"
+            ],
+            "degree": 5,
+            "monic": true,
+            "irreducible": true
+          },
+          "preparation": {
+            "kind": "public-polynomial"
+          },
+          "request": {
+            "proof": "conditional-grh",
+            "output": "class-and-unit-group",
+            "mapPolicy": "construct-eagerly",
+            "unitPolicy": "compact-complete",
+            "limits": {
+              "wallMilliseconds": "600000",
+              "memoryBytes": "4294967296",
+              "relationCandidates": "100000000",
+              "precisionBits": 4096,
+              "continuationPasses": 100
+            }
+          },
+          "randomness": {
+            "algorithm": "chacha20-v1",
+            "seed": "47b0f5db4dae7d0a2794554a119b911abf55b94aa30b151f97578ce2b1b53f9e"
+          },
+          "containsOracleAnswers": false
+        },
+        {
+          "schema": "sagejs.rust-class-group.neutral-input/v1",
+          "inputId": "sha256:5bffce63409880b9740d34da206e8a8789b02b66324db4c33e34c1ac2699b2b4",
+          "fieldId": "generated-d5-0020-0a931bba6724",
+          "field": {
+            "variable": "x",
+            "coefficientsAscending": [
+              "2744486199285",
+              "-2745557843968",
+              "1070075902",
+              "1569792",
+              "-1023",
+              "1"
+            ],
+            "degree": 5,
+            "monic": true,
+            "irreducible": true
+          },
+          "preparation": {
+            "kind": "public-polynomial"
+          },
+          "request": {
+            "proof": "conditional-grh",
+            "output": "class-and-unit-group",
+            "mapPolicy": "construct-eagerly",
+            "unitPolicy": "compact-complete",
+            "limits": {
+              "wallMilliseconds": "600000",
+              "memoryBytes": "4294967296",
+              "relationCandidates": "100000000",
+              "precisionBits": 4096,
+              "continuationPasses": 100
+            }
+          },
+          "randomness": {
+            "algorithm": "chacha20-v1",
+            "seed": "270dbf1bd63e5360a54e2386b23370471aad7573f93201430c53bf15b00217b4"
+          },
+          "containsOracleAnswers": false
+        },
+        {
+          "schema": "sagejs.rust-class-group.neutral-input/v1",
+          "inputId": "sha256:96195c3c41fbee88e81fb02c688d485abfbf42a0dc3ab23998dd9bb01a007baf",
+          "fieldId": "generated-d5-0032-cf2929d0c4aa",
+          "field": {
+            "variable": "x",
+            "coefficientsAscending": [
+              "2273554",
+              "-2305599",
+              "30458",
+              "1598",
+              "-29",
+              "1"
+            ],
+            "degree": 5,
+            "monic": true,
+            "irreducible": true
+          },
+          "preparation": {
+            "kind": "public-polynomial"
+          },
+          "request": {
+            "proof": "conditional-grh",
+            "output": "class-and-unit-group",
+            "mapPolicy": "construct-eagerly",
+            "unitPolicy": "compact-complete",
+            "limits": {
+              "wallMilliseconds": "600000",
+              "memoryBytes": "4294967296",
+              "relationCandidates": "100000000",
+              "precisionBits": 4096,
+              "continuationPasses": 100
+            }
+          },
+          "randomness": {
+            "algorithm": "chacha20-v1",
+            "seed": "47ef6d217834489b54205bdb90ab33d6ad0a19b2da311463a91dcb63397945bf"
+          },
+          "containsOracleAnswers": false
+        },
+        {
+          "schema": "sagejs.rust-class-group.neutral-input/v1",
+          "inputId": "sha256:2bece6ae01f06b0f56eb2b263a28ea49f7266633e136ec83def4475bffa479c1",
+          "fieldId": "generated-d5-0033-ddb3cc4c385b",
+          "field": {
+            "variable": "x",
+            "coefficientsAscending": [
+              "18",
+              "26110682",
+              "-427378",
+              "12303",
+              "-88",
+              "1"
+            ],
+            "degree": 5,
+            "monic": true,
+            "irreducible": true
+          },
+          "preparation": {
+            "kind": "public-polynomial"
+          },
+          "request": {
+            "proof": "conditional-grh",
+            "output": "class-and-unit-group",
+            "mapPolicy": "construct-eagerly",
+            "unitPolicy": "compact-complete",
+            "limits": {
+              "wallMilliseconds": "600000",
+              "memoryBytes": "4294967296",
+              "relationCandidates": "100000000",
+              "precisionBits": 4096,
+              "continuationPasses": 100
+            }
+          },
+          "randomness": {
+            "algorithm": "chacha20-v1",
+            "seed": "a03810209416846599e74fff0c07cee4273ee91a1d3a9b3a3fe76dcaae4f279c"
+          },
+          "containsOracleAnswers": false
+        },
+        {
+          "schema": "sagejs.rust-class-group.neutral-input/v1",
+          "inputId": "sha256:d1e522c6847ad78efe9f459100726b919228dc66e0e53c26d82766171df47380",
+          "fieldId": "generated-d5-0039-74afcfc829f1",
+          "field": {
+            "variable": "x",
+            "coefficientsAscending": [
+              "8107346973",
+              "8074878480",
+              "-32249714",
+              "218376",
+              "-381",
+              "1"
+            ],
+            "degree": 5,
+            "monic": true,
+            "irreducible": true
+          },
+          "preparation": {
+            "kind": "public-polynomial"
+          },
+          "request": {
+            "proof": "conditional-grh",
+            "output": "class-and-unit-group",
+            "mapPolicy": "construct-eagerly",
+            "unitPolicy": "compact-complete",
+            "limits": {
+              "wallMilliseconds": "600000",
+              "memoryBytes": "4294967296",
+              "relationCandidates": "100000000",
+              "precisionBits": 4096,
+              "continuationPasses": 100
+            }
+          },
+          "randomness": {
+            "algorithm": "chacha20-v1",
+            "seed": "6787f39f9caa024f654fab119668eac74c1fbf731b40b9fc65d71599bdf80332"
+          },
+          "containsOracleAnswers": false
+        },
+        {
+          "schema": "sagejs.rust-class-group.neutral-input/v1",
+          "inputId": "sha256:3ffc485d238bdd090817920d05d9f97e33f6086197c1c3007e7356245687ce87",
+          "fieldId": "generated-d5-0044-fc551c47ed8a",
+          "field": {
+            "variable": "x",
+            "coefficientsAscending": [
+              "-23",
+              "-169461649950",
+              "132776455",
+              "393729",
+              "-515",
+              "1"
+            ],
+            "degree": 5,
+            "monic": true,
+            "irreducible": true
+          },
+          "preparation": {
+            "kind": "public-polynomial"
+          },
+          "request": {
+            "proof": "conditional-grh",
+            "output": "class-and-unit-group",
+            "mapPolicy": "construct-eagerly",
+            "unitPolicy": "compact-complete",
+            "limits": {
+              "wallMilliseconds": "600000",
+              "memoryBytes": "4294967296",
+              "relationCandidates": "100000000",
+              "precisionBits": 4096,
+              "continuationPasses": 100
+            }
+          },
+          "randomness": {
+            "algorithm": "chacha20-v1",
+            "seed": "d5b111d3f7cbfe297b5eeebbfc301b1a92fcf9040f43d5ed6068780681742341"
+          },
+          "containsOracleAnswers": false
+        },
+        {
+          "schema": "sagejs.rust-class-group.neutral-input/v1",
+          "inputId": "sha256:0eff678d811abf2be70c4fd33aaba275070d29f931f068e6954c261ae5aec3e3",
+          "fieldId": "generated-d5-0049-77649835abaf",
+          "field": {
+            "variable": "x",
+            "coefficientsAscending": [
+              "-140119918526534",
+              "70060093202584",
+              "-25112620",
+              "-20928530",
+              "5",
+              "1"
+            ],
+            "degree": 5,
+            "monic": true,
+            "irreducible": true
+          },
+          "preparation": {
+            "kind": "public-polynomial"
+          },
+          "request": {
+            "proof": "conditional-grh",
+            "output": "class-and-unit-group",
+            "mapPolicy": "construct-eagerly",
+            "unitPolicy": "compact-complete",
+            "limits": {
+              "wallMilliseconds": "600000",
+              "memoryBytes": "4294967296",
+              "relationCandidates": "100000000",
+              "precisionBits": 4096,
+              "continuationPasses": 100
+            }
+          },
+          "randomness": {
+            "algorithm": "chacha20-v1",
+            "seed": "7c193b7bfef279f7a59878f332e03d824e4724b5d4f4e3d8bd29b78729c8c102"
+          },
+          "containsOracleAnswers": false
+        },
+        {
+          "schema": "sagejs.rust-class-group.neutral-input/v1",
+          "inputId": "sha256:6bb5f22e01aadb61e6ab86f8df2624aaf61cfa47e29e6450772131de930567d8",
+          "fieldId": "generated-d5-0050-449004c723a0",
+          "field": {
+            "variable": "x",
+            "coefficientsAscending": [
+              "-43808834191386",
+              "-43800277778432",
+              "8562720752",
+              "6305776",
+              "-2047",
+              "1"
+            ],
+            "degree": 5,
+            "monic": true,
+            "irreducible": true
+          },
+          "preparation": {
+            "kind": "public-polynomial"
+          },
+          "request": {
+            "proof": "conditional-grh",
+            "output": "class-and-unit-group",
+            "mapPolicy": "construct-eagerly",
+            "unitPolicy": "compact-complete",
+            "limits": {
+              "wallMilliseconds": "600000",
+              "memoryBytes": "4294967296",
+              "relationCandidates": "100000000",
+              "precisionBits": 4096,
+              "continuationPasses": 100
+            }
+          },
+          "randomness": {
+            "algorithm": "chacha20-v1",
+            "seed": "91dd02975e0c762e075d91497627a2c77826079369fabf401ed2a1fd4b2ccbe1"
+          },
+          "containsOracleAnswers": false
+        },
+        {
+          "schema": "sagejs.rust-class-group.neutral-input/v1",
+          "inputId": "sha256:532e94c6814c32e8cee65ebe5fb562a113bd4246c99ab12a198bd58cded80c7e",
+          "fieldId": "generated-d5-0059-ef845d338cfd",
+          "field": {
+            "variable": "x",
+            "coefficientsAscending": [
+              "-4463649",
+              "-2165442",
+              "35985",
+              "1343",
+              "-23",
+              "1"
+            ],
+            "degree": 5,
+            "monic": true,
+            "irreducible": true
+          },
+          "preparation": {
+            "kind": "public-polynomial"
+          },
+          "request": {
+            "proof": "conditional-grh",
+            "output": "class-and-unit-group",
+            "mapPolicy": "construct-eagerly",
+            "unitPolicy": "compact-complete",
+            "limits": {
+              "wallMilliseconds": "600000",
+              "memoryBytes": "4294967296",
+              "relationCandidates": "100000000",
+              "precisionBits": 4096,
+              "continuationPasses": 100
+            }
+          },
+          "randomness": {
+            "algorithm": "chacha20-v1",
+            "seed": "0745addafb76bad0f1ff01be188f4453b18a075eca0dcee998c0bff716c377ad"
+          },
+          "containsOracleAnswers": false
+        },
+        {
+          "schema": "sagejs.rust-class-group.neutral-input/v1",
+          "inputId": "sha256:5a0f9a4c1fbaf75210e173489901899029324b4b89ffab0037e6f91a1c9a89b4",
+          "fieldId": "generated-d5-0068-bc520f0cabfb",
+          "field": {
+            "variable": "x",
+            "coefficientsAscending": [
+              "-10562430243",
+              "-10545748965",
+              "16778806",
+              "97316",
+              "-246",
+              "1"
+            ],
+            "degree": 5,
+            "monic": true,
+            "irreducible": true
+          },
+          "preparation": {
+            "kind": "public-polynomial"
+          },
+          "request": {
+            "proof": "conditional-grh",
+            "output": "class-and-unit-group",
+            "mapPolicy": "construct-eagerly",
+            "unitPolicy": "compact-complete",
+            "limits": {
+              "wallMilliseconds": "600000",
+              "memoryBytes": "4294967296",
+              "relationCandidates": "100000000",
+              "precisionBits": 4096,
+              "continuationPasses": 100
+            }
+          },
+          "randomness": {
+            "algorithm": "chacha20-v1",
+            "seed": "2ea3737dc07926b1f27719e3193c83a7908c717c17eb7158782f3ea03e4aa835"
+          },
+          "containsOracleAnswers": false
+        },
+        {
+          "schema": "sagejs.rust-class-group.neutral-input/v1",
+          "inputId": "sha256:7c5d26ae5743ef9b423c1182c3cc3b48c87f8945a2ddf66900102fcdfc1a537c",
+          "fieldId": "generated-d6-0008-93eb6cecdc5a",
+          "field": {
+            "variable": "x",
+            "coefficientsAscending": [
+              "786114996765",
+              "-13984941834",
+              "351264885",
+              "-3400828",
+              "38804",
+              "-178",
+              "1"
+            ],
+            "degree": 6,
+            "monic": true,
+            "irreducible": true
+          },
+          "preparation": {
+            "kind": "public-polynomial"
+          },
+          "request": {
+            "proof": "conditional-grh",
+            "output": "class-and-unit-group",
+            "mapPolicy": "construct-eagerly",
+            "unitPolicy": "compact-complete",
+            "limits": {
+              "wallMilliseconds": "600000",
+              "memoryBytes": "4294967296",
+              "relationCandidates": "100000000",
+              "precisionBits": 4096,
+              "continuationPasses": 100
+            }
+          },
+          "randomness": {
+            "algorithm": "chacha20-v1",
+            "seed": "5faf52851703d3d6b13efc8f9365284c595546e7fae34f5b10f47a059c79dab2"
+          },
+          "containsOracleAnswers": false
+        },
+        {
+          "schema": "sagejs.rust-class-group.neutral-input/v1",
+          "inputId": "sha256:75664b3fd7c4d7cfad295394ca03ad6d350e29542d03524178d7ac88acf52e0b",
+          "fieldId": "generated-d6-0012-688b14f44d3b",
+          "field": {
+            "variable": "x",
+            "coefficientsAscending": [
+              "57909064376157",
+              "-514155720528",
+              "6233942449",
+              "-29912340",
+              "164626",
+              "-372",
+              "1"
+            ],
+            "degree": 6,
+            "monic": true,
+            "irreducible": true
+          },
+          "preparation": {
+            "kind": "public-polynomial"
+          },
+          "request": {
+            "proof": "conditional-grh",
+            "output": "class-and-unit-group",
+            "mapPolicy": "construct-eagerly",
+            "unitPolicy": "compact-complete",
+            "limits": {
+              "wallMilliseconds": "600000",
+              "memoryBytes": "4294967296",
+              "relationCandidates": "100000000",
+              "precisionBits": 4096,
+              "continuationPasses": 100
+            }
+          },
+          "randomness": {
+            "algorithm": "chacha20-v1",
+            "seed": "eb764f2d0a0f55385deb6bb59fad5b4af545006970596f4cebe041f26049c684"
+          },
+          "containsOracleAnswers": false
+        },
+        {
+          "schema": "sagejs.rust-class-group.neutral-input/v1",
+          "inputId": "sha256:5322269848af133121880b05aa23992ada7c71f6113a12ab7517a3c63214457e",
+          "fieldId": "generated-d6-0020-162e6b010350",
+          "field": {
+            "variable": "x",
+            "coefficientsAscending": [
+              "258690285932657405",
+              "-566791077550960",
+              "1695100182046",
+              "-2012149138",
+              "2723159",
+              "-1524",
+              "1"
+            ],
+            "degree": 6,
+            "monic": true,
+            "irreducible": true
+          },
+          "preparation": {
+            "kind": "public-polynomial"
+          },
+          "request": {
+            "proof": "conditional-grh",
+            "output": "class-and-unit-group",
+            "mapPolicy": "construct-eagerly",
+            "unitPolicy": "compact-complete",
+            "limits": {
+              "wallMilliseconds": "600000",
+              "memoryBytes": "4294967296",
+              "relationCandidates": "100000000",
+              "precisionBits": 4096,
+              "continuationPasses": 100
+            }
+          },
+          "randomness": {
+            "algorithm": "chacha20-v1",
+            "seed": "d0da321621f1798ac0f441bfdf1898eae2c9b244346695c218de8a35a7322e9c"
+          },
+          "containsOracleAnswers": false
+        },
+        {
+          "schema": "sagejs.rust-class-group.neutral-input/v1",
+          "inputId": "sha256:0feff7423e4d9b4dc7d6a9dbaeae4bc28a0bf030d4e7bdc07841ba2d2b94b29b",
+          "fieldId": "generated-d6-0026-95eb0ac8031e",
+          "field": {
+            "variable": "x",
+            "coefficientsAscending": [
+              "1618341004697679346",
+              "-624409562643429",
+              "-6232975059995",
+              "2667343854",
+              "1546",
+              "-1017",
+              "1"
+            ],
+            "degree": 6,
+            "monic": true,
+            "irreducible": true
+          },
+          "preparation": {
+            "kind": "public-polynomial"
+          },
+          "request": {
+            "proof": "conditional-grh",
+            "output": "class-and-unit-group",
+            "mapPolicy": "construct-eagerly",
+            "unitPolicy": "compact-complete",
+            "limits": {
+              "wallMilliseconds": "600000",
+              "memoryBytes": "4294967296",
+              "relationCandidates": "100000000",
+              "precisionBits": 4096,
+              "continuationPasses": 100
+            }
+          },
+          "randomness": {
+            "algorithm": "chacha20-v1",
+            "seed": "c5cb81b009ea0a1c267755b78b9151496fe2ebfcbb38d81689c810a4fc2fe05f"
+          },
+          "containsOracleAnswers": false
+        },
+        {
+          "schema": "sagejs.rust-class-group.neutral-input/v1",
+          "inputId": "sha256:d42f3f978d991fc6be26a812b34a78c7ec3cc4296e80c12e844827424c92d4c2",
+          "fieldId": "generated-d6-0028-0ad4ab1b9126",
+          "field": {
+            "variable": "x",
+            "coefficientsAscending": [
+              "1078470670408494029041",
+              "-591413049590766016",
+              "440091057030024",
+              "-130488575760",
+              "43925574",
+              "-6134",
+              "1"
+            ],
+            "degree": 6,
+            "monic": true,
+            "irreducible": true
+          },
+          "preparation": {
+            "kind": "public-polynomial"
+          },
+          "request": {
+            "proof": "conditional-grh",
+            "output": "class-and-unit-group",
+            "mapPolicy": "construct-eagerly",
+            "unitPolicy": "compact-complete",
+            "limits": {
+              "wallMilliseconds": "600000",
+              "memoryBytes": "4294967296",
+              "relationCandidates": "100000000",
+              "precisionBits": 4096,
+              "continuationPasses": 100
+            }
+          },
+          "randomness": {
+            "algorithm": "chacha20-v1",
+            "seed": "523c3d9a8c37419d92b3cfce1a47fa0b4668560e376a61d66d478f31c1761bdf"
+          },
+          "containsOracleAnswers": false
+        },
+        {
+          "schema": "sagejs.rust-class-group.neutral-input/v1",
+          "inputId": "sha256:597003f6d1b535aaf943cd2475e139ca3dec3e42c12b26f79240f5cb46d34065",
+          "fieldId": "generated-d6-0032-339af225c052",
+          "field": {
+            "variable": "x",
+            "coefficientsAscending": [
+              "69273877589760260676183",
+              "-18991718950475481400",
+              "7060202048406532",
+              "-1046563291104",
+              "175980602",
+              "-12286",
+              "1"
+            ],
+            "degree": 6,
+            "monic": true,
+            "irreducible": true
+          },
+          "preparation": {
+            "kind": "public-polynomial"
+          },
+          "request": {
+            "proof": "conditional-grh",
+            "output": "class-and-unit-group",
+            "mapPolicy": "construct-eagerly",
+            "unitPolicy": "compact-complete",
+            "limits": {
+              "wallMilliseconds": "600000",
+              "memoryBytes": "4294967296",
+              "relationCandidates": "100000000",
+              "precisionBits": 4096,
+              "continuationPasses": 100
+            }
+          },
+          "randomness": {
+            "algorithm": "chacha20-v1",
+            "seed": "58b0355248a4e2ba2223929b29554560dfd8937b6d56632086047a26f6277f5f"
+          },
+          "containsOracleAnswers": false
+        },
+        {
+          "schema": "sagejs.rust-class-group.neutral-input/v1",
+          "inputId": "sha256:ea3956a587bda6d798d4196261a60cae6c98764c604b6c7977de985c87b5c5c0",
+          "fieldId": "generated-d6-0042-a987e6944bc9",
+          "field": {
+            "variable": "x",
+            "coefficientsAscending": [
+              "1107553478",
+              "-11574450",
+              "-4997610",
+              "57517",
+              "109",
+              "-27",
+              "1"
+            ],
+            "degree": 6,
+            "monic": true,
+            "irreducible": true
+          },
+          "preparation": {
+            "kind": "public-polynomial"
+          },
+          "request": {
+            "proof": "conditional-grh",
+            "output": "class-and-unit-group",
+            "mapPolicy": "construct-eagerly",
+            "unitPolicy": "compact-complete",
+            "limits": {
+              "wallMilliseconds": "600000",
+              "memoryBytes": "4294967296",
+              "relationCandidates": "100000000",
+              "precisionBits": 4096,
+              "continuationPasses": 100
+            }
+          },
+          "randomness": {
+            "algorithm": "chacha20-v1",
+            "seed": "6f680be611c445a3351759daf97f13f699b1b7d2bbbd583864481bc0ce9c529e"
+          },
+          "containsOracleAnswers": false
+        },
+        {
+          "schema": "sagejs.rust-class-group.neutral-input/v1",
+          "inputId": "sha256:464aa162b2c8ac4042bb05de4380412f114948b0a77e216a42b5fd7bacc1b44d",
+          "fieldId": "generated-d6-0046-53ea503d1514",
+          "field": {
+            "variable": "x",
+            "coefficientsAscending": [
+              "90961863144",
+              "-640293136",
+              "-87422288",
+              "591953",
+              "595",
+              "-61",
+              "1"
+            ],
+            "degree": 6,
+            "monic": true,
+            "irreducible": true
+          },
+          "preparation": {
+            "kind": "public-polynomial"
+          },
+          "request": {
+            "proof": "conditional-grh",
+            "output": "class-and-unit-group",
+            "mapPolicy": "construct-eagerly",
+            "unitPolicy": "compact-complete",
+            "limits": {
+              "wallMilliseconds": "600000",
+              "memoryBytes": "4294967296",
+              "relationCandidates": "100000000",
+              "precisionBits": 4096,
+              "continuationPasses": 100
+            }
+          },
+          "randomness": {
+            "algorithm": "chacha20-v1",
+            "seed": "a998033639006699d900b2a87d5afd2298d7eae158220c825955bf86f621e012"
+          },
+          "containsOracleAnswers": false
+        },
+        {
+          "schema": "sagejs.rust-class-group.neutral-input/v1",
+          "inputId": "sha256:24d83ea1ab461cd7c0aff4d4ba92aee5b48b747cfc9aa62dd0d8df66ba276b8d",
+          "fieldId": "generated-d6-0050-c6c280de43d7",
+          "field": {
+            "variable": "x",
+            "coefficientsAscending": [
+              "5792852130534",
+              "-15897134316",
+              "-1489887096",
+              "5235765",
+              "1455",
+              "-129",
+              "1"
+            ],
+            "degree": 6,
+            "monic": true,
+            "irreducible": true
+          },
+          "preparation": {
+            "kind": "public-polynomial"
+          },
+          "request": {
+            "proof": "conditional-grh",
+            "output": "class-and-unit-group",
+            "mapPolicy": "construct-eagerly",
+            "unitPolicy": "compact-complete",
+            "limits": {
+              "wallMilliseconds": "600000",
+              "memoryBytes": "4294967296",
+              "relationCandidates": "100000000",
+              "precisionBits": 4096,
+              "continuationPasses": 100
+            }
+          },
+          "randomness": {
+            "algorithm": "chacha20-v1",
+            "seed": "48601c6e33eb9fe51320955116cf4301ccb55216322e978406c4a3d9e4acc1d5"
+          },
+          "containsOracleAnswers": false
+        },
+        {
+          "schema": "sagejs.rust-class-group.neutral-input/v1",
+          "inputId": "sha256:9518e9916ed411d20d5b004d4471c69e44a26ce5ee83a8f83cfd95c50cfb87cf",
+          "fieldId": "generated-d6-0051-0a7d420bea73",
+          "field": {
+            "variable": "x",
+            "coefficientsAscending": [
+              "-32322277765989",
+              "139542511666",
+              "7103313256",
+              "-30853887",
+              "213963",
+              "-383",
+              "1"
+            ],
+            "degree": 6,
+            "monic": true,
+            "irreducible": true
+          },
+          "preparation": {
+            "kind": "public-polynomial"
+          },
+          "request": {
+            "proof": "conditional-grh",
+            "output": "class-and-unit-group",
+            "mapPolicy": "construct-eagerly",
+            "unitPolicy": "compact-complete",
+            "limits": {
+              "wallMilliseconds": "600000",
+              "memoryBytes": "4294967296",
+              "relationCandidates": "100000000",
+              "precisionBits": 4096,
+              "continuationPasses": 100
+            }
+          },
+          "randomness": {
+            "algorithm": "chacha20-v1",
+            "seed": "a1d61a5c2cf0453e3e0d62e085c585b6be56f4574edcd7bd21035982392cb9e3"
+          },
+          "containsOracleAnswers": false
+        },
+        {
+          "schema": "sagejs.rust-class-group.neutral-input/v1",
+          "inputId": "sha256:6fac9b2920fa8d8d816dad69921d067ae657c7e0d78a86304644ab50463d712a",
+          "fieldId": "generated-d6-0061-1085d98788fd",
+          "field": {
+            "variable": "x",
+            "coefficientsAscending": [
+              "-4020595937719237453",
+              "-27257633665416",
+              "17662902024483",
+              "4182024",
+              "-9133111",
+              "0",
+              "1"
+            ],
+            "degree": 6,
+            "monic": true,
+            "irreducible": true
+          },
+          "preparation": {
+            "kind": "public-polynomial"
+          },
+          "request": {
+            "proof": "conditional-grh",
+            "output": "class-and-unit-group",
+            "mapPolicy": "construct-eagerly",
+            "unitPolicy": "compact-complete",
+            "limits": {
+              "wallMilliseconds": "600000",
+              "memoryBytes": "4294967296",
+              "relationCandidates": "100000000",
+              "precisionBits": 4096,
+              "continuationPasses": 100
+            }
+          },
+          "randomness": {
+            "algorithm": "chacha20-v1",
+            "seed": "056263a1719a4d6a8aeefc6b6a3541c1e79aa0b53d8adfa7505b0a3386d6f767"
+          },
+          "containsOracleAnswers": false
+        },
+        {
+          "schema": "sagejs.rust-class-group.neutral-input/v1",
+          "inputId": "sha256:17b60fe7e6d9d37db7a3df37dc8cbf80f1efa3dbacf5f6314e6d1920899d9aea",
+          "fieldId": "generated-d6-0062-334b0b9d1ec3",
+          "field": {
+            "variable": "x",
+            "coefficientsAscending": [
+              "1610347166921385952",
+              "-635635067484172",
+              "-6221856973846",
+              "2673366004",
+              "2049",
+              "-1020",
+              "1"
+            ],
+            "degree": 6,
+            "monic": true,
+            "irreducible": true
+          },
+          "preparation": {
+            "kind": "public-polynomial"
+          },
+          "request": {
+            "proof": "conditional-grh",
+            "output": "class-and-unit-group",
+            "mapPolicy": "construct-eagerly",
+            "unitPolicy": "compact-complete",
+            "limits": {
+              "wallMilliseconds": "600000",
+              "memoryBytes": "4294967296",
+              "relationCandidates": "100000000",
+              "precisionBits": 4096,
+              "continuationPasses": 100
+            }
+          },
+          "randomness": {
+            "algorithm": "chacha20-v1",
+            "seed": "2905518cab6e8db56ef476f970121175bb81bd7fd6553e2b677ac067ab55e0d7"
+          },
+          "containsOracleAnswers": false
+        }
+      ]
+    }
+  }
+}

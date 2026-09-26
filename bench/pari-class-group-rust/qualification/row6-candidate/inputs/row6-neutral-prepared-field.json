@@ -1,0 +1,60 @@
+{
+  "schema": "sagejs.rust-class-group.neutral-input/v1",
+  "inputId": "sha256:42ecf93a56de4cc7763d33c8b422e7804582278674c1a6fef41a4799a9930bd5",
+  "fieldId": "row6-x3-minus-2000000000010x-plus-2000000000018",
+  "field": {
+    "variable": "x",
+    "coefficientsAscending": ["2000000000018", "-2000000000010", "0", "1"],
+    "degree": 3,
+    "monic": true,
+    "irreducible": true
+  },
+  "preparation": {
+    "kind": "neutral-prepared-field",
+    "authority": "independent-oracle",
+    "maximalOrderCertified": true,
+    "basisNumeratorsRowMajor": [
+      "3", "0", "0",
+      "0", "3", "0",
+      "-1333333333340", "1", "1"
+    ],
+    "basisDenominator": "3",
+    "discriminant": "3555555555596888888888939555555555028",
+    "signature": { "realPlaces": 3, "complexPairs": 0 },
+    "multiplicationTable": [
+      [
+        [{ "numerator": "1", "denominator": "1" }, { "numerator": "0", "denominator": "1" }, { "numerator": "0", "denominator": "1" }],
+        [{ "numerator": "0", "denominator": "1" }, { "numerator": "1", "denominator": "1" }, { "numerator": "0", "denominator": "1" }],
+        [{ "numerator": "0", "denominator": "1" }, { "numerator": "0", "denominator": "1" }, { "numerator": "1", "denominator": "1" }]
+      ],
+      [
+        [{ "numerator": "0", "denominator": "1" }, { "numerator": "1", "denominator": "1" }, { "numerator": "0", "denominator": "1" }],
+        [{ "numerator": "1333333333340", "denominator": "1" }, { "numerator": "-1", "denominator": "1" }, { "numerator": "3", "denominator": "1" }],
+        [{ "numerator": "-222222222226", "denominator": "1" }, { "numerator": "222222222223", "denominator": "1" }, { "numerator": "1", "denominator": "1" }]
+      ],
+      [
+        [{ "numerator": "0", "denominator": "1" }, { "numerator": "0", "denominator": "1" }, { "numerator": "1", "denominator": "1" }],
+        [{ "numerator": "-222222222226", "denominator": "1" }, { "numerator": "222222222223", "denominator": "1" }, { "numerator": "1", "denominator": "1" }],
+        [{ "numerator": "98765432099456790123456", "denominator": "1" }, { "numerator": "-1", "denominator": "1" }, { "numerator": "-222222222223", "denominator": "1" }]
+      ]
+    ],
+    "irreducibilityPrime": 7,
+    "indexPrimes": ["3"],
+    "sourceSha256": "91180d1100796b514de61d0e1736521e6e55daadbda851a9f24defc8d3bb70df"
+  },
+  "request": {
+    "proof": "conditional-grh",
+    "output": "class-and-unit-group",
+    "mapPolicy": "construct-eagerly",
+    "unitPolicy": "compact-complete",
+    "limits": {
+      "wallMilliseconds": "60000",
+      "memoryBytes": "1073741824",
+      "relationCandidates": "1000000",
+      "precisionBits": 192,
+      "continuationPasses": 8
+    }
+  },
+  "randomness": { "algorithm": "none", "seed": null },
+  "containsOracleAnswers": false
+}

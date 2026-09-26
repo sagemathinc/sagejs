@@ -1,0 +1,115 @@
+{
+  "modes": [
+    {
+      "medianMs": 91.598812,
+      "mode": "baseline",
+      "result": {
+        "bound": 9196,
+        "digestSha256": "e0b4936ea49e92649808af36cafb8d4820a54cca0d57260d293ce7d696271bbb",
+        "factorCount": 2066,
+        "mode": "baseline",
+        "rationalPrimeCount": 1139,
+        "schema": "sagejs.rust-class-group/factor-pattern-ab-result-v1",
+        "status": "pass"
+      },
+      "samplesMs": [
+        91.81212099999999,
+        91.571832,
+        91.659961,
+        91.628011,
+        91.714231,
+        91.652192,
+        91.588942,
+        91.526151,
+        91.567532,
+        91.565992,
+        91.612472,
+        91.559161,
+        91.598812,
+        91.580131,
+        91.693282
+      ]
+    },
+    {
+      "medianMs": 33.424909,
+      "mode": "bounded-i64",
+      "result": {
+        "bound": 9196,
+        "digestSha256": "e0b4936ea49e92649808af36cafb8d4820a54cca0d57260d293ce7d696271bbb",
+        "factorCount": 2066,
+        "mode": "bounded-i64",
+        "rationalPrimeCount": 1139,
+        "schema": "sagejs.rust-class-group/factor-pattern-ab-result-v1",
+        "status": "pass"
+      },
+      "samplesMs": [
+        33.454789,
+        34.360229,
+        33.461310000000005,
+        33.461749999999995,
+        33.407389,
+        33.41428,
+        33.453469999999996,
+        33.41889,
+        33.40249,
+        33.424909,
+        33.39602,
+        33.412959,
+        33.45289,
+        33.455519,
+        33.387449
+      ]
+    }
+  ],
+  "schema": "sagejs.rust-class-group/factor-pattern-ab-native-v1",
+  "status": "pass",
+  "observedAt": "2026-09-20T18:56:10.860Z",
+  "repositoryRevision": "c4d07156194765506d137792732ba5109cd8c87e",
+  "host": {
+    "hostname": "project-b6351099-3c72-458c-aa7e-4b7f4a47c0e7",
+    "platform": "linux",
+    "release": "7.0.0-1011-gcp",
+    "architecture": "x64",
+    "uname": "Linux project-b6351099-3c72-458c-aa7e-4b7f4a47c0e7 7.0.0-1011-gcp #11~24.04.1-Ubuntu SMP PREEMPT Tue Aug 11 20:14:48 UTC 2026 x86_64 GNU/Linux"
+  },
+  "tools": {
+    "rustc": "rustc 1.98.1 (48a229cea 2026-09-01)\nbinary: rustc\ncommit-hash: 48a229ceaefd4985c50990b14116b6d856af0985\ncommit-date: 2026-09-01\nhost: x86_64-unknown-linux-gnu\nrelease: 1.98.1\nLLVM version: 22.1.8",
+    "cargo": "cargo 1.98.1 (797e8a9bc 2026-08-05)",
+    "cc": "gcc (Ubuntu 15.2.0-16ubuntu1) 15.2.0"
+  },
+  "executable": {
+    "path": "bench/pari-class-group-rust/qualification/wasm-factor-pattern-ab/target/release/sagejs-rust-wasm-factor-pattern-ab",
+    "sha256": "31eed0521f0f89d5f636ef4bb396ed45f69a79a29659fd45e44314124d005074",
+    "bytes": 428152,
+    "retained": false,
+    "identitySemantics": "frozen SHA-256 and byte count of the exact measured binary; path records its clean-worktree build location and is not a claim that a current file can be reopened there"
+  },
+  "sourceClosure": [
+    {
+      "path": "bench/pari-class-group-rust/qualification/wasm-factor-pattern-ab/Cargo.toml",
+      "sha256": "84dca680161977f1e1a353fdc6d46a98cba5df59b25fc49a0b2c6f8e33936249",
+      "bytes": 335
+    },
+    {
+      "path": "bench/pari-class-group-rust/qualification/wasm-factor-pattern-ab/Cargo.lock",
+      "sha256": "bbbf6605e92b4a08bb97850832fbe6fea7928c5f91f65e2060df70a1ac9997a3",
+      "bytes": 4911
+    },
+    {
+      "path": "bench/pari-class-group-rust/qualification/wasm-factor-pattern-ab/build-wasm.sh",
+      "sha256": "d1d9d165f7f85d023597cab4d80dc482babe3fe5b5b3899edac59febda979ca3",
+      "bytes": 574
+    },
+    {
+      "path": "bench/pari-class-group-rust/qualification/wasm-factor-pattern-ab/src/lib.rs",
+      "sha256": "fe0380cf7e6fb231394767bb4f8240eb823da294dce7dbbd898c33b757d96f53",
+      "bytes": 13771
+    },
+    {
+      "path": "bench/pari-class-group-rust/qualification/wasm-factor-pattern-ab/src/main.rs",
+      "sha256": "534061b8db52aa5317044dc2bb1ee803364afca3bf55514b61e7f759e5f16004",
+      "bytes": 1519
+    }
+  ],
+  "nativeLibraries": []
+}

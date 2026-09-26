@@ -1,0 +1,77 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "pari-class-group-smith-transforms",
+  "title": "PARI class-group Smith transforms",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "snf_transform_inventory",
+  "objective": "Implement and qualify the square positive full-rank HNF Smith transforms and downstream class-group matrix identities through M1/M2",
+  "base_commit": "6a43c61902dd7169c0345b089d3785ae520f8eff",
+  "claims": [
+    "bench/pari-class-group-port/class_group_smith_transform.py",
+    "bench/pari-class-group-port/check_class_group_smith_transform.cjs",
+    "bench/pari-class-group-port/class_group_smith_transform_audit.md"
+  ],
+  "dependencies": [],
+  "references": [
+    "/home/user/upstream/pari-2.17.4/src/basemath/hnf_snf.c",
+    "/home/user/upstream/pari-2.17.4/src/basemath/buch2.c",
+    "/home/user/upstream/pari-2.17.4/src/basemath/ZV.c"
+  ],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "Pristine PARI 2.17.4 ZM_snfall/ZM_inv/ZM_hnfdivrem/class_group_gen matrix formulas"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "fallback",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "node bench/pari-class-group-port/check_class_group_smith_transform.cjs /home/user/upstream/pari-2.17.4 /home/user/upstream/pari-2.17.4.tar.gz",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 11.934,
+      "started_at": "2026-09-16T23:38:47.239Z",
+      "commit": "6a43c61902dd7169c0345b089d3785ae520f8eff",
+      "workspace_fingerprint": "4f6b29839b3fdd8298390792b570fdbff58674e1e5598f05cef2f03b17b0ecb7",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 127.709,
+      "started_at": "2026-09-16T23:39:07.843Z",
+      "commit": "6a43c61902dd7169c0345b089d3785ae520f8eff",
+      "workspace_fingerprint": "4f6b29839b3fdd8298390792b570fdbff58674e1e5598f05cef2f03b17b0ecb7",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Added an ordinary-Python, source-transparent native path from a positive square class-group HNF through PARI's Smith D/U schedule, checked unimodular Ui/V reconstruction, both rounded HNF divisions, and exact M1/M2 assembly. A pristine PARI 2.17.4 UBSan oracle agrees elementwise across 189 CPython, JavaScript, GMP, and tagged cases, while independent matrix identities validate provenance.",
+    "risks": [
+      "PARI/GMP may choose different multiword Bezout coefficients than the documented Sage.js Euclid substitution; multiword nontrivial transforms require identity-based qualification or a source-matched coefficient convention.",
+      "The full pnpm test:native correctness suite passed, but its trailing performance suite failed the dense ZZ multiply_150 budget on the shared host (44.13 ms normalized versus 30 ms); no production matrix code changed in this lane.",
+      "pnpm test:changed reaches a pre-existing stale optimizer-opportunity manifest on this integration base; this lane does not claim or modify generated shared manifests."
+    ],
+    "next_steps": [
+      "Run the checker with --collector-fixtures against freshly generated accepted HNFs and connect the resident owners to the integration driver.",
+      "Feed the leading Uir columns into genback while retaining exact relation provenance; then assemble Ga/Ge and the archimedean clg2 fields.",
+      "Decide explicitly whether multiword transform-producing Bezout paths require PARI-identical generators or merely independently replayable valid generators."
+    ]
+  }
+}

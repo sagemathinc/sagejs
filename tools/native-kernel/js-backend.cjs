@@ -26,7 +26,111 @@ function jsString(value) {
   return JSON.stringify(String(value));
 }
 
+// Python permits these local/parameter names, but strict JavaScript does not.
+// Rename only binding references in a backend-local copy, never literal data,
+// record field names, callee identities, source provenance, or the shared IR.
+const RESERVED_BINDINGS = new Set((
+  "await break case catch class const continue debugger default delete do else " +
+  "enum export extends false finally for function if implements import in " +
+  "instanceof interface let new null package private protected public return " +
+  "static super switch this throw true try typeof var void while with yield " +
+  "eval arguments"
+).split(" "));
+
+function escapeJavaScriptBindings(fn) {
+  const bindings = [...fn.params, ...fn.locals];
+  const occupied = new Set(bindings.map((binding) => binding.name));
+  const names = new Map();
+  let serial = 0;
+  for (const {name} of bindings) {
+    if (!RESERVED_BINDINGS.has(name) || names.has(name)) continue;
+    let replacement;
+    do { replacement = `__sagejs_js_binding_${serial++}`; }
+    while (occupied.has(replacement));
+    occupied.add(replacement);
+    names.set(name, replacement);
+  }
+  if (names.size === 0) return fn;
+  const rename = (value) => names.get(value) ?? value;
+  const operands = [
+    "target", "source", "left", "right", "parent", "buffer", "index",
+    "owner", "arena", "base", "capacity", "length", "count", "row",
+    "column", "rows", "columns", "matrix", "vector", "key", "exponent",
+    "iterator", "start", "stop", "step", "memoryLimit", "temporaryLimit",
+    "entryCapacity", "entryCharge", "maximumBits", "defaultValue",
+    "quotient", "remainder",
+  ];
+  function operation(item) {
+    const result = {...item};
+    for (const key of operands) {
+      if (typeof item[key] === "string") result[key] = rename(item[key]);
+    }
+    if (typeof item.value === "string" && !item.kind.endsWith(".constant")) {
+      result.value = rename(item.value);
+    }
+    if (item.kind === "return" && item.values) result.values = item.values.map(rename);
+    for (const key of ["arguments", "results"]) {
+      if (item[key]) result[key] = item[key].map((arg) => ({...arg, name: rename(arg.name)}));
+    }
+    if (item.kind === "record.construct") {
+      result.fields = item.fields.map((field) => ({...field, value: rename(field.value)}));
+    }
+    for (const key of ["body", "alternative", "setup"]) {
+      if (item[key]) result[key] = item[key].map(operation);
+    }
+    if (item.condition) {
+      result.condition = {...item.condition, value: rename(item.condition.value),
+        operations: item.condition.operations.map(operation)};
+    }
+    if (item.children) {
+      result.children = item.children.map((child) => ({...child, owner: rename(child.owner)}));
+    }
+    return result;
+  }
+  const declaration = (binding) => ({...binding, name: rename(binding.name),
+    ...(binding.parent === undefined ? {} : {parent: rename(binding.parent)})});
+  return {...fn, params: fn.params.map(declaration), locals: fn.locals.map(declaration),
+    body: fn.body.map(operation),
+    jsOriginalBindingNames: Object.fromEntries([...names].map(([name, replacement]) => [replacement, name])),
+    ...(fn.resourceAliases === undefined ? {} : {resourceAliases: Object.fromEntries(
+      Object.entries(fn.resourceAliases).map(([name, value]) => [rename(name), value])
+    )})};
+}
+
+function emitFloat64Sqrt(operation, indent) {
+  return `${indent}if (${operation.source} < 0) nativeRaise("ValueError", "math domain error");\n` +
+    `${indent}${operation.target} = Math.sqrt(${operation.source});`;
+}
+
+function emitFloat64Exp(operation, indent) {
+  return `${indent}${operation.target} = Math.exp(${operation.source});\n` +
+    `${indent}if (!Number.isFinite(${operation.target}) && !Number.isNaN(${operation.target}) && Number.isFinite(${operation.source})) ` +
+    `nativeRaise("OverflowError", "math range error");`;
+}
+
+function emitFloat64Pow(operation, indent) {
+  const {left, right, target} = operation;
+  return [
+    `${indent}if (${left} === 0 && ${right} < 0 && Number.isFinite(${right})) throw new RangeError("math domain error");`,
+    `${indent}${target} = ${left} === 1 || (Math.abs(${left}) === 1 && !Number.isFinite(${right}) && !Number.isNaN(${right})) ? 1 : Math.pow(${left}, ${right});`,
+    `${indent}if (Number.isNaN(${target}) && !Number.isNaN(${left}) && !Number.isNaN(${right})) throw new RangeError("math domain error");`,
+    `${indent}if (!Number.isFinite(${target}) && !Number.isNaN(${target}) && Number.isFinite(${left}) && Number.isFinite(${right})) throw new RangeError("math range error");`,
+  ].join("\n");
+}
+
+function exactUsesFloat64(fn) {
+  if (fn.analysis?.mixedFloat64) return true;
+  return fn.kernelKind === "integer" &&
+    [...fn.params, ...fn.locals].some((value) =>
+      value.type === "Float64" || value.type === "Float64Buffer"
+    );
+}
+
 function emitStatement(operation, indent) {
+  if (operation.kind === "real.buffer.get" || operation.kind === "complex.buffer.get") {
+    return `${indent}if (${operation.index} >= ${operation.buffer}.length) throw new RangeError("field buffer index out of range");\n` +
+      `${indent}${operation.target} = ${operation.buffer}[${operation.index}];`;
+  }
   if (operation.kind === "integer.constant") {
     return `${indent}${operation.target} = BigInt(` +
       `${jsString(operation.value)});`;
@@ -51,11 +155,16 @@ function emitStatement(operation, indent) {
       add: "+",
       sub: "-",
       mul: "*",
+      and: "&",
     }[operation.operation];
     if (operator === undefined)
       throw new Error(`unsupported integer operation ${operation.operation}`);
     return `${indent}${operation.target} = ${operation.left} ` +
       `${operator} ${operation.right};`;
+  }
+  if (operation.kind === "integer.mul_int64") {
+    return `${indent}${operation.target} = ${operation.integer} * ` +
+      `${operation.scalar};`;
   }
   if (
     operation.kind === "real.copy" ||
@@ -73,6 +182,11 @@ function emitStatement(operation, indent) {
   }
   if (operation.kind === "integer.from_uint64") {
     return `${indent}${operation.target} = BigInt(${operation.source});`;
+  }
+  if (operation.kind === "uint64.from_int64_checked") {
+    return `${indent}if (${operation.source} < 0n) ` +
+      `nativeRaise("OverflowError", "integer is outside unsigned 64-bit");\n` +
+      `${indent}${operation.target} = ${operation.source};`;
   }
   if (operation.kind === "uint64.from_integer_checked") {
     return `${indent}if (${operation.source} < 0n || ` +
@@ -122,12 +236,14 @@ function emitPublicFunction(fn) {
     (param) =>
       param.type === "RealField" || param.type === "ComplexField",
   );
-  const iterations = fn.params.find((param) => param.type === "uint64");
+  const iterations = fn.params.filter((param) => param.type === "uint64");
   const params = fn.params.map((param) => param.name).join(", ");
   const nativeArgs = fn.params
     .map((param) =>
       param.type === "RealField" || param.type === "ComplexField"
         ? `${param.name}.precision()`
+        : param.type === fn.returnType ? `${param.name}._native`
+        : param.type === fn.returnType + "Buffer" ? `${param.name}.map(value => value._native)`
         : param.name,
     )
     .join(", ");
@@ -138,7 +254,21 @@ function validate_${fn.name}(${params}) {
       typeof ${parent.name}._fromNative !== "function") {
     throw new TypeError("${parent.name} must be a Sage.js ${parent.type}");
   }
-${uint64Validation(iterations.name)}
+${iterations.map((param) => uint64Validation(param.name)).join("\n")}
+${fn.params.filter((param) => param.type === fn.returnType).map((param) => `
+  if (${param.name} == null || ${param.name}._parent !== ${parent.name}) {
+    throw new TypeError("prepared input must belong to the supplied field");
+  }
+  if (${parent.name}._rounding_code !== undefined && ${parent.name}._rounding_code !== 0) {
+    throw new TypeError("prepared field kernels currently require nearest rounding");
+  }`).join("\n")}
+${fn.params.filter((param) => param.type === fn.returnType + "Buffer").map((param) => `
+  if (!Array.isArray(${param.name}) || !${param.name}.every(value => value != null && value._parent === ${parent.name})) {
+    throw new TypeError("field buffer entries must belong to the supplied field");
+  }
+  if (${parent.name}._rounding_code !== undefined && ${parent.name}._rounding_code !== 0) {
+    throw new TypeError("prepared field kernels currently require nearest rounding");
+  }`).join("\n")}
 }
 
 function ${fn.name}(${params}) {
@@ -147,11 +277,11 @@ function ${fn.name}(${params}) {
     const nativeValue = nativeAddon.${fn.name}(${nativeArgs});
     return ${parent.name}._fromNative(nativeValue);
   }
-  if (typeof ${iterations.name} === "bigint" &&
-      ${iterations.name} > BigInt(Number.MAX_SAFE_INTEGER)) {
+${iterations.map((param) => `  if (typeof ${param.name} === "bigint" &&
+      ${param.name} > BigInt(Number.MAX_SAFE_INTEGER)) {
     throw new RangeError(
       "JavaScript fallback cannot iterate beyond Number.MAX_SAFE_INTEGER");
-  }
+  }`).join("\n")}
   return javascript_${fn.name}(
     ${fn.params
       .map((param) =>
@@ -189,7 +319,24 @@ ${fn.name}.nativeAvailable = nativeAddon !== null;`;
 }
 
 function emitExactStatement(operation, indent, resourceStack = null) {
+  if (operation.kind === "workspace.arena.integer_buffer.allocate") {
+    return `${indent}${operation.owner} = ` +
+      `nativeWorkspaceIntegerBufferCreate(${operation.arena}, ` +
+      `${operation.length}, ${operation.wordCapacity}n);`;
+  }
+  if (operation.kind === "integer.workspace.allocate" ||
+      operation.kind === "int64.workspace.allocate") {
+    return `${indent}${operation.target} = ` +
+      `Array(${operation.length}).fill(0n);`;
+  }
+  if (operation.kind === "float64.workspace.allocate") {
+    return `${indent}${operation.target} = ` +
+      `Array(${operation.length}).fill(0);`;
+  }
   if (operation.kind === "uint64.constant") {
+    return `${indent}${operation.target} = ${operation.value}n;`;
+  }
+  if (operation.kind === "int64.constant") {
     return `${indent}${operation.target} = ${operation.value}n;`;
   }
   if (operation.kind === "integer.constant") {
@@ -202,10 +349,16 @@ function emitExactStatement(operation, indent, resourceStack = null) {
     return `${indent}if (${operation.step} === 0n) ` +
       `nativeRaise("ValueError", "range() arg 3 must not be zero");`;
   }
+  if (operation.kind === "diagnostic.stage.switch") {
+    return `${indent}void ${operation.stage};`;
+  }
   if (
     operation.kind === "integer.copy" ||
     operation.kind === "bool.copy" ||
-    operation.kind === "uint64.copy"
+    operation.kind === "uint64.copy" ||
+    operation.kind === "int64.copy" ||
+    operation.kind === "float64.copy" ||
+    operation.kind === "float64.buffer.copy"
   ) {
     return `${indent}${operation.target} = ${operation.source};`;
   }
@@ -265,6 +418,14 @@ function emitExactStatement(operation, indent, resourceStack = null) {
     return `${indent}${operation.target} = int64RecordView(` +
       `${operation.buffer}, ${operation.start}, ${operation.length});`;
   }
+  if (operation.kind === "integer.buffer.view") {
+    return `${indent}${operation.target} = integerBufferSubview(` +
+      `${operation.buffer}, ${operation.start}, ${operation.length});`;
+  }
+  if (operation.kind === "uint64.buffer.view") {
+    return `${indent}${operation.target} = uint64BufferSubview(` +
+      `${operation.buffer}, ${operation.start}, ${operation.length});`;
+  }
   if (operation.kind === "int64.buffer.get") {
     return `${indent}${operation.target} = int64BufferGet(` +
       `${operation.buffer}, ${operation.index});`;
@@ -273,11 +434,120 @@ function emitExactStatement(operation, indent, resourceStack = null) {
     return `${indent}int64BufferSet(${operation.buffer}, ` +
       `${operation.index}, ${operation.value});`;
   }
+  if (operation.kind === "int64.buffer.addmul_range") {
+    const offset = `${operation.target}_offset`;
+    const product = `${operation.target}_product`;
+    const destination = `${operation.destination} + ${offset}`;
+    const source = `${operation.source} + ${offset}`;
+    return `${indent}for (let ${offset} = 0n; ${offset} < ${operation.length}; ` +
+      `${offset} += 1n) {\n` +
+      `${indent}  const ${product} = checkedInt64(${operation.multiplier} * ` +
+      `int64BufferGet(${operation.buffer}, ${source}));\n` +
+      `${indent}  int64BufferSet(${operation.buffer}, ${destination}, ` +
+      `checkedInt64(int64BufferGet(${operation.buffer}, ${destination}) + ` +
+      `${product}));\n` +
+      `${indent}}\n${indent}${operation.target} = 0n;`;
+  }
   if (operation.kind === "integer.buffer.copy") {
     return `${indent}${operation.target} = ${operation.source};`;
   }
   if (operation.kind === "integer.buffer.length") {
     return `${indent}${operation.target} = BigInt(${operation.buffer}.length);`;
+  }
+  if (operation.kind === "integer.buffer.slot_copy") {
+    return `${indent}integerBufferSet(${operation.buffer}, ${operation.index}, ` +
+      `integerBufferGet(${operation.sourceBuffer}, ${operation.sourceIndex}));`;
+  }
+  if (operation.kind === "integer.buffer.addmul") {
+    return `${indent}integerBufferSet(${operation.buffer}, ` +
+      `${operation.destination}, integerBufferGet(${operation.buffer}, ` +
+      `${operation.destination}) + ${operation.multiplier} * ` +
+      `integerBufferGet(${operation.buffer}, ${operation.source}));\n` +
+      `${indent}${operation.target} = 0n;`;
+  }
+  if (operation.kind === "integer.buffer.addmul_from") {
+    return `${indent}integerBufferSet(${operation.buffer}, ` +
+      `${operation.destination}, integerBufferGet(${operation.buffer}, ` +
+      `${operation.destination}) + ${operation.multiplier} * ` +
+      `integerBufferGet(${operation.sourceBuffer}, ${operation.source}));\n` +
+      `${indent}${operation.target} = 0n;`;
+  }
+  if (operation.kind === "integer.buffer.addmul_range") {
+    const offset = `${operation.target}_offset`;
+    return `${indent}for (let ${offset} = ${operation.length} - 1n; ` +
+      `${offset} >= 0n; ${offset} -= 1n) {\n` +
+      `${indent}  integerBufferSet(${operation.buffer}, ` +
+      `${operation.destination} + ${offset}, integerBufferGet(` +
+      `${operation.buffer}, ${operation.destination} + ${offset}) + ` +
+      `${operation.multiplier} * integerBufferGet(${operation.buffer}, ` +
+      `${operation.source} + ${offset}));\n` +
+      `${indent}}\n${indent}${operation.target} = 0n;`;
+  }
+  if (operation.kind === "integer.buffer.addmul_range_from") {
+    const offset = `${operation.target}_offset`;
+    return `${indent}for (let ${offset} = 0n; ${offset} < ${operation.length}; ` +
+      `${offset} += 1n) {\n` +
+      `${indent}  integerBufferSet(${operation.buffer}, ` +
+      `${operation.destination} + ${offset}, integerBufferGet(` +
+      `${operation.buffer}, ${operation.destination} + ${offset}) + ` +
+      `${operation.multiplier} * integerBufferGet(${operation.sourceBuffer}, ` +
+      `${operation.source} + ${offset}));\n` +
+      `${indent}}\n${indent}${operation.target} = 0n;`;
+  }
+  if (operation.kind === "integer.buffer.mod_addmul_range_from") {
+    const offset = `${operation.target}_offset`;
+    const product = `${operation.target}_product`;
+    const total = `${operation.target}_total`;
+    return `${indent}if (${operation.modulus} <= 0n) ` +
+      `throw new ValueError("modulus must be positive");\n` +
+      `${indent}for (let ${offset} = 0n; ${offset} < ${operation.length}; ` +
+      `${offset} += 1n) {\n` +
+      `${indent}  const ${product} = checkedInt64(${operation.multiplier} * ` +
+      `checkedInt64(integerBufferGet(${operation.sourceBuffer}, ` +
+      `${operation.source} + ${offset})));\n` +
+      `${indent}  const ${total} = checkedInt64(checkedInt64(` +
+      `integerBufferGet(${operation.buffer}, ${operation.destination} + ` +
+      `${offset})) + ${product});\n` +
+      `${indent}  integerBufferSet(${operation.buffer}, ` +
+      `${operation.destination} + ${offset}, ((${total} % ${operation.modulus}) + ` +
+      `${operation.modulus}) % ${operation.modulus});\n` +
+      `${indent}}\n${indent}${operation.target} = 0n;`;
+  }
+  if (operation.kind === "integer.buffer.swap_range") {
+    const offset = `${operation.target}_offset`;
+    const temporary = `${operation.target}_temporary`;
+    return `${indent}for (let ${offset} = 0n; ${offset} < ${operation.length}; ` +
+      `${offset} += 1n) {\n` +
+      `${indent}  const ${temporary} = integerBufferGet(${operation.buffer}, ` +
+      `${operation.left} + ${offset});\n` +
+      `${indent}  integerBufferSet(${operation.buffer}, ${operation.left} + ` +
+      `${offset}, integerBufferGet(${operation.buffer}, ${operation.right} + ` +
+      `${offset}));\n` +
+      `${indent}  integerBufferSet(${operation.buffer}, ${operation.right} + ` +
+      `${offset}, ${temporary});\n` +
+      `${indent}}\n${indent}${operation.target} = 0n;`;
+  }
+  if (operation.kind === "integer.buffer.negate_range") {
+    const offset = `${operation.target}_offset`;
+    return `${indent}for (let ${offset} = 0n; ${offset} < ${operation.length}; ` +
+      `${offset} += 1n) {\n` +
+      `${indent}  integerBufferSet(${operation.buffer}, ${operation.start} + ` +
+      `${offset}, -integerBufferGet(${operation.buffer}, ${operation.start} + ` +
+      `${offset}));\n` +
+      `${indent}}\n${indent}${operation.target} = 0n;`;
+  }
+  if (operation.kind === "integer.buffer.get_int64") {
+    return `${indent}${operation.target} = checkedInt64(` +
+      `integerBufferGet(${operation.buffer}, ${operation.index}));`;
+  }
+  if (operation.kind === "integer.buffer.sign") {
+    const value = `${operation.target}_value`;
+    return `${indent}{\n` +
+      `${indent}  const ${value} = integerBufferGet(${operation.buffer}, ` +
+      `${operation.index});\n` +
+      `${indent}  ${operation.target} = ${value} < 0n ? -1n : ` +
+      `(${value} > 0n ? 1n : 0n);\n` +
+      `${indent}}`;
   }
   if (operation.kind === "integer.buffer.get") {
     return `${indent}${operation.target} = integerBufferGet(` +
@@ -403,11 +673,95 @@ function emitExactStatement(operation, indent, resourceStack = null) {
   if (operation.kind === "integer.from_uint64") {
     return `${indent}${operation.target} = BigInt(${operation.source});`;
   }
+  if (operation.kind === "integer.from_int64") {
+    return `${indent}${operation.target} = ${operation.source};`;
+  }
+  if (operation.kind === "int64.from_integer_checked") {
+    return `${indent}${operation.target} = checkedInt64(${operation.source});`;
+  }
+  if (operation.kind === "int64.from_uint64_checked") {
+    return `${indent}${operation.target} = checkedInt64(${operation.source});`;
+  }
+  if (operation.kind === "uint64.from_int64_checked") {
+    return `${indent}if (${operation.source} < 0n) ` +
+      `nativeRaise("OverflowError", "integer is outside unsigned 64-bit");\n` +
+      `${indent}${operation.target} = ${operation.source};`;
+  }
   if (operation.kind === "uint64.from_integer_checked") {
     return `${indent}if (${operation.source} < 0n || ` +
       `${operation.source} > 18446744073709551615n) ` +
       `nativeRaise("OverflowError", "integer is outside unsigned 64-bit");\n` +
       `${indent}${operation.target} = ${operation.source};`;
+  }
+  if (operation.kind === "integer.from_float64" || operation.kind === "integer.round_float64") {
+    const rounding = operation.kind === "integer.round_float64" ?
+      `\n${indent}{\n${indent}  const $fraction = ${operation.source} - Math.trunc(${operation.source});\n` +
+      `${indent}  if ($fraction > 0.5 || ($fraction === 0.5 && (${operation.target} & 1n))) ${operation.target} += 1n;\n` +
+      `${indent}  else if ($fraction < -0.5 || ($fraction === -0.5 && (${operation.target} & 1n))) ${operation.target} -= 1n;\n${indent}}` : "";
+    return `${indent}if (Number.isNaN(${operation.source})) nativeRaise("ValueError", "cannot convert float NaN to integer");\n` +
+      `${indent}if (!Number.isFinite(${operation.source})) nativeRaise("OverflowError", "cannot convert float infinity to integer");\n` +
+      `${indent}${operation.target} = BigInt(Math.trunc(${operation.source}));${rounding}`;
+  }
+  if (operation.kind === "float64.from_integer_checked") {
+    return `${indent}if (${operation.source} < -9007199254740992n || ` +
+      `${operation.source} > 9007199254740992n) ` +
+      `nativeRaise("OverflowError", "integer is outside exact binary64 range");\n` +
+      `${indent}${operation.target} = Number(${operation.source});`;
+  }
+  if (operation.kind === "float64.from_integer") {
+    return `${indent}${operation.target} = Number(${operation.source});\n` +
+      `${indent}if (!Number.isFinite(${operation.target})) nativeRaise("OverflowError", "integer is outside binary64 range");`;
+  }
+  if (operation.kind === "float64.constant") {
+    return `${indent}${operation.target} = ${operation.value};`;
+  }
+  if (operation.kind === "float64.negate") {
+    return `${indent}${operation.target} = -${operation.source};`;
+  }
+  if (operation.kind === "float64.atan") {
+    return `${indent}${operation.target} = Math.atan(${operation.source});`;
+  }
+  if (operation.kind === "float64.exp") return emitFloat64Exp(operation, indent);
+  if (operation.kind === "float64.sqrt") return emitFloat64Sqrt(operation, indent);
+  if (operation.kind === "float64.log" || operation.kind === "float64.log2") {
+    return `${indent}if (${operation.source} <= 0) ` +
+      `nativeRaise("ValueError", "math domain error");\n` +
+      `${indent}${operation.target} = Math.${operation.kind.slice(8)}(${operation.source});`;
+  }
+  if (operation.kind === "float64.pow") return emitFloat64Pow(operation, indent);
+  if (operation.kind === "float64.copysign") {
+    return `${indent}${operation.target} = $sagejsNativeCopySign(${operation.left}, ${operation.right});`;
+  }
+  if (operation.kind === "float64.abs") {
+    return `${indent}${operation.target} = Math.abs(${operation.source});`;
+  }
+  if (operation.kind === "float64.frexp") {
+    return `${indent}[${operation.results.map(result => result.name).join(", ")}] = $sagejsNativeFrexp(${operation.source});`;
+  }
+  if (operation.kind === "float64.ldexp") {
+    return `${indent}${operation.target} = $sagejsNativeLdexp(${operation.source}, ${operation.exponent});`;
+  }
+  if (operation.kind === "float64.buffer.length") {
+    return `${indent}${operation.target} = BigInt(${operation.buffer}.length);`;
+  }
+  if (operation.kind === "float64.buffer.get") {
+    return `${indent}${operation.target} = float64BufferGet(` +
+      `${operation.buffer}, Number(${operation.index}));`;
+  }
+  if (operation.kind === "float64.buffer.set") {
+    return `${indent}float64BufferSet(${operation.buffer}, ` +
+      `Number(${operation.index}), ${operation.value});`;
+  }
+  if (operation.kind === "float64.binary") {
+    const operator = { add: "+", sub: "-", mul: "*", div: "/" }[
+      operation.operation
+    ];
+    const guard = operation.operation === "div"
+      ? `${indent}if (${operation.right} === 0) ` +
+        `nativeRaise("ZeroDivisionError", "float division by zero");\n`
+      : "";
+    return guard + `${indent}${operation.target} = ${operation.left} ` +
+      `${operator} ${operation.right};`;
   }
   if (operation.kind === "integer.neg") {
     return `${indent}${operation.target} = -${operation.source};`;
@@ -415,6 +769,39 @@ function emitExactStatement(operation, indent, resourceStack = null) {
   if (operation.kind === "integer.abs") {
     return `${indent}${operation.target} = ${operation.source} < 0n ` +
       `? -${operation.source} : ${operation.source};`;
+  }
+  if (operation.kind === "integer.bit_length") {
+    return `${indent}${operation.target} = ${operation.source} === 0n ? 0n : BigInt((${operation.source} < 0n ? -${operation.source} : ${operation.source}).toString(2).length);`;
+  }
+  if (operation.kind === "integer.isqrt") {
+    return `${indent}${operation.target} = ((value) => {
+${indent}  if (value < 0n) nativeRaise("ValueError", "isqrt() argument must be nonnegative");
+${indent}  if (value < 2n) return value;
+${indent}  let root = 1n << ((BigInt(value.toString(2).length) + 1n) >> 1n);
+${indent}  for (;;) {
+${indent}    const next = (root + value / root) >> 1n;
+${indent}    if (next >= root) return root;
+${indent}    root = next;
+${indent}  }
+${indent}})(${operation.source});`;
+  }
+  if (operation.kind === "integer.gcd") {
+    return `${indent}${operation.target} = ((a, b) => {
+${indent}  a = a < 0n ? -a : a;
+${indent}  b = b < 0n ? -b : b;
+${indent}  while (b !== 0n) { const r = a % b; a = b; b = r; }
+${indent}  return a;
+${indent}})(${operation.left}, ${operation.right});`;
+  }
+  if (operation.kind === "integer.shift") {
+    const a=operation.left,b=operation.right,t=operation.target;
+    return `${indent}if (${b} < 0n) nativeRaise("ValueError", "negative shift count");
+${indent}if (${a} === 0n || ${b} === 0n) ${t} = ${a};
+${indent}else {
+${indent}  const bits = BigInt((${a} < 0n ? -${a} : ${a}).toString(2).length);
+${operation.operation === "left" ? `${indent}  if (${b} + bits > 1048576n) nativeRaise("MemoryError", "integer shift allocation limit exceeded");
+${indent}  ${t} = ${a} << ${b};` : `${indent}  ${t} = ${b} >= bits ? (${a} < 0n ? -1n : 0n) : ${a} >> ${b};`}
+${indent}}`;
   }
   if (operation.kind === "integer.pow_uint") {
     return `${indent}${operation.target} = ${operation.base} ** ` +
@@ -433,7 +820,7 @@ function emitExactStatement(operation, indent, resourceStack = null) {
       `${JSON.stringify(operation.values.map(String))}, ${operation.index});`;
   }
   if (operation.kind === "integer.binary") {
-    const operator = { add: "+", sub: "-", mul: "*" }[
+    const operator = { add: "+", sub: "-", mul: "*", and: "&" }[
       operation.operation
     ];
     if (operator !== undefined) {
@@ -451,12 +838,20 @@ function emitExactStatement(operation, indent, resourceStack = null) {
     }
     throw new Error(`unsupported exact integer operation ${operation.operation}`);
   }
+  if (operation.kind === "integer.mul_int64") {
+    return `${indent}${operation.target} = ${operation.integer} * ` +
+      `${operation.scalar};`;
+  }
   if (operation.kind === "uint64.binary") {
     return `${indent}${operation.target} = uint64Binary(` +
       `${jsString(operation.operation)}, ${operation.left}, ` +
       `${operation.right});`;
   }
-  if (["integer.compare", "uint64.compare", "bool.compare"].includes(
+  if (operation.kind === "int64.binary") {
+    return `${indent}${operation.target} = int64Binary(` +
+      `${jsString(operation.operation)}, ${operation.left}, ${operation.right});`;
+  }
+  if (["integer.compare", "uint64.compare", "int64.compare", "bool.compare", "float64.compare"].includes(
     operation.kind
   )) {
     const operator = {
@@ -498,6 +893,14 @@ function emitExactStatement(operation, indent, resourceStack = null) {
   if (operation.kind === "uint64.truth") {
     return `${indent}${operation.target} = ${operation.source} !== 0n;`;
   }
+  if (operation.kind === "int64.truth") {
+    return `${indent}${operation.target} = ${operation.source} !== 0n;`;
+  }
+  if (operation.kind === "int64.neg" || operation.kind === "int64.abs") {
+    const expression = operation.kind === "int64.neg"
+      ? `-${operation.source}` : `(${operation.source} < 0n ? -${operation.source} : ${operation.source})`;
+    return `${indent}${operation.target} = checkedInt64(${expression});`;
+  }
   if (operation.kind === "native.call") {
     const targets = operation.results === undefined
       ? operation.target
@@ -532,6 +935,11 @@ function emitExactStatement(operation, indent, resourceStack = null) {
     return lines.join("\n");
   }
   if (operation.kind === "loop.break" || operation.kind === "loop.continue") {
+    if (operation.range) {
+      const {kind, iterator, step, stop} = operation.range;
+      const guard = kind === "loop.range" ? `${indent}if (${step} >= ${stop} - ${iterator}) break;\n` : "";
+      return `${guard}${indent}${iterator} += ${step};\n${indent}continue;`;
+    }
     return `${indent}${operation.kind.slice(5)};`;
   }
   if (operation.kind === "while") {
@@ -559,6 +967,22 @@ function emitExactStatement(operation, indent, resourceStack = null) {
         `${operation.stop} - ${operation.iterator}) break;`,
       `${indent}  ${operation.iterator} += ${operation.step};`,
       `${indent}}`,
+    ].join("\n");
+  }
+  if (operation.kind === "loop.range_int64") {
+    return [
+      `${indent}${operation.iterator} = ${operation.start};`,
+      `${indent}while (${operation.step} > 0n ? ` +
+        `${operation.iterator} < ${operation.stop} : ` +
+        `${operation.iterator} > ${operation.stop}) {`,
+      `${indent}  ${operation.index} = ${operation.iterator};`,
+      ...operation.body.map((item) =>
+        emitExactStatement(item, `${indent}  `, resourceStack)
+      ),
+      `${indent}  const $next = ${operation.iterator} + ${operation.step};`,
+      `${indent}  if ($next < -9223372036854775808n || ` +
+        `$next > 9223372036854775807n) break;`,
+      `${indent}  ${operation.iterator} = $next;`, `${indent}}`,
     ].join("\n");
   }
   if (operation.kind === "loop.range_exact") {
@@ -639,6 +1063,26 @@ function emitExactStatement(operation, indent, resourceStack = null) {
       `${indent}}`,
     ].join("\n");
   }
+  if (operation.kind === "workspace.arena.scope") {
+    const cleanup = [...operation.children].reverse().map((child) =>
+      `${indent}  nativeWorkspaceIntegerBufferClose(${child.owner});`
+    );
+    return [
+      ...operation.setup.map((item) =>
+        emitExactStatement(item, indent, resourceStack)
+      ),
+      `${indent}${operation.owner} = createNativeWorkspaceArena(` +
+        `${operation.memoryLimit});`,
+      `${indent}try {`,
+      ...operation.body.map((item) =>
+        emitExactStatement(item, `${indent}  `, resourceStack)
+      ),
+      `${indent}} finally {`,
+      ...cleanup,
+      `${indent}  nativeWorkspaceArenaClose(${operation.owner});`,
+      `${indent}}`,
+    ].join("\n");
+  }
   if (operation.kind === "return") {
     if (isTupleType(operation.type)) {
       return `${indent}return [${operation.values.join(", ")}];`;
@@ -664,10 +1108,11 @@ function emitExactFallback(fn) {
   const buffers = fn.params
     .filter((param) => param.type === "Int64Buffer" ||
       param.type === "Int64Record" || param.type === "IntegerBuffer" ||
-      param.type === "UInt64Buffer")
+      param.type === "UInt64Buffer" || param.type === "Float64Buffer")
     .map((param) => `  ${param.name} = ${param.type === "IntegerBuffer"
       ? "integerBufferView" : param.type === "UInt64Buffer"
-        ? "uint64BufferView" : "int64BufferView"}(` +
+        ? "uint64BufferView" : param.type === "Float64Buffer"
+          ? "float64BufferView" : "int64BufferView"}(` +
       `${param.name}, ${jsString(param.name)});`)
     .join("\n");
   const resourceStack = fn.foreignResources?.length
@@ -734,7 +1179,16 @@ function exactResourceResult(fn, expression, native) {
   return `${adopt}(${expression}, ${JSON.stringify(metadata)})`;
 }
 
-function exactValidation(param) {
+function closedMappingSchema(fn, param) {
+  if (!param.type.startsWith("Mapping:")) return undefined;
+  const name = param.type.slice("Mapping:".length);
+  const record = (fn.records || []).find((candidate) => candidate.name === name);
+  return record?.layout === "compiler-owned-closed-mapping"
+    ? record
+    : undefined;
+}
+
+function exactValidation(param, fn) {
   if (param.resourceIdentity !== undefined) {
     return `  sagejsFfiPublicResource(${param.name}, ` +
       `${jsString(param.resourceIdentity)}, ${jsString(param.name)});`;
@@ -748,6 +1202,12 @@ function exactValidation(param) {
   if (param.type === "uint64") {
     return uint64Validation(param.name);
   }
+  if (param.type === "int64") return int64Validation(param.name);
+  if (param.type === "Float64") {
+    return `  if (typeof ${param.name} !== "number") {\n` +
+      `    throw new TypeError("${param.name} must be a binary64 float");\n` +
+      "  }";
+  }
   if (param.type === "Int64Buffer" || param.type === "Int64Record") {
     return `  int64BufferView(${param.name}, ${jsString(param.name)});`;
   }
@@ -757,27 +1217,63 @@ function exactValidation(param) {
   if (param.type === "IntegerBuffer") {
     return `  integerBufferView(${param.name}, ${jsString(param.name)});`;
   }
+  if (param.type === "Float64Buffer") {
+    return `  float64BufferView(${param.name}, ${jsString(param.name)});`;
+  }
+  const mapping = closedMappingSchema(fn, param);
+  if (mapping !== undefined) {
+    const lines = [
+      `  if (${param.name} === null || typeof ${param.name} !== "object") {`,
+      `    throw new TypeError(${jsString(param.name + " must be a " + mapping.name)});`,
+      "  }",
+    ];
+    for (const field of mapping.fields) {
+      const access = `${param.name}[${jsString(field.name)}]`;
+      if (field.type === "uint64") lines.push(uint64Validation(access));
+      else if (field.type === "int64") lines.push(int64Validation(access));
+      else if (field.type === "bool") {
+        lines.push(`  if (typeof ${access} !== "boolean") {`,
+          `    throw new TypeError(${jsString(param.name + "." + field.name + " must be a bool")});`,
+          "  }");
+      } else {
+        throw new Error(
+          `unsupported closed mapping field ${mapping.name}.${field.name}`,
+        );
+      }
+    }
+    return lines.join("\n");
+  }
   return `  if (typeof ${param.name} !== "boolean") {\n` +
     `    throw new TypeError("${param.name} must be a bool");\n` +
     "  }";
 }
 
 function uint64Validation(name) {
-  return `  if (!(typeof ${name} === "bigint" || Number.isSafeInteger(${name}))) {\n` +
-    `    nativeRaise("TypeError", "${name} must be an exact integer");\n` +
+  return `  if (!(typeof (${name}) === "bigint" || Number.isSafeInteger(${name}))) {\n` +
+    `    nativeRaise("TypeError", ${jsString(name + " must be an exact integer")});\n` +
     `  }\n` +
-    `  if (${name} < 0 || ${name} > 18446744073709551615n) {\n` +
-    `    nativeRaise("OverflowError", "${name} is outside uint64");\n` +
+    `  if ((${name}) < 0 || (${name}) > 18446744073709551615n) {\n` +
+    `    nativeRaise("OverflowError", ${jsString(name + " is outside uint64")});\n` +
     "  }";
 }
 
-function normalizedArgument(param) {
+function int64Validation(name) {
+  return `  if (!(typeof (${name}) === "bigint" || Number.isSafeInteger(${name}))) {\n` +
+    `    nativeRaise("TypeError", ${jsString(name + " must be an exact integer")});\n` +
+    `  }\n` +
+    `  if ((${name}) < -9223372036854775808n || (${name}) > 9223372036854775807n) {\n` +
+    `    nativeRaise("OverflowError", ${jsString(name + " is outside int64")});\n` +
+    "  }";
+}
+
+function normalizedArgument(param, fn) {
   if (param.resourceIdentity !== undefined) {
     return `sagejsFfiPublicResource(${param.name}, ` +
       `${jsString(param.resourceIdentity)}, ${jsString(param.name)})`;
   }
   if (param.type === "Integer") return `BigInt(${param.name})`;
   if (param.type === "uint64") return `BigInt(${param.name})`;
+  if (param.type === "int64") return `BigInt(${param.name})`;
   if (param.type === "Int64Buffer" || param.type === "Int64Record") {
     return `int64BufferView(${param.name}, ${jsString(param.name)})`;
   }
@@ -787,28 +1283,57 @@ function normalizedArgument(param) {
   if (param.type === "IntegerBuffer") {
     return `integerBufferView(${param.name}, ${jsString(param.name)})`;
   }
+  if (param.type === "Float64Buffer") {
+    return `float64BufferView(${param.name}, ${jsString(param.name)})`;
+  }
+  const mapping = closedMappingSchema(fn, param);
+  if (mapping !== undefined) {
+    return `{ ${mapping.fields.map((field) => {
+      const value = `${param.name}[${jsString(field.name)}]`;
+      return `${jsString(field.name)}: ` +
+        (["uint64", "int64"].includes(field.type) ? `BigInt(${value})` : value);
+    }).join(", ")} }`;
+  }
   return param.name;
 }
 
 function uint64BufferMayBeWritten(fn, name) {
   const externalWrites = fn.analysis?.effects?.externalWrites;
+  name = fn.jsOriginalBindingNames?.[name] ?? name;
   return !Array.isArray(externalWrites) || externalWrites.includes(name);
 }
 
-function declaredFfiErrors(fn) {
+function declaredFfiErrors(fn, functions = []) {
   const translations = Object.create(null);
+  const visited = new Set([fn.name]);
+  function record(message, exception) {
+    const previous = translations[message];
+    if (previous !== undefined && JSON.stringify(previous) !== JSON.stringify(exception)) {
+      throw new Error(`conflicting native exception translations for ${message}`);
+    }
+    translations[message] = exception;
+  }
   const visit = (operations) => {
     for (const operation of operations || []) {
+      if (operation.kind === "integer.isqrt") {
+        record("isqrt() argument must be nonnegative", "ValueError");
+      }
+      if (operation.kind === "raise") {
+        if (operation.exception === "ValueError") {
+          record(`ValueError: ${operation.message}`, {exception: "ValueError", message: operation.message});
+        } else record(operation.message, operation.exception);
+      }
+      if (operation.kind === "native.call" && !visited.has(operation.function)) {
+        const callee = functions.find((candidate) => candidate.name === operation.function);
+        if (callee) {
+          visited.add(callee.name);
+          visit(callee.body);
+        }
+      }
       if (operation.kind === "ffi.call") {
         const errors = operation.foreign.function.errors;
         if (errors.exception !== null) {
-          const previous = translations[errors.message];
-          if (previous !== undefined && previous !== errors.exception) {
-            throw new Error(
-              `conflicting FFI exception translations for ${errors.message}`,
-            );
-          }
-          translations[errors.message] = errors.exception;
+          record(errors.message, errors.exception);
         }
       }
       visit(operation.body);
@@ -821,17 +1346,21 @@ function declaredFfiErrors(fn) {
   return JSON.stringify(translations);
 }
 
+// Adapter temporaries use distinct JS-only namespaces: Python bindings cannot
+// contain `$`. In particular argument descriptor_state must not be shadowed by
+// the descriptor for state, nor may backend collide with the dispatch local.
 function exactNativeExpression(fn, backend) {
-  const ffiErrors = declaredFfiErrors(fn);
+  const ffiErrors = fn.nativeDeclaredErrors || declaredFfiErrors(fn);
   const buffers = fn.params.filter((param) =>
     param.type === "Int64Buffer" || param.type === "Int64Record" ||
-    param.type === "IntegerBuffer" || param.type === "UInt64Buffer"
+    param.type === "IntegerBuffer" || param.type === "UInt64Buffer" ||
+    param.type === "Float64Buffer"
   );
   if (buffers.length === 0) {
     const args = fn.params.map((param) =>
       param.resourceIdentity === undefined
-        ? `sagejs_native_${param.name}`
-        : `sagejs_native_${param.name}.handle`
+        ? `$sagejs$argument${param.name}`
+        : `$sagejs$argument${param.name}.handle`
     ).join(", ");
     return exactResourceResult(
       fn,
@@ -841,29 +1370,32 @@ function exactNativeExpression(fn, backend) {
     );
   }
   const declarations = buffers.map((param) =>
-    `    const sagejs_native_descriptor_${param.name} = ` +
+    `    const $sagejs$descriptor${param.name} = ` +
       `${param.type === "IntegerBuffer"
         ? "integerNativeBuffer" : param.type === "UInt64Buffer"
-          ? "uint64NativeBuffer" : "int64NativeBuffer"}(` +
-      `sagejs_native_${param.name}, ${jsString(param.name)}` +
+          ? "uint64NativeBuffer" : param.type === "Float64Buffer"
+            ? "float64NativeBuffer" : "int64NativeBuffer"}(` +
+      `$sagejs$argument${param.name}, ${jsString(param.name)}` +
       `${param.type === "UInt64Buffer"
         ? `, ${uint64BufferMayBeWritten(fn, param.name)}`
         : ""});`
   );
   const args = fn.params.map((param) =>
     param.type === "Int64Buffer" || param.type === "Int64Record"
-      ? `sagejs_native_descriptor_${param.name}.typed`
+      ? `$sagejs$descriptor${param.name}.typed`
       : param.type === "UInt64Buffer"
-        ? `sagejs_native_descriptor_${param.name}.typed`
+        ? `$sagejs$descriptor${param.name}.typed`
+      : param.type === "Float64Buffer"
+        ? `$sagejs$descriptor${param.name}.typed`
       : param.type === "IntegerBuffer"
-        ? `sagejs_native_descriptor_${param.name}.packed`
+        ? `$sagejs$descriptor${param.name}.packed`
       : param.resourceIdentity === undefined
-        ? `sagejs_native_${param.name}`
-        : `sagejs_native_${param.name}.handle`
+        ? `$sagejs$argument${param.name}`
+        : `$sagejs$argument${param.name}.handle`
   ).join(", ");
   const copies = buffers
     .filter((param) => uint64BufferMayBeWritten(fn, param.name))
-    .map((param) => `      sagejs_native_descriptor_${param.name}.copyBack();`);
+    .map((param) => `      $sagejs$descriptor${param.name}.copyBack();`);
   const call = `nativeExactCall(${jsString(fn.name)}, [${args}], ${backend}, ` +
     `${ffiErrors})`;
   const expression = [
@@ -886,32 +1418,34 @@ function exactNativeExpression(fn, backend) {
 function backendDecision(fn) {
   const policy = fn.analysis.backend;
   if (["tagged", "fmpz", "gmp", "bigint"].includes(policy.kind)) {
-    return `  return ${jsString(policy.kind)};`;
+    return `  return availableExactBackend(${jsString(policy.kind)});`;
   }
   if (policy.kind === "iterations") {
-    const value = `sagejs_native_${policy.parameter}`;
+    const value = `$sagejs$argument${policy.parameter}`;
     const minimum = BigInt(policy.minimumIterations);
     return `  return (typeof ${value} === "bigint" ` +
       `? ${value} >= ${minimum}n : ${value} >= ${minimum}) ` +
-      `? "tagged" : "bigint";`;
+      `? availableExactBackend("tagged") : "bigint";`;
   }
   if (policy.kind === "operand-bits") {
     const threshold = 1n << BigInt(policy.minimumBits - 1);
     const conditions = policy.parameters.map((name) => {
-      const value = `sagejs_native_${name}`;
+      const value = `$sagejs$argument${name}`;
       return `${value} >= ${threshold}n || ${value} <= -${threshold}n`;
     });
     return conditions.length === 0
       ? "  return \"bigint\";"
-      : `  return (${conditions.join(" || ")}) ? "tagged" : "bigint";`;
+      : `  return (${conditions.join(" || ")}) ` +
+        `? availableExactBackend("tagged") : "bigint";`;
   }
   if (policy.kind === "integer-buffer-values") {
     const conditions = policy.parameters.map((name) =>
-      `integerBufferFitsSignedInt64(sagejs_native_${name})`
+      `integerBufferFitsSignedInt64($sagejs$argument${name})`
     );
     return conditions.length === 0
-      ? '  return "tagged";'
-      : `  return (${conditions.join(" && ")}) ? "tagged" : "gmp";`;
+      ? '  return availableExactBackend("tagged");'
+      : `  return availableExactBackend((${conditions.join(" && ")}) ` +
+        `? "tagged" : "gmp");`;
   }
   throw new Error(`unsupported exact backend policy ${policy.kind}`);
 }
@@ -926,14 +1460,14 @@ function automaticSelectionCode(fn, receipt) {
       if (!parameters.has(name)) {
         throw new Error(`${fn.name} selection names unknown argument ${name}`);
       }
-      const value = `sagejs_native_${name}`;
+      const value = `$sagejs$argument${name}`;
       return [
         `${value} >= ${BigInt(bounds.min)}n`,
         `${value} <= ${BigInt(bounds.max)}n`,
       ];
     },
   );
-  const args = fn.params.map((param) => `sagejs_native_${param.name}`).join(", ");
+  const args = fn.params.map((param) => `$sagejs$argument${param.name}`).join(", ");
   return {
     declaration: `function automatic_selection_${fn.name}(${args}) {\n` +
       `  return ${conditions.join(" && ")};\n}`,
@@ -942,18 +1476,29 @@ function automaticSelectionCode(fn, receipt) {
   };
 }
 
-function emitExactPublicFunction(fn, automaticSelection) {
+function emitUnavailablePrimeSourceFallback(fn) {
+  const params = fn.params.map((param) => param.name).join(", ");
+  return `function javascript_${fn.name}(${params}) {
+  throw new Error("source-transparent native artifact is unavailable");
+}`;
+}
+
+function emitExactPublicFunction(
+  fn,
+  automaticSelection,
+  diagnosticStageClock,
+) {
   const params = fn.params.map((param) => param.name).join(", ");
   const declaredParams = exactParameters(fn);
   const normalized = fn.params.map((param) =>
-    `  const sagejs_native_${param.name} = ${normalizedArgument(param)};`
+    `  const $sagejs$argument${param.name} = ${normalizedArgument(param, fn)};`
   );
-  const args = fn.params.map((param) => `sagejs_native_${param.name}`).join(", ");
+  const args = fn.params.map((param) => `$sagejs$argument${param.name}`).join(", ");
   const fallbackArgs = fn.params.map((param) =>
     param.type === "UInt64Buffer"
-      ? `uint64DynamicBufferView(sagejs_native_${param.name}, ` +
+      ? `uint64DynamicBufferView($sagejs$argument${param.name}, ` +
         `${jsString(param.name)})`
-      : `sagejs_native_${param.name}`
+      : `$sagejs$argument${param.name}`
   ).join(", ");
   const fallbackExpression = exactResourceResult(
     fn,
@@ -967,12 +1512,56 @@ function emitExactPublicFunction(fn, automaticSelection) {
     fn.analysis.liveExactWorkspace ?? null,
   );
   const selection = automaticSelectionCode(fn, automaticSelection);
+  const diagnostic = diagnosticStageClock?.function === fn.name
+    ? `
+${fn.name}.diagnosticStageTrace = function () {
+  if (nativeAddon === null) {
+    throw new Error("diagnostic native stage clock is not available");
+  }
+  const stageNames = Object.freeze(${JSON.stringify(diagnosticStageClock.stages)});
+  const maximumVisits = ${diagnosticStageClock.maximumVisits};
+  const words = new BigUint64Array(6 + stageNames.length + 2 * maximumVisits);
+  nativeAddon.__sagejsDiagnosticStageSnapshot(words);
+  const visitCount = Number(words[2]);
+  if (words[0] !== 1n || words[1] !== BigInt(stageNames.length) ||
+      visitCount > maximumVisits) {
+    throw new Error("invalid diagnostic native stage snapshot");
+  }
+  const totals = Object.create(null);
+  for (let stage = 0; stage < stageNames.length; stage += 1) {
+    totals[stageNames[stage]] = words[6 + stage];
+  }
+  const visits = [];
+  let position = 6 + stageNames.length;
+  for (let visit = 0; visit < visitCount; visit += 1) {
+    const stage = Number(words[position++]);
+    const nanoseconds = words[position++];
+    if (stage >= stageNames.length) {
+      throw new Error("invalid diagnostic native stage visit");
+    }
+    visits.push(Object.freeze({
+      ordinal: visit + 1,
+      stage: stageNames[stage],
+      stageIndex: stage,
+      nanoseconds,
+    }));
+  }
+  return Object.freeze({
+    schema: Number(words[0]),
+    rootNanoseconds: words[3],
+    failed: words[4] !== 0n,
+    clockFailed: words[5] !== 0n,
+    totalsNanoseconds: Object.freeze(totals),
+    visits: Object.freeze(visits),
+  });
+};`
+    : "";
   return `${emitExactFallback(fn)}
 
 ${selection.declaration}
 
 function validate_${fn.name}(${params}) {
-${fn.params.map(exactValidation).join("\n")}
+${fn.params.map((param) => exactValidation(param, fn)).join("\n")}
 }
 
 function backend_${fn.name}(${args}) {
@@ -987,7 +1576,22 @@ function backend_${fn.name}(${args}) {
   if (integerBackendOverride === "gmp" && nativeAddon === null) {
     throw new Error("GMP backend was requested but is not available");
   }
+  if ((integerBackendOverride === "tagged" || integerBackendOverride === "fmpz") &&
+      !compiledIntegerBackends.includes("tagged")) {
+    throw new Error("tagged native backend was not compiled into this artifact");
+  }
+  if (integerBackendOverride === "gmp" &&
+      !compiledIntegerBackends.includes("gmp")) {
+    throw new Error("GMP backend was not compiled into this artifact");
+  }
   if (nativeAddon === null) return "bigint";
+${diagnosticStageClock?.function === fn.name
+    ? '  return availableExactBackend("gmp");' : ""}
+${exactUsesFloat64(fn)
+    ? '  if (integerBackendOverride === "tagged" && requestedNativeMode === "native" &&\n' +
+      '      process.env.SAGEJS_NATIVE_INTEGER_BACKEND === undefined) ' +
+      'return availableExactBackend("gmp");'
+    : ""}
   if (integerBackendOverride !== "auto") return integerBackendOverride;
 ${selection.decision}
 ${backendDecision(fn)}
@@ -996,9 +1600,9 @@ ${backendDecision(fn)}
 function ${fn.name}(${declaredParams}) {
   validate_${fn.name}(${params});
 ${normalized.join("\n")}
-  const sagejs_native_backend = backend_${fn.name}(${args});
-  if (sagejs_native_backend !== "bigint") {
-    return ${exactReturn(fn, exactNativeExpression(fn, "sagejs_native_backend"))};
+  const $sagejs$backend = backend_${fn.name}(${args});
+  if ($sagejs$backend !== "bigint") {
+    return ${exactReturn(fn, exactNativeExpression(fn, "$sagejs$backend"))};
   }
   return ${exactReturn(fn, fallbackExpression)};
 }
@@ -1014,6 +1618,9 @@ ${normalized.join("\n")}
   if (nativeAddon === null) {
     throw new Error("tagged native backend is not available");
   }
+  if (!compiledIntegerBackends.includes("tagged")) {
+    throw new Error("tagged native backend was not compiled into this artifact");
+  }
   return ${exactReturn(fn, exactNativeExpression(fn, '"tagged"'))};
 };
 ${fn.name}.gmp = function (${declaredParams}) {
@@ -1022,6 +1629,9 @@ ${normalized.join("\n")}
   if (nativeAddon === null) {
     throw new Error("GMP backend is not available");
   }
+  if (!compiledIntegerBackends.includes("gmp")) {
+    throw new Error("GMP backend was not compiled into this artifact");
+  }
   return ${exactReturn(fn, exactNativeExpression(fn, '"gmp"'))};
 };
 ${fn.analysis.backend.kind === "fmpz" ? `${fn.name}.fmpz = function (${declaredParams}) {
@@ -1029,6 +1639,9 @@ ${fn.analysis.backend.kind === "fmpz" ? `${fn.name}.fmpz = function (${declaredP
 ${normalized.join("\n")}
   if (nativeAddon === null) {
     throw new Error("fmpz native backend is not available");
+  }
+  if (!compiledIntegerBackends.includes("tagged")) {
+    throw new Error("fmpz native backend was not compiled into this artifact");
   }
   return ${exactReturn(fn, exactNativeExpression(fn, '"fmpz"'))};
 };` : ""}
@@ -1045,8 +1658,9 @@ ${fn.name}.automaticSelection = ${selection.metadata};
 ${fn.name}.createInt64Buffer = createInt64Buffer;
 ${fn.name}.createUInt64Buffer = createUInt64Buffer;
 ${fn.name}.createIntegerBuffer = createIntegerBuffer;
+${fn.name}.createFloat64Buffer = createFloat64Buffer;
 ${fn.name}.packIntegerBuffer = packIntegerBuffer;
-${fn.name}.nativeAvailable = nativeAddon !== null;`;
+${fn.name}.nativeAvailable = nativeAddon !== null;${diagnostic}`;
 }
 
 function emitPrimeFieldPublicFunction(fn) {
@@ -1282,6 +1896,10 @@ ${fn.name}.nativeAvailable = nativeAddon !== null;`;
 }
 
 function generateJavaScript(ir, options = {}) {
+  ir = {...ir, functions: ir.functions.map(escapeJavaScriptBindings)};
+  const integerBackends = [...(
+    options.integerBackends || ["tagged", "gmp"]
+  )].sort();
   const publicFunctions = ir.functions.filter(
     (fn) => fn.hostCallable !== false,
   );
@@ -1302,10 +1920,16 @@ function generateJavaScript(ir, options = {}) {
     if (operation.kind === "float64.abs") {
       return `${indent}${operation.target} = Math.abs(${operation.source});`;
     }
-    if (operation.kind === "float64.sqrt") {
-      return `${indent}if (${operation.source} < 0) ` +
+    if (operation.kind === "float64.pow") return emitFloat64Pow(operation, indent);
+    if (operation.kind === "float64.atan") {
+      return `${indent}${operation.target} = Math.atan(${operation.source});`;
+    }
+    if (operation.kind === "float64.exp") return emitFloat64Exp(operation, indent);
+    if (operation.kind === "float64.sqrt") return emitFloat64Sqrt(operation, indent);
+    if (["float64.log", "float64.log2"].includes(operation.kind)) {
+      return `${indent}if (${operation.source} <= 0) ` +
         `throw new RangeError("math domain error");\n` +
-        `${indent}${operation.target} = Math.sqrt(${operation.source});`;
+        `${indent}${operation.target} = Math.${operation.kind.slice(8)}(${operation.source});`;
     }
     if (operation.kind === "float64.negate") {
       return `${indent}${operation.target} = -${operation.source};`;
@@ -1394,7 +2018,7 @@ function generateJavaScript(ir, options = {}) {
     throw new Error(`unsupported binary64 JavaScript operation ${operation.kind}`);
   }
 
-  function emitFloat64PublicFunction(fn) {
+  function emitFloat64Fallback(fn) {
     const uint64BigInt = hasUint64Bitwise(fn.body);
     const params = fn.params.map((param) => param.name).join(", ");
     const locals = fn.locals.map((local) => local.name);
@@ -1404,20 +2028,26 @@ function generateJavaScript(ir, options = {}) {
       .map((param) => `  ${param.name} = float64BufferView(${param.name}, ` +
         `${jsString(param.name)});`)
       .join("\n");
-    const fallback = `function javascript_${fn.name}(${params}) {\n` +
+    return `function javascript_${fn.name}(${params}) {\n` +
       (bufferNormalization ? bufferNormalization + "\n" : "") +
       declaration + fn.body.map((operation) =>
         emitFloat64Statement(operation, "  ", uint64BigInt)
       ).join("\n") + "\n}";
+  }
+
+  function emitFloat64PublicFunction(fn) {
+    const uint64BigInt = hasUint64Bitwise(fn.body);
+    const params = fn.params.map((param) => param.name).join(", ");
+    const fallback = emitFloat64Fallback(fn);
     const validation = fn.params.map((param) => param.type === "uint64"
       ? uint64Validation(param.name)
       : param.type === "Float64"
       ? `  ${param.name} = float64Scalar(${param.name}, ${jsString(param.name)});`
-      : `  const sagejs_native_buffer_${param.name} = ` +
+      : `  const $sagejs$buffer$${param.name} = ` +
         `float64NativeBuffer(${param.name}, ${jsString(param.name)});`
     ).join("\n");
     const nativeArgs = fn.params.map((param) => param.type === "Float64Buffer"
-      ? `sagejs_native_buffer_${param.name}.typed`
+      ? `$sagejs$buffer$${param.name}.typed`
       : param.name
     ).join(", ");
     const fallbackArgs = fn.params.map((param) => param.type === "uint64"
@@ -1426,16 +2056,16 @@ function generateJavaScript(ir, options = {}) {
     ).join(", ");
     const copyBack = fn.params
       .filter((param) => param.type === "Float64Buffer" &&
-        fn.analysis.effects.mutates.includes(param.name))
-      .map((param) => `    sagejs_native_buffer_${param.name}.copyBack();`)
+        fn.analysis.effects.mutates.includes(fn.jsOriginalBindingNames?.[param.name] ?? param.name))
+      .map((param) => `    $sagejs$buffer$${param.name}.copyBack();`)
       .join("\n");
     const nativeCall = copyBack
-      ? `  let sagejs_native_result;\n` +
+      ? `  let $sagejs$result;\n` +
         `  try {\n` +
-        `    sagejs_native_result = nativeFloat64Call(` +
+        `    $sagejs$result = nativeFloat64Call(` +
           `${jsString(fn.name)}, [${nativeArgs}]);\n` +
         `  } finally {\n${copyBack}\n  }\n` +
-        `  return sagejs_native_result;`
+        `  return $sagejs$result;`
       : `  return nativeFloat64Call(${jsString(fn.name)}, [${nativeArgs}]);`;
     return `${fallback}\n\nfunction ${fn.name}(${params}) {\n` +
       `  if (arguments.length !== ${fn.params.length}) {\n` +
@@ -1507,9 +2137,22 @@ if (!nativeAddonDisabled) {
   }
 }
 
+const compiledIntegerBackends = Object.freeze(${JSON.stringify(integerBackends)});
+function availableExactBackend(backend) {
+  // BigInt is the JavaScript fallback, not a compiled native backend.
+  if (backend === "bigint") return "bigint";
+  if (backend === "fmpz") backend = "tagged";
+  if (compiledIntegerBackends.includes(backend)) return backend;
+  if (compiledIntegerBackends.includes("gmp")) return "gmp";
+  if (compiledIntegerBackends.includes("tagged")) return "tagged";
+  return "bigint";
+}
+
 const integerBackendOverride =
   process.env.SAGEJS_NATIVE_INTEGER_BACKEND ||
-  (requestedNativeMode === "native" ? "tagged" : "auto");
+  (requestedNativeMode === "native"
+    ? availableExactBackend("tagged")
+    : "auto");
 if (!["auto", "bigint", "tagged", "gmp", "fmpz"].includes(integerBackendOverride)) {
   throw new RangeError(
     "SAGEJS_NATIVE_INTEGER_BACKEND must be auto, bigint, tagged, gmp, or fmpz");
@@ -1542,6 +2185,7 @@ ${javascriptRuntime(ir)}
 const float64BufferViewTag = Symbol("sagejs.native.Float64BufferView");
 const int64BufferViewTag = Symbol("sagejs.native.Int64BufferView");
 const integerBufferViewTag = Symbol("sagejs.native.IntegerBufferView");
+const uint64BufferViewTag = Symbol("sagejs.native.UInt64BufferView");
 const immutableUInt64LeaseViewTag =
   Symbol("sagejs.native.ImmutableUInt64LeaseView");
 
@@ -1592,6 +2236,34 @@ function uint64NumberBinary(operation, left, right) {
   return Number(result);
 }
 
+function checkedInt64(value) {
+  const exact = BigInt(value);
+  if (exact < -9223372036854775808n || exact > 9223372036854775807n) {
+    nativeRaise("OverflowError", "int64 arithmetic overflow");
+  }
+  return exact;
+}
+
+function int64Binary(operation, left, right) {
+  const a = BigInt(left);
+  const b = BigInt(right);
+  if (["add", "sub", "mul"].includes(operation)) {
+    const result = operation === "add" ? a + b
+      : operation === "sub" ? a - b : a * b;
+    return checkedInt64(result);
+  }
+  if (b === 0n) {
+    nativeRaise("ZeroDivisionError", "integer division or modulo by zero");
+  }
+  let quotient = a / b;
+  let remainder = a % b;
+  if (remainder !== 0n && ((remainder < 0n) !== (b < 0n))) {
+    quotient -= 1n;
+    remainder += b;
+  }
+  return checkedInt64(operation === "floordiv" ? quotient : remainder);
+}
+
 function isTypedArrayKind(value, name) {
   return ArrayBuffer.isView(value) &&
     Object.prototype.toString.call(value) === "[object " + name + "]";
@@ -1629,6 +2301,16 @@ function integerBufferView(value, argument = "buffer") {
   return {
     [integerBufferViewTag]: true, data: value, offset: 0, length,
   };
+}
+
+function integerBufferSubview(buffer, start, length) {
+  const view = integerBufferView(buffer);
+  const first = BigInt(start), count = BigInt(length);
+  if (first < 0n || count < 0n || first > BigInt(view.length) ||
+      count > BigInt(view.length) - first) {
+    throw new RangeError("IntegerBuffer view is outside its buffer");
+  }
+  return { ...view, offset: view.offset + Number(first), length: Number(count) };
 }
 
 function integerBufferFitsSignedInt64(buffer) {
@@ -2336,6 +3018,75 @@ function nativeExactArenaClose(arena) {
   arena.open = false;
 }
 
+function createNativeWorkspaceArena(memoryLimit) {
+  return {
+    budget: createNativeExactBudget(
+      memoryLimit,
+      "NativeWorkspaceArena memory limit exceeded",
+    ),
+    open: true,
+  };
+}
+
+function nativeWorkspaceIntegerBufferCreate(arena, length, wordCapacity) {
+  if (arena === null || typeof arena !== "object" || arena.open !== true) {
+    throw new Error("NativeWorkspaceArena is closed");
+  }
+  const exactLength = BigInt(length);
+  const exactCapacity = BigInt(wordCapacity);
+  const uint64Maximum = 18446744073709551615n;
+  if (exactLength < 0n || exactLength > uint64Maximum ||
+      exactCapacity <= 0n || exactCapacity > uint64Maximum) {
+    throw new RangeError("workspace IntegerBuffer shape is outside uint64");
+  }
+  const entryCharge = 4n + 8n * exactCapacity;
+  if (exactLength !== 0n && entryCharge > uint64Maximum / exactLength) {
+    throw new RangeError("workspace IntegerBuffer byte count overflow");
+  }
+  const chargedBytes = exactLength * entryCharge;
+  nativeExactBudgetReplace(arena.budget, 0n, chargedBytes);
+  try {
+    if (exactLength > BigInt(Number.MAX_SAFE_INTEGER) ||
+        exactCapacity > BigInt(Number.MAX_SAFE_INTEGER)) {
+      throw new RangeError(
+        "JavaScript fallback workspace IntegerBuffer shape is too large",
+      );
+    }
+    const buffer = createIntegerBuffer(
+      Number(exactLength), Number(exactCapacity),
+    );
+    buffer.workspaceArena = arena;
+    buffer.workspaceCharge = chargedBytes;
+    buffer.workspaceOpen = true;
+    return buffer;
+  } catch (error) {
+    nativeExactBudgetRelease(arena.budget, chargedBytes);
+    throw error;
+  }
+}
+
+function nativeWorkspaceIntegerBufferClose(buffer) {
+  if (buffer === null || typeof buffer !== "object" ||
+      buffer.workspaceOpen !== true) {
+    return;
+  }
+  nativeExactBudgetRelease(buffer.workspaceArena.budget, buffer.workspaceCharge);
+  buffer.workspaceArena = null;
+  buffer.workspaceCharge = 0n;
+  buffer.workspaceOpen = false;
+}
+
+function nativeWorkspaceArenaClose(arena) {
+  if (arena === null || typeof arena !== "object" || arena.open !== true) {
+    return;
+  }
+  if (arena.budget.charged !== 0n) {
+    throw new RangeError("NativeWorkspaceArena closed with live workspaces");
+  }
+  arena.budget.open = false;
+  arena.open = false;
+}
+
 function createIntegerBuffer(length, wordCapacity = 8, source = undefined) {
   if (!Number.isSafeInteger(length) || length < 0 ||
       !Number.isSafeInteger(wordCapacity) || wordCapacity <= 0 ||
@@ -2435,6 +3186,8 @@ function uint64DynamicBufferView(value, argument = "buffer") {
 }
 
 function uint64BufferView(value, argument = "buffer") {
+  if (value !== null && typeof value === "object" &&
+      value[uint64BufferViewTag] === true) return value;
   const immutable = immutableUInt64Borrow(value);
   if (immutable !== null) {
     return Object.freeze({
@@ -2465,6 +3218,23 @@ function uint64BufferView(value, argument = "buffer") {
   return value;
 }
 
+function uint64BufferSubview(buffer, start, length) {
+  const view = uint64BufferView(buffer);
+  const exactStart = typeof start === "bigint" ? start : BigInt(start);
+  const exactLength = typeof length === "bigint" ? length : BigInt(length);
+  if (exactStart < 0n || exactLength < 0n ||
+      exactStart > BigInt(view.length) ||
+      exactLength > BigInt(view.length) - exactStart) {
+    throw new RangeError("UInt64Buffer view is outside its buffer");
+  }
+  return {
+    [uint64BufferViewTag]: true,
+    data: view,
+    offset: Number(exactStart),
+    length: Number(exactLength),
+  };
+}
+
 function uint64BufferGet(buffer, index) {
   const view = uint64BufferView(buffer);
   const exact = typeof index === "bigint" ? index : BigInt(index);
@@ -2472,6 +3242,9 @@ function uint64BufferGet(buffer, index) {
     throw new RangeError("UInt64Buffer index out of range");
   }
   const position = exact < 0n ? BigInt(view.length) + exact : exact;
+  if (view[uint64BufferViewTag] === true) {
+    return uint64BufferGet(view.data, BigInt(view.offset) + position);
+  }
   const data = view[immutableUInt64LeaseViewTag] === true ? view.typed : view;
   return BigInt(Reflect.get(data, String(Number(position))));
 }
@@ -2492,7 +3265,9 @@ function uint64BufferSet(buffer, index, value) {
   }
   const position = exactIndex < 0n
     ? BigInt(view.length) + exactIndex : exactIndex;
-  if (!Reflect.set(view, String(Number(position)), exactValue)) {
+  if (view[uint64BufferViewTag] === true) {
+    uint64BufferSet(view.data, BigInt(view.offset) + position, exactValue);
+  } else if (!Reflect.set(view, String(Number(position)), exactValue)) {
     throw new TypeError("UInt64Buffer is not writable");
   }
 }
@@ -2511,15 +3286,13 @@ function uint64NativeBuffer(value, argument, writable = false) {
   }
   const typed = new BigUint64Array(view.length);
   for (let index = 0; index < view.length; index += 1) {
-    typed[index] = BigInt(Reflect.get(view, String(index)));
+    typed[index] = uint64BufferGet(view, index);
   }
   return {
     typed,
     copyBack() {
       for (let index = 0; index < view.length; index += 1) {
-        if (!Reflect.set(view, String(index), typed[index])) {
-          throw new TypeError("UInt64Buffer is not writable");
-        }
+        uint64BufferSet(view, index, typed[index]);
       }
     },
   };
@@ -2568,6 +3341,10 @@ function integerNativeBuffer(value, argument) {
 function int64BufferView(value, argument = "buffer") {
   if (value !== null && typeof value === "object" &&
       value[int64BufferViewTag] === true) return value;
+  if (isPackedIntegerBuffer(value)) {
+    throw new TypeError(argument +
+      " must be an Int64Buffer, not an IntegerBuffer");
+  }
   if (value === null || (typeof value !== "object" &&
       typeof value !== "function")) {
     throw new TypeError(argument + " must be an Int64Buffer");
@@ -2664,6 +3441,10 @@ function float64Scalar(value, argument) {
 function float64BufferView(value, argument = "buffer") {
   if (value !== null && typeof value === "object" &&
       value[float64BufferViewTag] === true) return value;
+  if (isPackedIntegerBuffer(value)) {
+    throw new TypeError(argument +
+      " must be a Float64Buffer, not an IntegerBuffer");
+  }
   if (value === null || (typeof value !== "object" &&
       typeof value !== "function")) {
     throw new TypeError(argument + " must be a Float64Buffer");
@@ -2795,6 +3576,48 @@ function nativeRaise(name, message) {
   throw new RangeError(message);
 }
 
+const $sagejsBinary64Bits = new DataView(new ArrayBuffer(8));
+function $sagejsNativeCopySign(value, sign) {
+  $sagejsBinary64Bits.setFloat64(0, sign, false);
+  const signBit = $sagejsBinary64Bits.getUint32(0, false) & 0x80000000;
+  $sagejsBinary64Bits.setFloat64(0, value, false);
+  const high = $sagejsBinary64Bits.getUint32(0, false);
+  $sagejsBinary64Bits.setUint32(0, (high & 0x7fffffff) | signBit, false);
+  return $sagejsBinary64Bits.getFloat64(0, false);
+}
+function $sagejsNativeFrexp(value) {
+  if (value === 0 || !Number.isFinite(value)) return [value, 0n];
+  let adjustment = 0;
+  $sagejsBinary64Bits.setFloat64(0, value, false);
+  let high = $sagejsBinary64Bits.getUint32(0, false);
+  if ((high & 0x7ff00000) === 0) {
+    // Exact normalization of every subnormal before reading its exponent.
+    value *= 18446744073709551616;
+    adjustment = -64;
+    $sagejsBinary64Bits.setFloat64(0, value, false);
+    high = $sagejsBinary64Bits.getUint32(0, false);
+  }
+  const exponent = ((high >>> 20) & 0x7ff) - 1022 + adjustment;
+  $sagejsBinary64Bits.setUint32(0, (high & 0x800fffff) | 0x3fe00000, false);
+  return [$sagejsBinary64Bits.getFloat64(0, false), BigInt(exponent)];
+}
+
+function $sagejsNativeLdexp(value, exponent) {
+  if (value === 0 || !Number.isFinite(value)) return value;
+  const parts = $sagejsNativeFrexp(value);
+  const scaledExponent = parts[1] + exponent;
+  if (scaledExponent > 1024n) nativeRaise("OverflowError", "math range error");
+  if (scaledExponent < -1074n) return value < 0 ? -0 : 0;
+  const shift = Number(scaledExponent), mantissa = parts[0];
+  // Only the final multiplication may round into the subnormal range.
+  const result = shift <= -1022
+    ? (mantissa * (2 ** (shift + 1074))) * Number.MIN_VALUE
+    : shift === 1024 ? (mantissa * 2) * (2 ** 1023)
+    : mantissa * (2 ** shift);
+  if (!Number.isFinite(result)) nativeRaise("OverflowError", "math range error");
+  return result;
+}
+
 function nativeExactCall(name, args, backend = "tagged", declaredErrors = null) {
   try {
     const taggedProperty = name + "$tagged";
@@ -2810,6 +3633,9 @@ function nativeExactCall(name, args, backend = "tagged", declaredErrors = null) 
     const declaredException = declaredErrors === null
       ? undefined : declaredErrors[message];
     if (declaredException !== undefined) {
+      if (typeof declaredException === "object") {
+        nativeRaise(declaredException.exception, declaredException.message);
+      }
       nativeRaise(declaredException, message);
     }
     if (message.includes("division") || message.includes("modulo")) {
@@ -2818,11 +3644,18 @@ function nativeExactCall(name, args, backend = "tagged", declaredErrors = null) 
     if (message.includes("range() arg 3 must not be zero")) {
       nativeRaise("ValueError", message);
     }
+    if (message.includes("negative shift count")) nativeRaise("ValueError", message);
+    if (message.includes("integer shift allocation limit")) nativeRaise("MemoryError", message);
     if (message.includes("math domain")) nativeRaise("ValueError", message);
+    if (message === "math range error" || message === "integer is outside binary64 range") nativeRaise("OverflowError", message);
     if (message.includes("too large to convert")) {
       nativeRaise("OverflowError", message);
     }
-    if (message.includes("outside signed 64-bit")) {
+    if (message.includes("outside signed 64-bit") ||
+        message.includes("int64 arithmetic overflow")) {
+      nativeRaise("OverflowError", message);
+    }
+    if (message.includes("outside exact binary64 range")) {
       nativeRaise("OverflowError", message);
     }
     if (message.includes("uint64 shift count")) {
@@ -2846,8 +3679,15 @@ function nativeExactCall(name, args, backend = "tagged", declaredErrors = null) 
       nativeRaise("MemoryError", message);
     }
     if (message.includes("NativeIntegerVector index") ||
+        message.includes("Float64 buffer index") ||
         message.includes("NativeIntegerVector slice out of range")) {
       nativeRaise("IndexError", message);
+    }
+    if (message.includes("cannot convert float NaN to integer")) {
+      nativeRaise("ValueError", message);
+    }
+    if (message.includes("cannot convert float infinity to integer")) {
+      nativeRaise("OverflowError", message);
     }
     if (message.includes("NativeIntegerVector slice cannot resize storage")) {
       nativeRaise("ValueError", message);
@@ -2870,6 +3710,7 @@ function nativeFloat64Call(name, args) {
     return nativeAddon[name](...args);
   } catch (error) {
     const message = String(error && error.message || error);
+    if (message === "math range error") nativeRaise("OverflowError", message);
     if (message.includes("Float64Record") ||
         message.includes("Float64 buffer index")) {
       nativeRaise("IndexError", message);
@@ -2967,9 +3808,17 @@ function primeFieldNativeCall(name, args) {
 
 ${ir.functions.map((fn) =>
     fn.hostCallable === false
-      ? emitExactFallback(fn)
+      ? fn.kernelKind === "float64"
+        ? emitFloat64Fallback(fn)
+        : fn.kernelKind === "prime-field-source"
+          ? emitUnavailablePrimeSourceFallback(fn)
+        : emitExactFallback(fn)
       : fn.kernelKind === "integer"
-      ? emitExactPublicFunction(fn, options.automaticSelections?.[fn.name])
+      ? emitExactPublicFunction(
+        {...fn, nativeDeclaredErrors: declaredFfiErrors(fn, ir.functions)},
+        options.automaticSelections?.[fn.name],
+        options.diagnosticStageClock,
+      )
       : fn.kernelKind === "float64"
         ? emitFloat64PublicFunction(fn)
       : fn.kernelKind === "prime-field-matrix"

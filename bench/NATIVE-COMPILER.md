@@ -90,6 +90,33 @@ const result = await compile({
 const algorithms = require(result.modulePath);
 ```
 
+`functions` defines the artifact's public roots. The compiler retains their
+transitive native call closure, but imported functions and unselected
+same-source dependencies are private implementation details: they remain
+direct compiled calls and do not become JavaScript, Node-API, header, or ELF
+exports. Omitting `functions` continues to select every decorated root in the
+source file.
+
+An artifact can also deliberately retain only the exact-integer
+representations it needs:
+
+```js
+const result = await compile({
+  sourcePath: "algorithms.sage",
+  functions: ["class_group"],
+  integerBackends: ["gmp"],
+});
+```
+
+The default remains `["tagged", "gmp"]`. A GMP-only artifact omits the
+tagged, speculative machine-word, and `fmpz` function graphs rather than
+generating unreachable alternatives and asking the C linker to discard them.
+The generated JavaScript fallback remains available, and its automatic native
+selection is constrained to representations actually present in the addon.
+The selected roots and representation set are part of the authenticated cache
+identity and manifest. The programmatic `emitC` and `emitCore` APIs accept the
+same option so inspection shows the artifact that would actually be compiled.
+
 The command prints the content-addressed generated-module path. A subsequent
 identical build reports `cached`. The cache identity includes source,
 typed IR, all backend source, the shared native header, native ABI, Node module
@@ -811,6 +838,48 @@ compiler-capability test rather than a reason to introduce a hidden native
 Tate implementation.
 
 ## Deliberate v31 limits
+
+## Resident exact scratch campaign: negative performance gate
+
+The September 2026 prepared-H1 compiler campaign tested whether initializing
+and retaining GMP scratch across an authenticated private call graph would
+make exact allocation the dominant class-group cost.  The analysis annotates
+only closed, acyclic integer call graphs outside live exact arenas.  Its frame
+layout gives each function a liveness-coloured local prefix and all sequential
+children a shared disjoint suffix.  The C backend authenticates the complete
+layout before emission.  A rootless entry allocates and initializes one flat
+`mpz_ptr` frame; private callees borrow it, reset their local prefix to zero,
+and never clear or free it.  Calls without that authority retain the original
+per-function initialization and cleanup.
+
+The frozen baseline is integration commit `4bcd3a1349a543e5080ea9fbac5f5a8108d9833a`
+and the H1 input whose SHA-256 is
+`22a997866388571cd3c12e1a3ea5c5cc3a7fe89217b253bb0e779007f6fe9b77`.
+Its diagnostic medians were 251.142 ms for relation/retry, 64.037 ms for
+HNF/SNF, and 626.123 ms for unit/regulator.  Calling-thread `LD_PRELOAD`
+instrumentation counted 1,346,874 malloc plus 544,666 realloc calls in the
+relation stage, 674,680 plus 295,695 across HNF/SNF, and 2,087,773 plus
+2,260,757 across unit/regulator: 7,210,445 malloc-or-realloc events in total.
+These values and the 942.830 ms complete-root baseline are preserved in
+`agents/pari-class-group-e2e-checkpoint-2026-09-17.md` in the integration
+worktree.
+
+Seven resident-frame samples preserved final authority digest
+`72a857cb40e2719acd29b33136d58313064471d5c425dd8d3b64ffbe1f0ce9e4`.
+The root frame has 283 GMP integers, emitted as
+`283 * sizeof(__mpz_struct)` (4,528 bytes on the measured x86-64 build).
+Strictly around the synchronous generated GMP root callback, the median was
+34,813 malloc-or-realloc calls (range 30,839--44,534), a 99.52% reduction from
+the stage aggregate.  Thus the fixed 80% allocation gate passed.
+
+The fixed time gate failed.  Stage medians were 165.966 ms for relation/retry
+(1.51x), 37.812 ms for HNF/SNF (1.69x), and 498.580 ms for unit/regulator
+(1.26x).  None met the required 2x improvement.  The campaign therefore
+stopped without further allocator tuning.  The result is intentionally a
+negative ledger: allocation-event count was mostly not the dominant wall-time
+mechanism in this H1 root, despite removing over 99% of those events.  Future
+work needs a new hypothesis and gate around arithmetic work, copies, or
+representation transitions rather than another broad allocator rewrite.
 
 This is not yet a general Cython replacement or transparent JIT. It does not
 infer argument types, compile arbitrary control flow, accept native elements

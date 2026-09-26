@@ -1,0 +1,64 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "resident-relation-hnf-lifetime-profile",
+  "title": "Profile resident relation-to-HNF exact lifetimes",
+  "lane": "compiler-runtime",
+  "status": "review",
+  "owner": "user",
+  "objective": "Add a deterministic same-work compiler/lifetime ledger for the resident relation-to-HNF path at integration commit 944a12911, without compiler changes, and state one falsifiable optimization proposal.",
+  "base_commit": "944a1291113a51b366d293e00c7979c754eeee03",
+  "claims": [
+    "bench/pari-class-group-port/profile_connected_relation_hnf_lifetimes.cjs",
+    "bench/pari-class-group-port/resident-relation-hnf-lifetime-profile-20260917.json",
+    "bench/pari-class-group-port/resident_relation_hnf_lifetime_profile.md"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "not-applicable",
+    "fallback": "not-applicable",
+    "oracles": [
+      "Generated C structure and frozen connected relation/HNF fixtures"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "not-applicable",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm build",
+    "pnpm test:compiler",
+    "pnpm test:integration"
+  ],
+  "runs": [
+    {
+      "command": "pnpm parallel:check",
+      "status": "passed",
+      "notes": "Task claims and contract passed."
+    },
+    {
+      "command": "node bench/pari-class-group-port/profile_connected_relation_hnf_lifetimes.cjs CORE MANIFEST INPUTS",
+      "status": "passed",
+      "notes": "Two independent runs against the commit-944a12911 connected-relation/HNF core and frozen four-field input were byte-identical."
+    },
+    {
+      "command": "pnpm test:changed --base 944a12911",
+      "status": "blocked",
+      "notes": "merge:check passed; unit tier could not start because the fresh lane had not yet built dist/tools/compiler.js."
+    }
+  ],
+  "handoff": {
+    "summary": "Added a deterministic read-only call-graph/lifetime profiler and ledger for the exact resident relation-to-HNF kernel at 944a12911. The native graph has zero fmpz lifecycle sites because it is an mpz_t backend, but 2470 mpz init sites, 4934 cleanup sites, 1372 integer-owner conversion sites, 199 reachable functions, 635 internal call sites, and 452-481 MB fixed-capacity owners for 15-16 MB logical payload.",
+    "risks": [
+      "Lifecycle counts are static generated-C sites rather than dynamic executions; duplicated success/failure cleanup sites are documented explicitly.",
+      "Fixed-capacity bytes reproduce the diagnostic 64-limb policy and are live owner capacity, not measured peak allocator traffic."
+    ],
+    "next_steps": [
+      "Run the falsifiable root-owned mpz scratch-frame A/B: require 75% fewer dynamically executed lifecycle calls, 3x kernel CPU improvement, and identical frozen-prefix state."
+    ]
+  }
+}

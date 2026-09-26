@@ -85,6 +85,11 @@ def empty(start: uint64) -> int:
 `);
   const built = await compileKernel({ sourcePath, functions: ["swap", "probe", "empty", "side_effects"],
     cacheRoot: resolve(directory, "cache") });
+  const core = readFileSync(built.coreSourcePath, "utf8");
+  for (const name of ["swap", "probe", "empty", "side_effects"]) {
+    assert.doesNotMatch(core, new RegExp(`\\btagged_${name}\\s*\\(`),
+      `${name} must dispatch through its emitted direct exact body`);
+  }
   const module = require(built.modulePath);
   const kernel = module.swap;
   for (const backend of ["javascript", "gmp", "fmpz"]) {

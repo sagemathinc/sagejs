@@ -1,0 +1,21 @@
+{
+  "schema": "sagejs.rust-class-group/row6-factor-catalog-work-v1",
+  "qualificationStatus": "diagnostic-candidate-only",
+  "usesOracleAsInput": false,
+  "polynomialAscending": [
+    "2000000000018",
+    "-2000000000010",
+    "0",
+    "1"
+  ],
+  "equationOrderDiscriminant": "32000000000372000000000455999999995252",
+  "logAbsoluteDiscriminantF64": 86.358799250597,
+  "maximumGrhBoundPreallocation": 29831,
+  "catalogPrimeLimit": 59662,
+  "catalogPrimeCount": 6030,
+  "largestCatalogPrime": 59659,
+  "oneFactorizationPassRootCandidates": 170233823,
+  "twoPassUpperPathRootCandidates": 340467646,
+  "implementationSourceSha256": "72b13bb267b246442918cfd21af4d0e4ce3f9ae090b99af3e301e43e2853dd52",
+  "interpretation": "the generic constructor linearly scans every residue for each cubic and repeats factor_cubic during publication; this precedes coefficient-box enumeration"
+}

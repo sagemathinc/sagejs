@@ -1,0 +1,68 @@
+{
+  "schema": "sagejs.rust-class-group/prepared-relation-prefix-storage-optimization-v1",
+  "status": "pass",
+  "repositoryRevision": "fe8fb0403c26b2950ba503a3f30cbc6facfd9003",
+  "evidence": {
+    "browserReceiptSha256": "46b721384569e5ba4ffd11c563eca2a800cc75d5245e0d7f1f5d9acbfb2539d7",
+    "nativeReceiptSha256": "b06615602be6a24ea4e6460101ff8c8b001a51a69714690113607c64dc04a164"
+  },
+  "workloadChanged": false,
+  "exactPrefixSha256": "7e4c9242d3fa92c7bc7f8fbb3e9c68cc77f66cbc5838657cf38e610c66ba22b3",
+  "before": {
+    "artifactSha256": "fd55293ad67d39547738f4406d8f341d7b1ba297cdac106071f4ae9ec65f5cbb",
+    "artifactBytes": 691342,
+    "memoryPagesAfter15Calls": 3357,
+    "medianMs": {
+      "native": 285.73419,
+      "chromium": 690.5,
+      "firefox": 4709,
+      "webkit": 625
+    }
+  },
+  "after": {
+    "artifactSha256": "4c1faa8506e43fa86cafb34b1c7ac4370ad0afb61e7a35610da93c85866ce13e",
+    "artifactBytes": 697980,
+    "memoryPagesAfter15Calls": 258,
+    "relationCacheCapacity": 267,
+    "fullRelationCacheCapacity": 11420,
+    "denseRecordsBytes": 2413680,
+    "fullDenseRecordsBytes": 103236800,
+    "medianMs": {
+      "native": 223.851449,
+      "chromium": 526.4000000059605,
+      "firefox": 3724,
+      "webkit": 462
+    }
+  },
+  "changePercent": {
+    "memoryPages": -92.315,
+    "nativeMedianMs": -21.657,
+    "chromiumMedianMs": -23.765,
+    "firefoxMedianMs": -20.917,
+    "webkitMedianMs": -26.080
+  },
+  "firefoxNativeRatio": {
+    "before": 16.480,
+    "after": 16.636,
+    "improved": false
+  },
+  "limitingStage": {
+    "status": "measured-separate-artifact",
+    "stage": "prepared-maximal-order-factor-base",
+    "browserReceipt": {
+      "path": "../wasm-prepared-factor-base/receipt.json",
+      "sha256": "75cb509dee2d59f2013dbc252f3a5dffa8d709ad829903f16c0321a3cdf8c4e8"
+    },
+    "nativeReceipt": {
+      "path": "../wasm-prepared-factor-base/native-receipt.json",
+      "sha256": "6a9c9c9706d58367b427bf7e9ab55004c55027e02299101597b52edcecdf1b4d"
+    },
+    "medianMs": {
+      "native": 216.698408,
+      "chromium": 530.7999999821186,
+      "firefox": 3401,
+      "webkit": 419
+    },
+    "interpretation": "The separately qualified prepared-factor-base stage accounts for about 91% of the final Firefox median and 97% of the native median. The bounded relation-cache allocation is no longer the cause of the residual Firefox/native gap."
+  }
+}

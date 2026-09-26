@@ -1,0 +1,58 @@
+{
+  "boundary": "prepared-cubic-relation-prefix",
+  "inputPath": "bench/pari-class-group-rust/qualification/row6-candidate/inputs/row6-neutral-prepared-field.json",
+  "medianMs": 223.851449,
+  "result": {
+    "completeRankAndSurplus": false,
+    "counters": {
+      "appendedRelations": 1,
+      "cursorTrials": 66,
+      "positiveCacheStatuses": 1,
+      "primitiveNonscalarCandidates": 64,
+      "randomIdeals": 0,
+      "randomSearchIdeals": 0,
+      "smoothCandidates": 1,
+      "visitedIdeals": 1
+    },
+    "factorBaseIdeals": 1130,
+    "fieldId": "row6-x3-minus-2000000000010x-plus-2000000000018",
+    "inputId": "sha256:42ecf93a56de4cc7763d33c8b422e7804582278674c1a6fef41a4799a9930bd5",
+    "limits": {
+      "maximumCandidates": 64,
+      "maximumVisitedIdeals": 1
+    },
+    "missingRank": 926,
+    "prefixSha256": "7e4c9242d3fa92c7bc7f8fbb3e9c68cc77f66cbc5838657cf38e610c66ba22b3",
+    "relationBound": 9196,
+    "residentRelationRows": 204,
+    "schema": "sagejs.rust-class-group/prepared-relation-prefix-v1",
+    "stage": "prepared-cubic-relation-prefix",
+    "status": "bounded-stage",
+    "storage": {
+      "denseRecordsBytes": 2413680,
+      "fullDenseRecordsBytes": 103236800,
+      "fullRelationCacheCapacity": 11420,
+      "relationCacheCapacity": 267
+    }
+  },
+  "sampleCount": 15,
+  "samplesMs": [
+    229.706007,
+    225.687938,
+    224.020338,
+    224.226109,
+    223.54158800000002,
+    223.798068,
+    224.586428,
+    222.668678,
+    222.882349,
+    223.385928,
+    223.851449,
+    224.016388,
+    224.06314899999998,
+    223.844248,
+    223.214049
+  ],
+  "schema": "sagejs.rust-class-group/native-prepared-relation-prefix-benchmark-v1",
+  "status": "pass"
+}
