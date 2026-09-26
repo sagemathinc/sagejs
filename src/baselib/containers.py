@@ -10,6 +10,7 @@ from __future__ import annotations
 from typing import Any, List
 
 import sagejs.runtime as runtime
+from bootstrap_shared import ρσ_append_fn
 
 _Str = str
 _CONTAINERS_MISSING = runtime.object.create(None)
@@ -483,9 +484,7 @@ def _list_append(
     value: Any = _CONTAINERS_MISSING,
     *extra: Any,
 ) -> None:
-    if value is _CONTAINERS_MISSING:
-        raise TypeError("append expected 1 argument")
-    if len(extra) != 0:
+    if value is _CONTAINERS_MISSING or len(extra) != 0:
         raise TypeError("append expected 1 argument")
     runtime.reflect.apply(runtime.array.prototype.push, self, [value])
 
@@ -747,18 +746,7 @@ def ρσ_list_constructor(iterable: Any = runtime.undefined) -> Any:
     return list_decorate(answer)
 
 
-def _list_type_append(
-    self: Any,
-    value: Any = _CONTAINERS_MISSING,
-    *extra: Any,
-) -> None:
-    if not runtime.array.isArray(self):
-        raise TypeError(
-            "descriptor 'append' for 'list' objects doesn't apply to this object"
-        )
-    if value is _CONTAINERS_MISSING or len(extra) != 0:
-        raise TypeError("append expected 1 argument")
-    runtime.reflect.apply(_list_append, self, [value])
+_list_type_append = ρσ_append_fn(_list_append)
 
 
 def _container_pop_keyword(
