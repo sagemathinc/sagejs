@@ -1170,17 +1170,6 @@ def ρσ_generic_alias(origin: Any, type_arguments: Any) -> Any:
 
 
 def ρσ_getitem(value: Any, key: Any) -> Any:
-    if (
-        value is runtime.list_constructor
-        or value is runtime.tuple_builtin
-        or value is runtime.string_builtin
-        or value is runtime.int_builtin
-        or value is runtime.reflect.get(runtime.global_object, "ρσ_dict")
-        or value is runtime.reflect.get(runtime.global_object, "ρσ_set")
-        or value is runtime.reflect.get(runtime.global_object, "ρσ_frozenset")
-        or value is runtime.reflect.get(runtime.global_object, "ρσ_type")
-    ):
-        return ρσ_generic_alias(value, key)
     # Native lists and tuples are JavaScript arrays.  Keep their overwhelmingly
     # common integer-index path monomorphic instead of performing reflective
     # special-method discovery for every access in a Python loop.
@@ -1236,6 +1225,17 @@ def ρσ_getitem(value: Any, key: Any) -> Any:
             if runtime.object.isFrozen(value):
                 return runtime.math_tuple(answer)
             return runtime.list_decorate(answer)
+    if (
+        value is runtime.list_constructor
+        or value is runtime.tuple_builtin
+        or value is runtime.string_builtin
+        or value is runtime.int_builtin
+        or value is runtime.reflect.get(runtime.global_object, "ρσ_dict")
+        or value is runtime.reflect.get(runtime.global_object, "ρσ_set")
+        or value is runtime.reflect.get(runtime.global_object, "ρσ_frozenset")
+        or value is runtime.reflect.get(runtime.global_object, "ρσ_type")
+    ):
+        return ρσ_generic_alias(value, key)
     # ``__class_getitem__`` is commonly a classmethod inherited from an ABC.
     # Use Python descriptor lookup so the defining class does not accidentally
     # become the receiver when a subclass is subscribed.  Keep this after the
