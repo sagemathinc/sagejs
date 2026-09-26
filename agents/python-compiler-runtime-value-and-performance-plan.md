@@ -601,14 +601,15 @@ boundaries separately from traceback chains and exception chaining; avoid work
 on every ordinary function call. Keep source budgets unchanged and account for
 all helpers. The remaining M3–M6 acceptance requirements below still apply.
 
-**2026-09-26 keyword-initializer adapter checkpoint:** on top of PR #325, moving
-the constructor's keyword-only initializer adapter to the checked shared-host
-boundary improves isolated keyword initialization by 11.14% and field-bearing
-keyword construction by 3.28% in six-process alternating measurements;
-positional and no-op controls are flat. The 505-case CPython differential,
-focused initializer tests, eight routine phases, architecture checks, source
-budget, and startup gate pass. This is a narrow layer removal, not closure of
-the broader field-store or method-lookup cliffs. Exact evidence is in
+**2026-09-26 keyword-initializer adapter rejected experiment:** on top of PR
+#325, the constructor's keyword-only initializer adapter was moved to the
+shared-host boundary and passed the 505-case differential, focused tests,
+routine/architecture checks, source budget, and startup gate. The initial
+no-field benchmark retained only its final object and gave an invalid 11.14%
+speedup. After retaining and checking every object, the paired gain was just
+1.26%, and practical field-bearing rows ranged from 3.09% faster to 1.92%
+slower. This does not justify another 227 core-runtime bytes, so the candidate
+is withdrawn; the field-store and method-lookup cliffs remain. Evidence is in
 `agents/python-keyword-initializer-native.md`.
 
 Existing assets to reuse:

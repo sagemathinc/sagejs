@@ -31,6 +31,7 @@ iterations = 100_000
 
 def run(name):
     instance = None
+    retained = []
     total = 0
     started = time.perf_counter()
     if name == "empty":
@@ -41,10 +42,10 @@ def run(name):
             instance = NoOp()
     elif name == "default_positional":
         for index in range(iterations):
-            instance = Defaults(index, 2)
+            retained.append(Defaults(index, 2))
     elif name == "default_keyword":
         for index in range(iterations):
-            instance = Defaults(left=index, right=2)
+            retained.append(Defaults(left=index, right=2))
     elif name == "fields_positional":
         for index in range(iterations):
             instance = Fields(index, 2)
@@ -59,6 +60,9 @@ def run(name):
     elapsed = (time.perf_counter() - started) * 1000
     if name == "fields_keyword_method":
         assert total == iterations * (iterations - 1) // 2 + 2 * iterations
+    elif name in ("default_positional", "default_keyword"):
+        assert len(retained) == iterations
+        assert all(type(value) is Defaults for value in retained)
     else:
         assert instance is not None
     print(name, elapsed)
