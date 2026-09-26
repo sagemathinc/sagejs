@@ -279,6 +279,28 @@ resident-process comparison, even though the distinct matched native
 coefficient-to-group target passes. No threshold or panel member was changed
 in response to these measurements.
 
+The later checked compact-map and resident-capability paths are recorded in
+[`public-api-prepared-frozen-map-diagnostic.json`](public-api-prepared-frozen-map-diagnostic.json)
+and
+[`public-api-prepared-capability-diagnostic.json`](public-api-prepared-capability-diagnostic.json).
+On the unchanged prepared-field panel, the geometric mean of per-field
+Sage.js/PARI medians fell from 13.68 to 11.13; for the tiny `D=-3` field,
+Sage.js fell from 19.57 to 11.16 milliseconds. These are separate 15-pair
+runs, so they show progress but do not isolate every millisecond saved by the
+capability change. The public end-to-end route remains far from parity.
+
+An exploratory same-process profile of `D=-15,000,000,315` (33,768 classes)
+put a fresh public `K.class_group(algorithm='rust')` near 58 milliseconds,
+versus about 1.5 milliseconds for `D=-3`. In separate nine-sample warm probes
+of the large field, its 2.84 MB packed service response took about 19
+milliseconds through the service and pipe, 12 milliseconds to parse as JSON,
+13 milliseconds to pack the map rows into exact signed-64-bit storage, and 21
+milliseconds for the full compact-map validation. These phases overlap across
+probes and must not be added as one call latency. They locate the remaining
+large-field cost in transport and exact map verification, not just in the
+Sage.js cell compiler. They are diagnostic observations, not a new frozen
+performance receipt or permission to omit independent malformed-map checks.
+
 ## Matched scalar class-number comparison
 
 `run_class_number.py` separately compares the exact scalar Rust count, the
@@ -324,8 +346,11 @@ faster than PARI on six of seven fields and 1.35 times PARI on the remaining
 4,378-class field. This is a substantial scalar improvement, but the receipt
 must still be frozen and promoted before making a release speed claim. The
 current v2 diagnostic also exposes a substantial slow case at the large
-three-prime-factor field; a full-group speed result must not be presented as
-proof that scalar counting is uniformly competitive with PARI's Shanks path.
+three-prime-factor field: Rust's unconditional scalar median is 1.58
+milliseconds versus 0.185 milliseconds for PARI's unconditional
+`qfbclassno(D,0)`, about 8.5 times slower. A full-group speed result must not
+be presented as proof that scalar counting is uniformly competitive with
+PARI's Shanks path.
 
 ## Frozen panel and large-class-number selection
 
