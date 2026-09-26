@@ -111,6 +111,45 @@ test("exact native list append bypasses generic lookup without bypassing mutatio
   assert.equal(fallbacks, 4);
 });
 
+test("the original unbound list append respects live class and metaclass changes", () => {
+  const append = function append(receiver, value) { receiver.push(value); };
+  const listConstructor = function listConstructor() {};
+  const metaclass = function metaclass() {};
+  const ordinaryHook = function ordinaryHook() {};
+  Object.defineProperty(listConstructor, "__python_type__", { value: metaclass });
+  listConstructor.append = append;
+  let hook = [undefined, undefined, undefined, ordinaryHook];
+  let fallbacks = 0;
+  const api = context({
+    ρσ_list_constructor: listConstructor,
+    _list_type_append: append,
+    _builtins_object_getattribute: ordinaryHook,
+    _builtins_class_attribute_resolution: () => hook,
+    _builtins_descriptor_cache: new WeakMap(),
+    _builtins_instance_namespaces: new WeakMap(),
+    _builtins_attribute_owner: () => metaclass,
+    _builtins_public_getattr: (_value, _name, _missing, result) => {
+      fallbacks += 1;
+      result[0] = "fallback";
+      return "fallback";
+    },
+    _BUILTINS_MISSING: {},
+  });
+  const prepared = () => Array.from(api.ρσ_prepare_method_call(listConstructor, "append"));
+  assert.deepEqual(prepared(), [append, undefined, false]);
+  assert.equal(fallbacks, 0);
+  listConstructor.append = () => "replaced";
+  assert.deepEqual(prepared(), ["fallback", undefined, false]);
+  delete listConstructor.append;
+  assert.deepEqual(prepared(), ["fallback", undefined, false]);
+  listConstructor.append = append;
+  hook = [undefined, undefined, undefined, () => "custom"];
+  assert.deepEqual(prepared(), ["fallback", undefined, false]);
+  hook = [undefined, undefined, undefined, ordinaryHook];
+  assert.deepEqual(prepared(), [append, undefined, false]);
+  assert.equal(fallbacks, 3);
+});
+
 test("shared attribute stores use only epoch-current unexposed cache entries", () => {
   const prototype = {};
   const receiver = Object.create(prototype);
