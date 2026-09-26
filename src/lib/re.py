@@ -324,8 +324,18 @@ class RegexObject:
         text = str(string)
         if endpos is None:
             endpos = len(text)
-        answer = self.match(text, pos, endpos)
-        return answer if answer is not None and answer.end() == endpos else None
+        target = text[:endpos]
+        regex = self._native()
+        runtime.reflect.set(regex, "lastIndex", pos)
+        native = runtime.reflect.apply(
+            runtime.reflect.get(regex, "exec"), regex, [target]
+        )
+        if native is None:
+            return None
+        pair = runtime.reflect.get(native, "indices")[0]
+        if pair[0] != pos or pair[1] != endpos:
+            return None
+        return MatchObject(self, native, pos, endpos)
 
     def finditer(self, string, pos=0, endpos=None):
         text = str(string)
