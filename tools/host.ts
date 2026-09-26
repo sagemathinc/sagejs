@@ -280,6 +280,18 @@ function startService() {
   const lines = readline.createInterface({ input: child.stdout, crlfDelay: Infinity });
   lines.on("line", line => {
     if (protocolError !== undefined) return;
+    // The synchronous shared-buffer protocol has at most one request in
+    // flight.  For a large packed response, forward the service's original
+    // JSON to the parent instead of parsing the entire class map twice.  The
+    // parent checks the envelope, including the service id, before use.
+    if (pending.size === 1) {
+      const [packedId, packedSlot] = pending.entries().next().value;
+      if (packedSlot.directPacked) {
+        pending.delete(packedId);
+        packedSlot.resolve({ raw: line, id: packedId });
+        return;
+      }
+    }
     let value;
     try { value = JSON.parse(line); }
     catch { value = corrupt("class-group service wrote non-JSON output"); }
@@ -290,7 +302,7 @@ function startService() {
       return;
     }
     pending.delete(id);
-    try { slot.resolve({ value: validateServiceResponse(value, id), raw: line }); }
+    try { slot.resolve({ value: validateServiceResponse(value, id), raw: line, id }); }
     catch (error) { slot.reject(error); }
   });
   child.on("error", error => {
@@ -325,7 +337,10 @@ function serviceCall(operation, request) {
     operation,
   };
   return new Promise((resolve, reject) => {
-    pending.set(id, { resolve, reject });
+    pending.set(id, {
+      resolve, reject,
+      directPacked: operation === "imaginary-class-group" && request.transport === "packed-v1",
+    });
     child.stdin.write(JSON.stringify(message) + "\n", error => {
       if (!error) return;
       pending.delete(id);
@@ -351,14 +366,16 @@ function finish(value) {
   Atomics.notify(control, 0);
 }
 
-function finishRawServiceResponse(raw) {
+function finishRawServiceResponse(raw, id) {
+  const prefix = encoder.encode(id + "\n");
   const bytes = encoder.encode(raw);
-  if (bytes.length > output.length) {
+  if (prefix.length + bytes.length > output.length) {
     finish({ __sagejs_worker_error__: recordError(new RangeError("class-group response exceeds the shared buffer")) });
     return;
   }
-  output.set(bytes);
-  Atomics.store(control, 2, bytes.length);
+  output.set(prefix);
+  output.set(bytes, prefix.length);
+  Atomics.store(control, 2, prefix.length + bytes.length);
   Atomics.store(control, 0, 2);
   Atomics.notify(control, 0);
 }
@@ -391,7 +408,7 @@ async function main() {
       const response = await serviceCall(envelope.operation, envelope.request);
       if (envelope.operation === "imaginary-class-group" &&
           envelope.request.transport === "packed-v1") {
-        finishRawServiceResponse(response.raw);
+        finishRawServiceResponse(response.raw, response.id);
       } else {
         finish(response.value);
       }
@@ -711,9 +728,22 @@ export class NodeClassGroupBackend {
       this.retireWorker();
       throw classGroupHostError("EBADMSG", "class-group worker returned a corrupt response");
     }
+    const directPacked = operation === "imaginary-class-group" &&
+      serviceRequest.transport === "packed-v1";
     let payload: unknown;
+    let expectedServiceId: string | undefined;
     try {
-      payload = JSON.parse(Buffer.from(output.buffer, output.byteOffset, length).toString("utf8"));
+      let response = Buffer.from(output.buffer, output.byteOffset, length).toString("utf8");
+      if (directPacked && !response.startsWith("{")) {
+        const separator = response.indexOf("\n");
+        const id = response.slice(0, separator);
+        if (separator < 0 || !/^host-[1-9][0-9]*$/.test(id) || id.length > 64) {
+          throw new SyntaxError("invalid packed class-group response id");
+        }
+        expectedServiceId = id;
+        response = response.slice(separator + 1);
+      }
+      payload = JSON.parse(response);
     } catch {
       this.retireWorker();
       throw classGroupHostError("EBADMSG", "class-group worker returned invalid JSON");
@@ -726,6 +756,32 @@ export class NodeClassGroupBackend {
     if (!isPlainRecord(payload) || typeof payload.ok !== "boolean") {
       this.retireWorker();
       throw classGroupHostError("EBADMSG", "class-group worker returned an invalid envelope");
+    }
+    if (directPacked) {
+      if (expectedServiceId === undefined) {
+        // An unprefixed response is only the worker's own error envelope.
+        if (payload.ok) {
+          this.retireWorker();
+          throw classGroupHostError("EBADMSG", "class-group worker omitted the service identity");
+        }
+      } else if (payload.schema !== "sagejs.class-groups/service-response-v1" ||
+          payload.abi !== 1 || payload.id !== expectedServiceId) {
+        this.retireWorker();
+        throw classGroupHostError("EBADMSG", "class-group service changed its response identity");
+      }
+      if (expectedServiceId !== undefined && !payload.ok) {
+        const error = payload.error;
+        if (!isPlainRecord(error) ||
+            error.schema !== "sagejs.class-groups/service-response-v1" ||
+            error.outcome !== "error" || typeof error.category !== "string" ||
+            error.operation !== operation || typeof error.message !== "string" ||
+            Object.hasOwn(payload, "result")) {
+          this.retireWorker();
+          throw classGroupHostError("EBADMSG", "class-group service returned an invalid error");
+        }
+        throw classGroupHostError(error.category, error.message,
+          typeof error.name === "string" ? error.name : "ClassGroupServiceError");
+      }
     }
     if (!payload.ok) {
       const error = isPlainRecord(payload.error) ? payload.error : {};
@@ -740,11 +796,9 @@ export class NodeClassGroupBackend {
         typeof error.name === "string" ? error.name : "ClassGroupServiceError",
       );
     }
-    const directPacked = operation === "imaginary-class-group" &&
-      serviceRequest.transport === "packed-v1";
     const value = directPacked
       ? payload.schema === "sagejs.class-groups/service-response-v1" &&
-        payload.abi === 1 && typeof payload.id === "string" &&
+        payload.abi === 1 && payload.id === expectedServiceId &&
         !Object.hasOwn(payload, "error") && isPlainRecord(payload.result)
         ? payload.result : undefined
       : payload.value;

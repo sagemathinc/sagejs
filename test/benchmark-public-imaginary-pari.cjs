@@ -37,10 +37,15 @@ test("public Sage.js/PARI diagnostic rejects unfrozen inputs and unsafe receipt 
   assert.equal(expectedSage(panel.fields[0]), "[-3, 1, (), 'exact-unconditional', 'rust']");
 });
 
-test("both recorded 15-pair public diagnostics bind the frozen panel and runner", () => {
-  for (const boundary of ["polynomial", "prepared"]) {
-    const receipt = require(path.join(directory, `public-api-${boundary}-diagnostic.json`));
+test("recorded 15-pair public diagnostics bind the frozen panel and runner", () => {
+  for (const [boundary, filename] of [
+    ["polynomial", "public-api-polynomial-diagnostic.json"],
+    ["prepared", "public-api-prepared-diagnostic.json"],
+    ["prepared", "public-api-prepared-transport-diagnostic.json"],
+  ]) {
+    const receipt = require(path.join(directory, filename));
     assert.equal(receipt.promotedPerformanceReceipt, false);
+    assert.ok(receipt.boundary.includes(boundary));
     assert.equal(receipt.panelSchema, panel.schema);
     assert.equal(receipt.panelSha256, sha256(panelPath));
     assert.equal(receipt.runnerSha256, sha256(runner));

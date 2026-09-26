@@ -13,9 +13,10 @@ const {
   installNodeHost,
 } = require("../dist/tools/host.js");
 
-function fakeService(directory, corrupt = false) {
-  const filename = path.join(directory, corrupt ? "corrupt-service" : "class-group-service");
-  const startup = path.join(directory, corrupt ? "corrupt-started" : "started");
+function fakeService(directory, corrupt = false, wrongId = false, declined = false) {
+  const fixtureName = corrupt ? "corrupt" : wrongId ? "wrong-id" : declined ? "declined" : "normal";
+  const filename = path.join(directory, fixtureName + "-service");
+  const startup = path.join(directory, fixtureName + "-started");
   const source = `#!/usr/bin/env node
 "use strict";
 const fs = require("node:fs");
@@ -29,6 +30,18 @@ lines.on("line", (input) => {
   catch { return; }
   if (${JSON.stringify(corrupt)}) {
     process.stdout.write(JSON.stringify({ schema: "wrong", abi: 1, id: request.id, ok: true, result: {} }) + "\\n");
+    return;
+  }
+  if (request.operation === "imaginary-class-group" && ${JSON.stringify(wrongId)}) {
+    process.stdout.write(JSON.stringify({ schema: "sagejs.class-groups/service-response-v1", abi: 1,
+      id: "wrong-host-id", ok: true, result: {} }) + "\\n");
+    return;
+  }
+  if (request.operation === "imaginary-class-group" && ${JSON.stringify(declined)}) {
+    process.stdout.write(JSON.stringify({ schema: "sagejs.class-groups/service-response-v1", abi: 1,
+      id: request.id, ok: false, error: { schema: "sagejs.class-groups/service-response-v1",
+      outcome: "error", category: "capability-declined", operation: request.operation,
+      message: "fixture packed decline" } }) + "\\n");
     return;
   }
   let result;
@@ -238,6 +251,31 @@ async function main() {
     );
     corrupt.close();
     await assertProcessExited(Number(fs.readFileSync(corruptFixture.startup, "utf8")));
+
+    const wrongIdFixture = fakeService(directory, false, true);
+    process.env.SAGEJS_CLASS_GROUP_SERVICE = wrongIdFixture.filename;
+    const wrongIdBackend = new NodeClassGroupBackend();
+    assert.throws(
+      () => wrongIdBackend.call("imaginary-class-group", {
+        polynomialAscending: ["1", "-1", "1"], transport: "packed-v1",
+      }),
+      (error) => error.code === "EBADMSG",
+    );
+    wrongIdBackend.close();
+    await assertProcessExited(Number(fs.readFileSync(wrongIdFixture.startup, "utf8")));
+
+    const declinedFixture = fakeService(directory, false, false, true);
+    process.env.SAGEJS_CLASS_GROUP_SERVICE = declinedFixture.filename;
+    const declinedBackend = new NodeClassGroupBackend();
+    assert.throws(
+      () => declinedBackend.call("imaginary-class-group", {
+        polynomialAscending: ["1", "-1", "1"], transport: "packed-v1",
+      }),
+      (error) => error.code === "capability-declined" &&
+        error.message === "fixture packed decline",
+    );
+    declinedBackend.close();
+    await assertProcessExited(Number(fs.readFileSync(declinedFixture.startup, "utf8")));
 
     process.env.SAGEJS_CLASS_GROUP_SERVICE = path.join(directory, "missing");
     const unavailable = new NodeClassGroupBackend();
