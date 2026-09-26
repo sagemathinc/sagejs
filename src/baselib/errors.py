@@ -41,16 +41,6 @@ def ρσ_function_argument_error(
     return error
 
 
-def ρσ_positional_default(target_function: Any, from_end: int, name: str) -> Any:
-    return r"""%js (()=>{
-        const defaults=target_function.__defaults__;
-        if(defaults==null||defaults.length<from_end)
-            throw ρσ_function_argument_error(
-                "missing required argument: "+name,target_function);
-        return defaults[defaults.length-from_end];
-    })()"""
-
-
 class BaseException(runtime.error):
     def __init__(self, *args: object) -> None:
         self.args = runtime.math_tuple(list(args))

@@ -334,3 +334,13 @@ def ρσ_skip_init(cls, initializer):
         if(cacheable)cached[2]=answer;
         return answer;
     })()"""
+
+
+def ρσ_positional_default(target_function, from_end, name):
+    return r"""%js (()=>{
+        const defaults=target_function.__defaults__;
+        if(defaults==null||defaults.length<from_end)
+            throw ρσ_function_argument_error(
+                "missing required argument: "+name,target_function);
+        return defaults[defaults.length-from_end];
+    })()"""

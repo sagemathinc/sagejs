@@ -13,7 +13,7 @@ const sharedNames = ["ρσ_machine_extension_method_matches", "ρσ_copy_method_
   "ρσ_exact_integer_submul", "ρσ_int_pow",
   "ρσ_check_interrupt", "ρσ_normalize_exception", "ρσ_prepare_method_call",
   "ρσ_attr", "ρσ_interpolate_kwargs", "ρσ_interpolate_kwargs_constructor",
-  "ρσ_synthetic_init_ends_at_object", "ρσ_skip_init"];
+  "ρσ_synthetic_init_ends_at_object", "ρσ_skip_init", "ρσ_positional_default"];
 const names = sharedNames;
 
 // Exercise the native ABI bodies directly; full self-hosted/module

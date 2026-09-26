@@ -586,8 +586,12 @@ keyword-function, and method gaps are still 7.52x, 12.03x, and 12.52x CPython,
 so M5 remains open. Differential, default, mutation, traitlets,
 attrs/decorator, strict, docs, and merge gates pass. The local startup
 measurement remains above the unchanged budget and is not a receipt. Exact
-evidence is in `agents/python-positional-default-native.md`; keep this candidate
-behind the constructor and keyword-prologue candidates.
+evidence is in `agents/python-positional-default-native.md`. PR #318 has since
+merged the constructor and keyword-prologue prerequisites. The 2026-09-26
+replay against current main relocates the native helper to the checked shared
+host boundary; its fresh absolute comparison still exposes an 11.21x CPython
+keyword-method gap and an 11.31x keyword-construction gap. The 2026-09-18
+paired speedups above are historical, not a current-main A/B receipt.
 
 Continue next with integration-aware qualification, the receiver-lookup campaign,
 and true handled-exception ownership. Generator/coroutine suspension makes a

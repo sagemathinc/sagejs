@@ -10,9 +10,9 @@ const { runInNewContext } = require("node:vm");
 const { createSage } = require("../dist/tools/kernel.js");
 
 test("native positional defaults stay live and preserve missing errors", () => {
-  const source = readFileSync(join(__dirname, "..", "src", "baselib", "errors.py"), "utf8");
+  const source = readFileSync(join(__dirname, "..", "src", "baselib", "bootstrap_shared.py"), "utf8");
   const match = source.match(
-    /^def ρσ_positional_default\(([^)]*)\)\s*->\s*Any:[^]*?return r"""%js ([^]*?)"""/m,
+    /^def ρσ_positional_default\(([^)]*)\):[^]*?return r"""%js ([^]*?)"""/m,
   );
   assert.ok(match);
   const parameters = match[1].replace(/:\s*[^,]+/g, "");

@@ -1,7 +1,7 @@
 # Native omitted-positional default lookup
 
-Base: `929230116` (`agent/python-default-tail-keyword-main`, the source-current
-qualified keyword-prologue candidate).
+Original measurement base: `929230116` (`agent/python-default-tail-keyword-main`).
+Current integration base: `2d8ca82fd` (`origin/main` at the 2026-09-26 replay).
 
 ## Change
 
@@ -18,7 +18,7 @@ the raw helper directly and checks both live replacement and the missing-argumen
 error; the existing compiled integration tests continue to cover Python and Sage
 function-default behavior.
 
-## Controlled measurements
+## Original controlled measurements (2026-09-18)
 
 The shared Linux x64 project host ran Node 26.9.0 and CPython 3.14.4. Ten
 alternating fresh processes ran each exact artifact; the first three samples
@@ -64,5 +64,37 @@ common-call cliff.
   unchanged 400 ms budget. Merge-owned CI must supply the startup/browser
   receipt.
 
-The branch remains queued behind the constructor and keyword-prologue
-candidates and has no stacked PR. It is not a release action.
+That historical receipt applies to the original parent, not the 2026-09-26
+`origin/main` integration. The original local startup measurement was not a
+passing receipt.
+
+## Current-main replay (2026-09-26)
+
+Merged PR #318 already supplies the constructor and keyword-prologue
+prerequisites. The native helper is now in `bootstrap_shared.py`, which is the
+strictly checked raw-host boundary; the Python exception implementation no
+longer embeds raw JavaScript. This relocation preserves the helper body and is
+covered by its direct boundary test and the shared-bootstrap inventory test.
+
+On Linux x64, Node 26.10.0 and CPython 3.14.4, five fresh processes each ran
+`bench/python-call-construction.py` with 100,000 checked iterations per row.
+Times are medians in milliseconds; each Sage.js process warms V8 within its
+cases. These are absolute current-source comparisons, **not** a new paired
+candidate-versus-current-main speedup claim.
+
+| Case | Sage.js | CPython | Sage.js / CPython |
+| --- | ---: | ---: | ---: |
+| positional function, supplied defaults | 20.15 | 6.59 | 3.06x |
+| keyword function, omitted middle default | 35.21 | 7.96 | 4.42x |
+| keyword method, omitted middle default | 93.24 | 8.32 | 11.21x |
+| empty construction | 5.74 | 6.06 | 0.95x |
+| no-op initializer construction | 33.66 | 8.27 | 4.07x |
+| positional initialized construction | 182.01 | 15.24 | 11.94x |
+| keyword initialized construction | 331.28 | 29.29 | 11.31x |
+
+The current build converges in two self-host passes. Merge gates pass with
+911,015/912,000 core-runtime bytes; no budget was changed by this candidate.
+The full routine suite passes, including strict Python, portable tests,
+generated docs, and startup. Eleven fresh startup samples give a normalized
+414.8 ms median against the unchanged 425.0 ms budget. `pnpm architecture:check`
+also passes. This is not a release action.
