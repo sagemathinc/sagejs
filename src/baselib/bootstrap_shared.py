@@ -5,6 +5,26 @@ before builtins. They have no private state or mathematical implementation.
 """
 
 
+def ρσ_native_map_iterator(func, iterators):
+    """Create a resumable host iterator for Python's `map`."""
+    return r"""%js (()=>{
+let direct=typeof func==="function"?func:null;
+function take(){
+ if(iterators.length===1){let item=iterators[0].next();
+  if(item.done)return item;
+  return{value:(direct||ρσ_resolve_callable(func))(item.value),done:false}}
+ let values=[];for(let iterator of iterators){let item=iterator.next();
+  if(item.done)return item;values.push(item.value)}
+ return{value:(direct||ρσ_resolve_callable(func))(...values),done:false}}
+let result={__iter__(){return this},
+ __next__(){let item=take();if(item.done)throw ρσ_exception_value(
+  item.value===undefined?new StopIteration():new StopIteration(item.value));return item.value},
+ next(){try{return take()}catch(error){
+  if(error instanceof StopIteration)return{value:error.value,done:true};throw error}}};
+result[ρσ_iterator_symbol]=result.__iter__;return result
+})()"""
+
+
 def ρσ_machine_extension_method_matches(parent, name, owner, getter, method):
     """Authenticate an unbound method despite fresh bound-wrapper lookups."""
     return r"""%js (() => {

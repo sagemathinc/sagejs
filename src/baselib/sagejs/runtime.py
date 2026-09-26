@@ -51,6 +51,7 @@ are the bootstrap implementation used by older checked-in compilers.
 # globals: ρσ_live_scope_dict, ρσ_named_tuple, ρσ_scope_dict
 # globals: ρσ_unbound_method_adapter
 # globals: ρσ_native_method, ρσ_native_method_adapter
+# globals: ρσ_native_map_iterator
 # globals: ρσ_normalize_integer, ρσ_operator_add_exact, ρσ_operator_mul_exact
 # globals: ρσ_operator_pow_exact, ρσ_repr
 # globals: ρσ_set_class_repr, ρσ_string_find, ρσ_string_primitive
@@ -859,6 +860,7 @@ modular_power = ρσ_modular_power
 modules = ρσ_modules
 native_method = ρσ_native_method
 native_method_adapter = ρσ_native_method_adapter
+native_map_iterator = ρσ_native_map_iterator
 unbound_method_adapter = ρσ_unbound_method_adapter
 non_exception_throw = ρσ_non_exception_throw
 normalize_integer = ρσ_normalize_integer
