@@ -396,6 +396,19 @@ Wasm kernel still declines the unreviewed reactor, and this direct evaluator
 omits the outer kernel-worker IPC. Thus even a favorable result would not
 establish public release eligibility or a promoted performance claim.
 
+The 2026-09-26 15-pair prepared-field run after checked Wasm signed-buffer
+ingress is in
+[`public-api-prepared-development-wasm-ingress-diagnostic.json`](public-api-prepared-development-wasm-ingress-diagnostic.json).
+All 11 frozen fields returned their expected exact groups. The geometric mean
+of per-field Sage.js/PARI median ratios was 7.78, the nearest-rank p90 was
+10.66, and the range was 4.87--18.30. On the 33,768-class composite field,
+the Sage-mode Wasm median was 36.6 ms versus PARI's 4.52 ms. The host's
+one-minute load average was about 4.5 during this run, so these paired raw
+clocks should not be mistaken for quiet-machine release measurements. More
+importantly, the injected reactor and missing outer worker boundary make this
+a development diagnostic, not a claim of public Wasm availability or PARI
+competitiveness.
+
 ## Matched scalar class-number comparison
 
 `run_class_number.py` separately compares the exact scalar Rust count, the
