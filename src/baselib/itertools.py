@@ -127,18 +127,16 @@ def _map_generator(
     *iterables: Iterable[Any],
 ) -> Iterator[Any]:
     iterators = [iter(iterable) for iterable in iterables]
+    exhausted = object()
     done = False
     while not done:
         values = []
         for iterator in iterators:
-            try:
-                values.append(next(iterator))
-            except StopIteration as error:
-                if len(error.args) == 0:
-                    done = True
-                    break
-                else:
-                    raise error  # noqa: B904
+            value = next(iterator, exhausted)
+            if value is exhausted:
+                done = True
+                break
+            values.append(value)
         if not done:
             try:
                 yield func(*values)
