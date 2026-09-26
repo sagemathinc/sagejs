@@ -11,6 +11,7 @@ const root = join(__dirname, "..");
 const program = join(__dirname, "fixtures/re-group-fast.py");
 const oracle = spawnSync(pythonExecutable(), ["-B", program], {
   cwd: root, encoding: "utf8", timeout: 30_000,
+  env: { ...process.env, PYTHONIOENCODING: "utf-8" },
 });
 assert.equal(oracle.status, 0, oracle.stderr || String(oracle.error));
 assert.ok(!oracle.stdout.includes("unexpected value"), oracle.stdout);

@@ -220,14 +220,15 @@ class MatchObject:
                 if index < 0 or index >= len(self._match):
                     raise IndexError("no such group")
                 value = self._match[index]
-            return None if value is None or value is runtime.undefined else str(value)
+            # Native RegExp captures are already Python strings or undefined.
+            return None if value is None or value is runtime.undefined else value
         if not groups:
             groups = (0,)
         values = []
         for group in groups:
             value, unused = self._resolve(group)
             values.append(
-                None if value is None or value is runtime.undefined else str(value)
+                None if value is None or value is runtime.undefined else value
             )
         return values[0] if len(values) == 1 else tuple(values)
 
