@@ -298,6 +298,13 @@ def rust_imaginary_result(
             "the imaginary quadratic discriminant exceeds the Rust service bound"
         )
     request = {"polynomialAscending": polynomial}
+    transports = capability.get("transports")
+    if (
+        operation == "imaginary-class-group"
+        and isinstance(transports, list)
+        and "core-v2" in transports
+    ):
+        request["transport"] = "core-v2"
     try:
         answer = (
             _imaginary_host_call(operation, request)

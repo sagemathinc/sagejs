@@ -304,8 +304,8 @@ performance receipt or permission to omit independent malformed-map checks.
 The internal `core-v2` transport now sends only each reduced form's `a`, `b`,
 and exact class coordinates. The Node host reconstructs the derivable `c`,
 inverse form, and ideal basis before the unchanged independent exact map
-verifier checks the complete group. The ordinary service response and Wasm
-mathematical path remain unchanged. For the 33,768-class field, the serialized
+verifier checks the complete group. The ordinary service response remains
+available. For the 33,768-class field, the serialized
 service response shrank from 2.84 MB to 1.27 MB; separate nine-sample warm
 probes measured about 13.8 ms for service/pipe and 5.3 ms for JSON parsing,
 versus 18.9 ms and 12.0 ms respectively for `packed-v1`. On the frozen
@@ -336,6 +336,15 @@ geometric-mean Sage.js/PARI ratio (8.44 in the preceding diagnostic); the
 [`public-api-prepared-inplace-conversion-diagnostic.json`](public-api-prepared-inplace-conversion-diagnostic.json).
 These are separate-run diagnostics, not a promoted matched speedup claim, and
 the public competitiveness target remains open.
+
+The Rust service now advertises `core-v2` in its imaginary-quadratic capability.
+The public Python dispatcher requests it for class groups only when advertised,
+including through the Wasm host; older services continue to use their ordinary
+response. The same exact map verifier handles the compact result. A direct warm
+Wasm reactor diagnostic on the 33,768-class field measured about 12.3 ms for
+`core-v2` versus 162.9 ms for the ordinary JSON response, with serialized
+responses of 1.27 MB and 7.33 MB respectively. These are reactor timings, not
+public Sage.js API timings or a frozen PARI comparison.
 
 ## Matched scalar class-number comparison
 

@@ -304,6 +304,37 @@ test("core resident map preserves exact ideals with native and Python verificati
   assert.equal(answer.repr, "[True, True, True, True, True]");
 });
 
+test("advertised compact transport is requested without losing exact ideal maps", async () => {
+  const answer = await evaluate([
+    ...fixture,
+    "core = dict(result)",
+    "entries = core.pop('completeClassMap')",
+    "core['completeClassMapCorePacked'] = [value for entry in entries",
+    "    for value in (entry['form']['a'], entry['form']['b'], *entry['coordinates'])]",
+    "core['completeClassMapLength'] = len(entries)",
+    "core['certificate'] = {'discriminant': -23,",
+    "    'reducedFormsPacked': [value for form in forms for value in (form['a'], form['b'], form['c'])]}",
+    "class CompactBackend(Backend):",
+    "    requested_transport = None",
+    "    def call(self, operation, request):",
+    "        if operation == 'capability':",
+    "            answer = super().call(operation, request)",
+    "            answer['imaginaryQuadratic']['transports'] = ['core-v2']",
+    "            return answer",
+    "        if operation == 'imaginary-class-group':",
+    "            self.requested_transport = request.get('transport')",
+    "            assert self.requested_transport == 'core-v2'",
+    "            return {'schema': rust_runtime.HOST_RESPONSE_SCHEMA, 'outcome': 'complete',",
+    "                'operation': operation, 'result': core}",
+    "        return super().call(operation, request)",
+    "compact_backend = CompactBackend()",
+    "setattr(runtime, 'class_group_backend', lambda: compact_backend)",
+    "G = K.class_group(algorithm='rust')",
+    "[compact_backend.requested_transport, G.order(), G(G.gen().ideal()).coordinates()]",
+  ]);
+  assert.equal(answer.repr, "['core-v2', 3, (1,)]");
+});
+
 test("QuadraticField and its maximal order expose the explicit Rust route", async () => {
   const answer = await evaluate([
     ...fixture,

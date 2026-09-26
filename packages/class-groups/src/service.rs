@@ -2024,6 +2024,7 @@ impl ProductService {
                 "proofMode": "unconditional",
                 "maximumAbsoluteDiscriminant": 200_000_000_000_u64,
                 "operations": ["imaginary-class-number", "imaginary-class-group"],
+                "transports": ["core-v2"],
             },
             "operations": ["capability", "open", "summary", "query", "publication", "close", "imaginary-class-number", "imaginary-class-group"],
         })

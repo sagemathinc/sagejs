@@ -7,6 +7,7 @@ test("public imaginary quadratic class groups retain exact ideals in Wasm", asyn
   const sage = await createSage({ timeout: 120_000 });
   try {
     const answer = await sage.evaluate([
+      "from sagejs.number_fields import rust_class_group_runtime as rust_runtime",
       "R.<x> = QQ[]",
       "K.<a> = NumberField(x^2 + 23)",
       "G = K.class_group(algorithm='rust')",
@@ -21,11 +22,13 @@ test("public imaginary quadratic class groups retain exact ideals in Wasm", asyn
       " K.class_number(algorithm='rust'),",
       " K.class_number(), A.algorithm, A(G.gen().ideal()).coordinates(),",
       " Q.class_number(algorithm='rust'), Q.class_group(algorithm='rust').invariants(),",
-      " QuadraticField(-8173415).class_number(algorithm='rust')]",
+      " QuadraticField(-8173415).class_number(algorithm='rust'),",
+      " 'completeClassMapCorePacked' in rust_runtime.rust_imaginary_result(",
+      " K, operation='imaginary-class-group', algorithm='rust')]",
     ].join("\n"));
     assert.equal(
       answer.repr,
-      "[3, (3,), 'exact-unconditional', (1,), (1,), (1,), (2,), (0,), 3, 3, 'rust', (1,), 3, (3,), 4378]",
+      "[3, (3,), 'exact-unconditional', (1,), (1,), (1,), (2,), (0,), 3, 3, 'rust', (1,), 3, (3,), 4378, True]",
     );
   } finally {
     await sage.close();

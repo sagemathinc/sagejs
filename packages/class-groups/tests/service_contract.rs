@@ -64,6 +64,10 @@ fn imaginary_quadratic_operations_are_unconditional_and_public() {
         capability["result"]["imaginaryQuadratic"]["proofMode"],
         "unconditional"
     );
+    assert_eq!(
+        capability["result"]["imaginaryQuadratic"]["transports"],
+        json!(["core-v2"])
+    );
 
     let number = call(
         &mut service,
