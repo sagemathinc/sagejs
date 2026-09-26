@@ -15,6 +15,14 @@ else:
 
 print("span", match.span("first"))
 print("optional span", match.span("optional"))
+print("whole span", match.span())
+print("numbered span", match.span(1))
+try:
+    match.span(3)
+except IndexError as error:
+    print("span error", type(error).__name__, str(error))
+else:
+    raise AssertionError("Match.span accepted an invalid group")
 for args in [(3,), ("missing",), (-1,)]:
     try:
         value = match.group(*args)
