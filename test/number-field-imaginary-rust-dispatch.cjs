@@ -57,6 +57,27 @@ test("parsed numeric service arrays remain exact Python lists without copying", 
   assert.equal(answer.repr, "[True, True, True, True]");
 });
 
+test("compiled imaginary-map packing preserves signed-64-bit word boundaries", async () => {
+  const answer = await evaluate([
+    "import sagejs.runtime as runtime",
+    "from sagejs.kernels.matrix.imaginary_map import verify_packed_imaginary_map",
+    "pack = getattr(verify_packed_imaginary_map, 'packExactInt64Buffer')",
+    "numbers = runtime.json.parse('[-9007199254740991,-4294967297,-4294967296,-1,0,1,4294967296,4294967297,9007199254740991]')",
+    "expected = [-9007199254740991,-4294967297,-4294967296,-1,0,1,4294967296,4294967297,9007199254740991]",
+    "boundary = list(pack(numbers)) == expected",
+    "bigints = list(pack([-(1 << 63), (1 << 63) - 1])) == [-(1 << 63), (1 << 63) - 1]",
+    "rejections = []",
+    "for bad in (True, '1', 1.5, 1 << 63, -(1 << 63) - 1):",
+    "    try:",
+    "        pack([bad])",
+    "        rejections.append(False)",
+    "    except TypeError:",
+    "        rejections.append(True)",
+    "[boundary, bigints, all(rejections)]",
+  ]);
+  assert.equal(answer.repr, "[True, True, True]");
+});
+
 test("explicit Rust quadratic class group retains exact form coordinates and ideals", async () => {
   const answer = await evaluate([
     ...fixture,

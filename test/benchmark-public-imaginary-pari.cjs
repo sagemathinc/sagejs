@@ -47,6 +47,7 @@ test("recorded 15-pair public diagnostics bind the frozen panel and runner", () 
     ["prepared", "public-api-prepared-core-diagnostic.json"],
     ["prepared", "public-api-prepared-direct-core-diagnostic.json"],
     ["prepared", "public-api-prepared-inplace-conversion-diagnostic.json"],
+    ["prepared", "public-api-prepared-wordpack-diagnostic.json"],
   ]) {
     const receipt = require(path.join(directory, filename));
     assert.equal(receipt.promotedPerformanceReceipt, false);

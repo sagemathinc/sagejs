@@ -346,6 +346,18 @@ Wasm reactor diagnostic on the 33,768-class field measured about 12.3 ms for
 responses of 1.27 MB and 7.33 MB respectively. These are reactor timings, not
 public Sage.js API timings or a frozen PARI comparison.
 
+The checked signed-64-bit map ingress now writes safe JavaScript integers into
+the exact typed buffer as two's-complement words, avoiding a `BigInt` allocation
+for each entry; full-range `BigInt` values retain their explicit range check.
+The compiled verifier and Python fallback are unchanged. On the frozen
+15-pair prepared-field public diagnostic, the geometric mean of Sage.js/PARI
+median ratios was 7.51, versus 8.22 in the preceding separate-run diagnostic.
+The 33,768-class composite field measured 24.5 ms for Sage.js and 4.52 ms
+for PARI (previous Sage.js median: 29.0 ms). See
+[`public-api-prepared-wordpack-diagnostic.json`](public-api-prepared-wordpack-diagnostic.json).
+This is a different-run diagnostic, not a controlled attribution or a promoted
+matched receipt; the public PARI-competitiveness target remains open.
+
 ## Matched scalar class-number comparison
 
 `run_class_number.py` separately compares the exact scalar Rust count, the
