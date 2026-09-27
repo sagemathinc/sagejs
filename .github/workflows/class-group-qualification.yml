@@ -8,6 +8,7 @@ on:
       - "packages/flint-wasm/class-group-core*"
       - "packages/flint-wasm/test/quadratic-core-product.test.mjs"
       - "packages/flint-wasm/test/quadratic-core-evaluator.test.mjs"
+      - "packages/flint-wasm/test/browser-quadratic-core-evaluator.mjs"
       - "tools/native-kernel/wasm-pack-loader.mjs"
       - "bench/pari-class-group-rust/qualification/public-quadratic-boundary/benchmark/panel-v2.json"
       - "src/lib/sagejs/number_fields/**"
@@ -22,6 +23,7 @@ on:
       - "packages/flint-wasm/class-group-core*"
       - "packages/flint-wasm/test/quadratic-core-product.test.mjs"
       - "packages/flint-wasm/test/quadratic-core-evaluator.test.mjs"
+      - "packages/flint-wasm/test/browser-quadratic-core-evaluator.mjs"
       - "tools/native-kernel/wasm-pack-loader.mjs"
       - "bench/pari-class-group-rust/qualification/public-quadratic-boundary/benchmark/panel-v2.json"
       - "src/lib/sagejs/number_fields/**"
@@ -80,6 +82,13 @@ jobs:
         run: pnpm install --frozen-lockfile && pnpm build:wasm
       - name: Replay exact ideal classes through Sage-mode evaluation
         run: node --test packages/flint-wasm/test/quadratic-core-evaluator.test.mjs
+      - name: Install the three browser engines
+        run: pnpm exec playwright-core install --with-deps chromium firefox webkit
+      - name: Replay isolated exact ideal classes in all browser engines
+        env:
+          SAGEJS_BROWSER_ENGINES: chromium,firefox,webkit
+          SAGEJS_REQUIRED_BROWSER_ENGINES: chromium,firefox,webkit
+        run: node packages/flint-wasm/test/browser-quadratic-core-evaluator.mjs
 
   routine:
     name: Bounded public cubic corpus
