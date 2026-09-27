@@ -1009,12 +1009,12 @@ def _str_rpartition(string: Any, separator: _Str) -> Any:
 def _str_replace(
     string: Any,
     old: _Str,
-    replacement: _Str,
+    repl: _Str,
     count: Any = runtime.undefined,
 ) -> _Str:
     string = _native_string(string)
     old = _str_require_string(old, "replace")
-    replacement = _str_require_string(replacement, "replace")
+    repl = _str_require_string(repl, "replace")
     if count is runtime.undefined:
         left = runtime.number.MAX_SAFE_INTEGER
     else:
@@ -1025,22 +1025,22 @@ def _str_replace(
         return string
     if old == "":
         pieces = []
-        position = 0
-        while position <= len(string):
+        pos = 0
+        while pos <= len(string):
             if left > 0:
-                pieces.append(replacement)
+                pieces.append(repl)
                 left -= 1
-            if position < len(string):
-                pieces.append(string[position])
-            position += 1
+            if pos < len(string):
+                pieces.append(string[pos])
+            pos += 1
         return _str_join("", pieces)
-    position = 0
+    pos = 0
     while left > 0:
-        found = string.indexOf(old, position)
+        found = string.indexOf(old, pos)
         if found == -1:
             break
-        string = string[:found] + replacement + string[found + len(old) :]
-        position = found + len(replacement)
+        string = string[:found] + repl + string[found + len(old) :]
+        pos = found + len(repl)
         left -= 1
     return string
 
