@@ -524,6 +524,20 @@ assigned to the compiler cache. In particular, repeated construction of the
 number field remains expensive, and neither public boundary is yet
 PARI-competitive.
 
+The compiler can now reuse those stable cells even when its numeric-literal
+pool is present: it gives each execution a fresh pool namespace while still
+constructing the field and the group anew. The unchanged 11-field, 15-pair
+diagnostics are
+[`public-api-polynomial-pooled-repeat-diagnostic.json`](public-api-polynomial-pooled-repeat-diagnostic.json)
+and
+[`public-api-prepared-pooled-repeat-diagnostic.json`](public-api-prepared-pooled-repeat-diagnostic.json).
+All exact answers matched. The polynomial-to-group geometric-mean ratio was
+7.70 Sage.js/PARI (3.27--23.65 across fields), versus 12.40 in the preceding
+separate run. The prepared-field ratio was 3.32, versus 3.39 previously. The
+33,768-class composite field took 22.63 ms versus PARI's 4.60 ms at the full
+boundary. The receipts are unpromoted, and these different-run figures do not
+isolate a causal speedup. Public PARI competitiveness remains open.
+
 ## Matched scalar class-number comparison
 
 `run_class_number.py` separately compares the exact scalar Rust count, the

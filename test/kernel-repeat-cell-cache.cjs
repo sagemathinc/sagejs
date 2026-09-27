@@ -60,7 +60,7 @@ test("repeated Sage cells reuse code but execute fresh state and reports", async
   }
 });
 
-test("Python mode, definitions, and numeric-pool cells are not cached", async () => {
+test("Python mode and definitions are not cached; numeric pools stay distinct", async () => {
   const { evaluator, counts } = await countingEvaluator();
   try {
     const pythonBefore = counts.python;
@@ -76,10 +76,28 @@ test("Python mode, definitions, and numeric-pool cells are not cached", async ()
 
     evaluator.evaluate("x = 0");
     const numericBefore = counts.sage;
-    evaluator.evaluate("x = x + 1\nx");
-    evaluator.evaluate("x = x + 1\nx");
-    evaluator.evaluate("x = x + 1\nx");
-    assert.equal(counts.sage - numericBefore, 3);
+    const numericValues = [];
+    for (let index = 0; index < 5; index += 1) {
+      numericValues.push(evaluator.evaluate("x = x + 1\nx").repr);
+    }
+    assert.deepEqual(numericValues, ["1", "2", "3", "4", "5"]);
+    assert.equal(counts.sage - numericBefore, 2);
+  } finally {
+    evaluator.close();
+  }
+});
+
+test("repeated Sage generator declarations construct fresh number fields", async () => {
+  const { evaluator, counts } = await countingEvaluator();
+  try {
+    evaluator.evaluate("R.<x> = QQ[]");
+    evaluator.evaluate("K.<a> = NumberField(x^2 - x + 12)");
+    const source = "previous = K\nK.<a> = NumberField(x^2 - x + 12)\nK is previous";
+    const before = counts.sage;
+    for (let index = 0; index < 5; index += 1) {
+      assert.equal(evaluator.evaluate(source).repr, "False");
+    }
+    assert.equal(counts.sage - before, 2);
   } finally {
     evaluator.close();
   }

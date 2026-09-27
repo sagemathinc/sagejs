@@ -451,7 +451,8 @@ export function createKernelEvaluator({
     source: string;
     filename: string;
     language: SageLanguageMode;
-    javascript: string;
+    javascriptTemplate: string;
+    pooledNumbers: boolean;
     context: CompilerContextSnapshot;
     report: SageOptimizationReport;
     reportJSON: string;
@@ -496,12 +497,12 @@ export function createKernelEvaluator({
   }
 
   function repeatableSageCell(source: string): boolean {
-    // Reuse only source without compile-time definitions, imports, directives,
-    // or numeric-pool declarations.  A repeated ordinary cell still executes
-    // on every call, so fresh mathematical results and exceptions are retained.
+    // Reuse only source without compile-time definitions, imports, or
+    // directives. A repeated cell still executes on every call, so fresh
+    // mathematical results and exceptions are retained.
     return source.length <= 8192 &&
       !/(?:^|[\s;])(?:class|def|async|import|from|global|nonlocal|del|exec)\b/.test(source) &&
-      !/[%#@`\\]/.test(source);
+      !/[%#@`\\]/.test(source) && !source.includes("ρσ_kernel_");
   }
 
   function parserOptions(
@@ -725,7 +726,12 @@ export function createKernelEvaluator({
       optimizationReport = structuredClone(previous.report);
       finalStatementIsAssignment = previous.finalStatementIsAssignment;
       sourceEndsWithSemicolon = previous.sourceEndsWithSemicolon;
-      return previous.javascript;
+      return previous.pooledNumbers
+        ? previous.javascriptTemplate.replaceAll(
+          "ρσ_kernel_cached_",
+          `ρσ_kernel_${numericLiteralPoolCounter++}_`,
+        )
+        : previous.javascriptTemplate;
     }
     repeatedCell = undefined;
     if (profileOptions && /^[ \t]*%js(?:[ \t]|$)/m.test(source)) {
@@ -808,8 +814,12 @@ export function createKernelEvaluator({
         }
       }
     }
+    const poolPrefix = `ρσ_kernel_${numericLiteralPoolCounter - 1}_`;
+    const pooledNumbers = javascript.includes(poolPrefix);
+    const javascriptTemplate = pooledNumbers
+      ? javascript.replaceAll(poolPrefix, "ρσ_kernel_cached_") : javascript;
     if (repeatable && before &&
-        !javascript.includes("ρσ_kernel_") &&
+        !javascript.replaceAll(poolPrefix, "").includes("ρσ_kernel_") &&
         sameCompilerContext(before, compilerContext())) {
       // The report is diagnostic metadata, not a reason to reject a cell that
       // compiled successfully.  If it cannot be copied or serialized, skip
@@ -821,7 +831,8 @@ export function createKernelEvaluator({
           source,
           filename,
           language,
-          javascript,
+          javascriptTemplate,
+          pooledNumbers,
           context: compilerContext(),
           report,
           reportJSON,
@@ -829,7 +840,7 @@ export function createKernelEvaluator({
           sourceEndsWithSemicolon,
           stable: previous?.source === source &&
             previous.filename === filename && previous.language === language &&
-            previous.javascript === javascript &&
+            previous.javascriptTemplate === javascriptTemplate &&
             previous.reportJSON === reportJSON &&
             sameCompilerContext(previous.context, compilerContext()),
         };
