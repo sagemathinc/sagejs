@@ -93,6 +93,31 @@ test("explicit Rust quadratic class group retains exact form coordinates and ide
   );
 });
 
+test("fixture capability is checked afresh and a later decline is honored", async () => {
+  const answer = await evaluate([
+    ...fixture,
+    "class ChangingBackend(Backend):",
+    "    capability_calls = 0",
+    "    def call(self, operation, request):",
+    "        if operation == 'capability':",
+    "            self.capability_calls += 1",
+    "            if self.capability_calls > 1:",
+    "                return {'schema': rust_runtime.HOST_RESPONSE_SCHEMA, 'outcome': 'error',",
+    "                    'category': 'capability-declined'}",
+    "        return super().call(operation, request)",
+    "changing = ChangingBackend()",
+    "setattr(runtime, 'class_group_backend', lambda: changing)",
+    "first = rust_runtime._imaginary_backend()[1]['proofMode']",
+    "try:",
+    "    rust_runtime._imaginary_backend()",
+    "    declined = False",
+    "except rust_runtime.RustClassGroupCapabilityDecline:",
+    "    declined = True",
+    "[first, changing.capability_calls, declined]",
+  ]);
+  assert.equal(answer.repr, "['unconditional', 2, True]");
+});
+
 test("imaginary NumberField group dispatch reuses its exact quadratic backend", async () => {
   const answer = await evaluate([
     ...fixture,

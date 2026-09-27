@@ -500,12 +500,18 @@ export class NodeClassGroupBackend {
   private output: Uint8Array | undefined;
   private resource: ClassGroupServiceResource | undefined;
   private generation = 0n;
+  private capabilityEpochToken: object = {};
   private readonly sessions = new Map<
     string,
     { generation: string; handle: string }
   >();
   private closed = false;
   private compactTransport: "core-v3" | "core-v2" = "core-v3";
+
+  /** Opaque identity for one live service capability and worker generation. */
+  get capabilityEpoch(): object {
+    return this.capabilityEpochToken;
+  }
 
   /** Select the smallest authenticated map supported by this installed service. */
   callCompactImaginary(request: Record<string, unknown>): Record<string, unknown> {
@@ -629,10 +635,12 @@ export class NodeClassGroupBackend {
     // backend close; the process exit hook still tears down the service group.
     this.worker.unref();
     this.generation += 1n;
+    this.capabilityEpochToken = {};
   }
 
   private retireWorker(): void {
     const worker = this.worker;
+    if (worker !== undefined) this.capabilityEpochToken = {};
     const servicePid = this.control === undefined ? 0 : Atomics.load(this.control, 3);
     if (this.control !== undefined) {
       Atomics.store(this.control, 0, 3);
@@ -845,6 +853,7 @@ export class NodeClassGroupBackend {
   close(): void {
     if (this.closed) return;
     this.closed = true;
+    this.capabilityEpochToken = {};
     this.retireWorker();
   }
 }
@@ -1065,6 +1074,10 @@ export class NodeHostAdapter {
   private readonly environment: Record<string, string> = Object.create(null);
   private readonly multiprocessing: NodeMultiprocessingAdapter;
   private readonly classGroups = new NodeClassGroupBackend();
+
+  get classGroupCapabilityEpoch(): object {
+    return this.classGroups.capabilityEpoch;
+  }
 
   constructor(mode: SageLanguageMode = "sage") {
     this.multiprocessing = new NodeMultiprocessingAdapter(mode);

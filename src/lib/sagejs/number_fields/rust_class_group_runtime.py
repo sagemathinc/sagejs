@@ -196,6 +196,9 @@ def _capability(backend: Any) -> dict[str, Any]:
     )
 
 
+_resident_imaginary_capability_cache: list[Any] = [None, None, None]
+
+
 def _imaginary_backend(backend: Any = None) -> tuple[Any, dict[str, Any], bool]:
     if backend is None:
         try:
@@ -212,11 +215,25 @@ def _imaginary_backend(backend: Any = None) -> tuple[Any, dict[str, Any], bool]:
     use_resident_host = resident_host is not None and runtime.strict_equal(
         resident_host, runtime.reflect.get(runtime.global_object, "__sagejs_host__")
     )
-    capability = (
-        _imaginary_host_call("capability", {})
+    epoch = (
+        runtime.reflect.get(resident_host, "classGroupCapabilityEpoch")
         if use_resident_host
-        else _capability(backend)
+        else runtime.undefined
     )
+    cache = _resident_imaginary_capability_cache
+    if (
+        use_resident_host
+        and epoch is not runtime.undefined
+        and runtime.strict_equal(cache[0], resident_host)
+        and runtime.strict_equal(cache[1], epoch)
+    ):
+        capability = cache[2]
+    else:
+        capability = (
+            _imaginary_host_call("capability", {})
+            if use_resident_host
+            else _capability(backend)
+        )
     imaginary = capability.get("imaginaryQuadratic")
     if (
         capability.get("outcome") != "available"
@@ -227,6 +244,8 @@ def _imaginary_backend(backend: Any = None) -> tuple[Any, dict[str, Any], bool]:
             "the installed Rust service does not advertise unconditional imaginary quadratic groups"
         )
     _canonical_sha256(capability.get("artifactSha256"), "capability artifact identity")
+    if use_resident_host and epoch is not runtime.undefined:
+        cache[0], cache[1], cache[2] = resident_host, epoch, capability
     return backend, imaginary, use_resident_host
 
 

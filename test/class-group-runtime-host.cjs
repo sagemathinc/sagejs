@@ -145,6 +145,7 @@ async function main() {
     const target = {};
     const uninstall = installNodeHost(target);
     const host = target.__sagejs_host__;
+    const initialCapabilityEpoch = host.classGroupCapabilityEpoch;
     const backend = {
       call(operation, request) {
         const envelope = host.call("classGroup", [operation, request]);
@@ -177,12 +178,19 @@ async function main() {
       artifactBytes: fs.statSync(fixture.filename).size,
     });
     assert.equal(fs.existsSync(fixture.startup), false, "capability probe must stay lazy");
+    assert.strictEqual(host.classGroupCapabilityEpoch, initialCapabilityEpoch);
+    assert.equal(backend.call("capability", {}).outcome, "available");
+    assert.strictEqual(host.classGroupCapabilityEpoch, initialCapabilityEpoch);
 
     const imaginary = backend.call("imaginary-class-number", {
       polynomialAscending: ["6", "-1", "1"],
     });
     assert.equal(imaginary.result.classNumber, 3);
     assert.equal(fs.existsSync(fixture.startup), true);
+    const workerCapabilityEpoch = host.classGroupCapabilityEpoch;
+    assert.notStrictEqual(workerCapabilityEpoch, initialCapabilityEpoch);
+    assert.equal(backend.call("capability", {}).outcome, "available");
+    assert.strictEqual(host.classGroupCapabilityEpoch, workerCapabilityEpoch);
 
     const groupRequest = ["imaginary-class-group", { polynomialAscending: ["1", "-1", "1"] }];
     const malformedCompact = host.call("classGroupCompact", ["imaginary-class-group", null]);
@@ -229,13 +237,17 @@ async function main() {
     assert.equal(backend.call("close", binding).outcome, "closed");
     uninstall();
     assert.equal(target.__sagejs_host__, undefined);
+    assert.notStrictEqual(host.classGroupCapabilityEpoch, workerCapabilityEpoch);
     await assertProcessExited(opened.servicePid);
 
     const restarted = new NodeClassGroupBackend();
     const beforeRestart = restarted.call("open", { request: {} });
+    const firstWorkerEpoch = restarted.capabilityEpoch;
     restarted.retireWorker();
+    assert.notStrictEqual(restarted.capabilityEpoch, firstWorkerEpoch);
     await assertProcessExited(beforeRestart.servicePid);
     const afterRestart = restarted.call("open", { request: {} });
+    assert.notStrictEqual(restarted.capabilityEpoch, firstWorkerEpoch);
     assert.notEqual(afterRestart.generation, beforeRestart.generation);
     assert.throws(
       () => restarted.call("publication", {
@@ -255,11 +267,15 @@ async function main() {
     try {
       const result = await session.evaluate([
         "import sagejs.runtime as runtime",
+        "from sagejs.number_fields import rust_class_group_runtime as rust_runtime",
         "backend = runtime.class_group_backend()",
         "capability = backend.call('capability', {})",
         "print(capability['outcome'], capability['route'])",
+        "first_imaginary = rust_runtime._imaginary_backend()[1]",
+        "print('cached-capability', rust_runtime._imaginary_backend()[1] is first_imaginary)",
         "opened = backend.call('open', {'request': {'polynomialAscending': ['-1', '-1', '0', '1']}})",
         "print(opened['handle'], opened['completion']['outcome'])",
+        "print('worker-invalidated', rust_runtime._imaginary_backend()[1] is first_imaginary)",
         "print(backend.call('publication', {'generation': opened['generation'], 'handle': opened['handle']})['schema'])",
         "try:",
         "    backend.call('open', {'request': {'unsafe': 9007199254740993}})",
@@ -268,7 +284,7 @@ async function main() {
       ].join("\n"));
       assert.equal(
         result.stdout.trim(),
-        "available native-resident-worker\n1 complete-conditional-grh\nfixture-publication-v1\nunsafe integer rejected",
+        "available native-resident-worker\ncached-capability True\n1 complete-conditional-grh\nworker-invalidated False\nfixture-publication-v1\nunsafe integer rejected",
       );
     } finally {
       await session.close();
