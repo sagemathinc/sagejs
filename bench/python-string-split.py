@@ -24,3 +24,21 @@ def measure(name, maxsplit):
 measure("unlimited", -1)
 measure("one", 1)
 measure("zero", 0)
+
+
+def measure_whitespace(name, text, maxsplit):
+    for _ in range(3):
+        text.split(None, maxsplit)
+    samples = []
+    for _ in range(5):
+        total = 0
+        started = perf_counter()
+        for _ in range(20_000):
+            total += len(text.split(None, maxsplit))
+        samples.append((perf_counter() - started) * 1000)
+    print(name, round(sorted(samples)[2], 3), total)
+
+
+measure_whitespace("whitespace-unlimited", "a " * 20, -1)
+measure_whitespace("whitespace-one", "a " * 20, 1)
+measure_whitespace("unicode-whitespace", " a\u2003b\u0085c ", -1)
