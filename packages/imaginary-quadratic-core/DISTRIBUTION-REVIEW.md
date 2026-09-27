@@ -69,6 +69,25 @@ same-host, same-toolchain reproducibility and functional evidence only. It
 does not resolve the independent safety, linked-component provenance,
 distribution-license, or public-production packaging decisions below.
 
+On 2026-09-27, a separate macOS 26.4 arm64 host (`m1`) checked out clean
+revision `72fe83cf4e77b1edb72d85dcf4bec513dd7880ec` in a temporary
+directory and built the same crate and `wasm32-wasip1` target with Rust
+1.98.1 (`48a229cea`, LLVM 22.1.8), the same `RUSTFLAGS`, and the official
+WASI SDK 33.0 arm64-macos archive (verified SHA-256
+`85c997a2665ead91673b5bb88b7d0df3fc8900df3bfa244f720d478187bbdc78`).
+Its linker reports the same LLD 22.1.0 revision as the Linux SDK. Two
+independent clean Cargo target directories on `m1` produced byte-identical
+346,801-byte artifacts with SHA-256
+`7e7b0f5ff1be5ecebc79cefd8e5347b7f3417e23b9a49d01a6bf38e435b45369`.
+That hash differs from the 346,869-byte canonical Linux candidate above.
+The difference reaches the function, element, code, and data sections, so it
+cannot be dismissed as only a name or producer-section difference; its cause
+has not been established. The Mac-built artifact passed the Linux structural
+Wasm verifier and all three isolated product/evaluator regressions, including
+Sage-mode exact ideal maps and forged/stale handle rejection. This establishes
+cross-host functional evidence and Mac-local reproducibility, **not**
+cross-host byte identity or approval of either artifact for distribution.
+
 ## Required independent decisions
 
 1. Review `src/reactor.rs`, the host in `packages/flint-wasm`, and the compiled
