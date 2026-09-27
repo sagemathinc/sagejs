@@ -48,6 +48,11 @@ test("evaluation-boundary probe keeps public wall and execution clocks distinct"
 test("phase diagnostic rejects an incomplete map", async () => {
   const sage = {
     async evaluate(source) {
+      if (source.includes("phase_result")) {
+        assert.match(source, /imaginary-class-group-summary/);
+        assert.match(source, /_verify_imaginary_presentation/);
+        return { repr: "[0, 3]" };
+      }
       assert.match(source, /validate_imaginary_group_result/);
       assert.match(source, /get\('reducedFormsPacked', \[\]\)/);
       assert.match(source, /\['classGroupCompact', \['imaginary-class-group', encoded_request\]\]/);
@@ -55,7 +60,9 @@ test("phase diagnostic rejects an incomplete map", async () => {
     },
   };
   await assert.rejects(diagnosePhases(sage, 3), /complete class map/);
-  sage.evaluate = async () => ({ repr: "[12.5, 8.25, 1.5, 3, 3, 0.5, 0.75, 1, 9.5, 3]" });
+  sage.evaluate = async (source) => ({ repr: source.includes("phase_result")
+    ? "[0, 3]"
+    : "[12.5, 8.25, 1.5, 3, 3, 0.5, 0.75, 1, 9.5, 3]" });
   assert.deepEqual(await diagnosePhases(sage, 3), {
     serviceAndConversionMs: 12.5,
     hostServiceMs: 9.5,
@@ -68,4 +75,22 @@ test("phase diagnostic rejects an incomplete map", async () => {
       materializeMs: 1,
     },
   });
+});
+
+test("phase diagnostic reports the compact presentation without requiring an eager map", async () => {
+  const sage = {
+    async evaluate(source) {
+      assert.match(source, /_verify_imaginary_presentation/);
+      assert.doesNotMatch(source, /validate_imaginary_group_result/);
+      return { repr: "[1, 9.5, 4.6, 1.1, 2.2, 33768]" };
+    },
+  };
+  assert.deepEqual(await diagnosePhases(sage, 33768), {
+    publicReceiptMs: 9.5,
+    summaryServiceMs: 4.6,
+    validationMs: 1.1,
+    detachedVerificationMs: 2.2,
+    note: "Summary and detached verification timings come from a separate replay after the public receipt; they are not additive components of publicReceiptMs.",
+  });
+  await assert.rejects(diagnosePhases(sage, 4), /wrong class number/);
 });
