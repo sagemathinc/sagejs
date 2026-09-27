@@ -42,7 +42,8 @@ lines.on("line", (input) => {
     process.stdout.write("{}\\nextra");
     return;
   }
-  if (request.operation === "imaginary-class-group" && ${JSON.stringify(wrongId)}) {
+  if ((request.operation === "imaginary-class-group" ||
+       request.operation === "imaginary-class-number") && ${JSON.stringify(wrongId)}) {
     process.stdout.write(JSON.stringify({ schema: "sagejs.class-groups/service-response-v1", abi: 1,
       id: "wrong-host-id", ok: true, result: {} }) + "\\n");
     return;
@@ -286,6 +287,12 @@ async function main() {
       }),
       (error) => error.code === "EBADMSG",
     );
+    assert.throws(
+      () => corrupt.call("imaginary-class-number", {
+        polynomialAscending: ["6", "-1", "1"],
+      }),
+      (error) => error.code === "EBADMSG",
+    );
     corrupt.close();
     await assertProcessExited(Number(fs.readFileSync(corruptFixture.startup, "utf8")));
 
@@ -295,6 +302,12 @@ async function main() {
     assert.throws(
       () => wrongIdBackend.call("imaginary-class-group", {
         polynomialAscending: ["1", "-1", "1"], transport: "core-v2",
+      }),
+      (error) => error.code === "EBADMSG",
+    );
+    assert.throws(
+      () => wrongIdBackend.call("imaginary-class-number", {
+        polynomialAscending: ["6", "-1", "1"],
       }),
       (error) => error.code === "EBADMSG",
     );

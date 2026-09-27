@@ -275,19 +275,19 @@ function startService() {
     const offset = lineBytes;
     lineBytes += bodyLength;
     if (lineBytes > workerData.responseBytes ||
-        (slot.directPacked && slot.prefixLength + lineBytes > output.length)) {
+        (slot.directServiceResponse && slot.prefixLength + lineBytes > output.length)) {
       failProtocol(corrupt("class-group service response exceeds the byte limit"));
       return;
     }
-    if (slot.directPacked) {
+    if (slot.directServiceResponse) {
       // Keep the service's original bytes in shared memory. The parent checks
-      // the response identity and exact map before publishing the result.
+      // the response identity; the group path also checks its exact map.
       output.set(chunk.subarray(0, bodyLength), slot.prefixLength + offset);
     } else {
       lineChunks.push(chunk.subarray(0, bodyLength));
     }
     if (newline < 0) return;
-    if (slot.directPacked) {
+    if (slot.directServiceResponse) {
       pending.delete(id);
       slot.resolve({ rawLength: slot.prefixLength + lineBytes, id });
       lineBytes = 0;
@@ -341,13 +341,14 @@ function serviceCall(operation, request) {
     operation,
   };
   return new Promise((resolve, reject) => {
-    const directPacked = operation === "imaginary-class-group" &&
-      (request.transport === "core-v2" || request.transport === "core-v3");
-    const prefix = directPacked ? encoder.encode(id + "\n") : undefined;
+    const directServiceResponse = operation === "imaginary-class-number" ||
+      (operation === "imaginary-class-group" &&
+        (request.transport === "core-v2" || request.transport === "core-v3"));
+    const prefix = directServiceResponse ? encoder.encode(id + "\n") : undefined;
     if (prefix !== undefined) output.set(prefix);
     pending.set(id, {
       resolve, reject,
-      directPacked,
+      directServiceResponse,
       prefixLength: prefix?.length ?? 0,
     });
     child.stdin.write(JSON.stringify(message) + "\n", error => {
@@ -407,9 +408,10 @@ async function main() {
         throw new TypeError("invalid class-group host request");
       }
       const response = await serviceCall(envelope.operation, envelope.request);
-      if (envelope.operation === "imaginary-class-group" &&
-          (envelope.request.transport === "core-v2" ||
-            envelope.request.transport === "core-v3")) {
+      if (envelope.operation === "imaginary-class-number" ||
+          (envelope.operation === "imaginary-class-group" &&
+            (envelope.request.transport === "core-v2" ||
+              envelope.request.transport === "core-v3"))) {
         finishRawServiceResponse(response.rawLength);
       } else {
         finish(response.value);
@@ -734,13 +736,14 @@ export class NodeClassGroupBackend {
       this.retireWorker();
       throw classGroupHostError("EBADMSG", "class-group worker returned a corrupt response");
     }
-    const directPacked = operation === "imaginary-class-group" &&
-      (serviceRequest.transport === "core-v2" || serviceRequest.transport === "core-v3");
+    const directServiceResponse = operation === "imaginary-class-number" ||
+      (operation === "imaginary-class-group" &&
+        (serviceRequest.transport === "core-v2" || serviceRequest.transport === "core-v3"));
     let payload: unknown;
     let expectedServiceId: string | undefined;
     try {
       let response = Buffer.from(output.buffer, output.byteOffset, length).toString("utf8");
-      if (directPacked && !response.startsWith("{")) {
+      if (directServiceResponse && !response.startsWith("{")) {
         const separator = response.indexOf("\n");
         const id = response.slice(0, separator);
         if (separator < 0 || !/^host-[1-9][0-9]*$/.test(id) || id.length > 64) {
@@ -763,7 +766,7 @@ export class NodeClassGroupBackend {
       this.retireWorker();
       throw classGroupHostError("EBADMSG", "class-group worker returned an invalid envelope");
     }
-    if (directPacked) {
+    if (directServiceResponse) {
       if (expectedServiceId === undefined) {
         // An unprefixed response is only the worker's own error envelope.
         if (payload.ok) {
@@ -802,7 +805,7 @@ export class NodeClassGroupBackend {
         typeof error.name === "string" ? error.name : "ClassGroupServiceError",
       );
     }
-    const value = directPacked
+    const value = directServiceResponse
       ? payload.schema === "sagejs.class-groups/service-response-v1" &&
         payload.abi === 1 && payload.id === expectedServiceId &&
         !Object.hasOwn(payload, "error") && isPlainRecord(payload.result)
