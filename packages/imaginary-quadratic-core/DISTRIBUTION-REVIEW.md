@@ -88,6 +88,22 @@ Sage-mode exact ideal maps and forged/stale handle rejection. This establishes
 cross-host functional evidence and Mac-local reproducibility, **not**
 cross-host byte identity or approval of either artifact for distribution.
 
+On 2026-09-27, a second Linux x86-64 host (`opt`) checked out clean revision
+`31899d7716e208b3f4d6e59cd6cf44842aa30130` in an isolated temporary
+directory and built the crate with Rust 1.98.1 (`48a229cea`, LLVM 22.1.8),
+the same locked dependencies and `RUSTFLAGS`, and the official WASI SDK 33.0
+Linux x86-64 archive (verified SHA-256
+`0ba8b5bfaeb2adf3f29bab5841d76cf5318ab8e1642ea195f88baba1abd47bce`).
+Its `wasm-ld` SHA-256 was
+`5c965a9e8525c7206aa583f9691f1a7a5e46bd4d793bf65f809b7124c670df26`,
+identical to the canonical Linux linker's digest. A fresh Cargo target
+directory produced exactly the canonical 346,869-byte SHA-256
+`7344622aa162561860fef387e2133d59d1908b1aec71c8c1c15c57b7c98cd201`
+artifact, and `verify-wasm.mjs` passed its structural memory check. This
+establishes reproducibility across two independent Linux hosts with the same
+toolchain inputs. It does not explain the Mac/Linux byte difference or replace
+the independent review and public production benchmarks below.
+
 ## Required independent decisions
 
 1. Review `src/reactor.rs`, the host in `packages/flint-wasm`, and the compiled
