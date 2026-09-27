@@ -550,6 +550,17 @@ all answers matched, and the geometric-mean Sage.js/PARI median ratio was
 speedup, and neither the public path nor the frozen performance target is yet
 PARI-competitive.
 
+A 2026-09-27 source-current 15-pair rerun after the later Wasm-review and
+reference-data commits is in
+[`public-api-polynomial-current-2026-09-27-diagnostic.json`](public-api-polynomial-current-2026-09-27-diagnostic.json).
+It uses the unchanged frozen panel and the same native service digest as the
+preceding diagnostic, but a fresh Sage.js build receipt. All 11 exact answers
+matched. The polynomial-to-public-group geometric-mean Sage.js/PARI median
+ratio was 6.77, with a nearest-rank p90 of 16.38 and a 3.06--16.84 range.
+The host's one-minute load average was 4.49. This is another unpromoted,
+separate-run diagnostic: the small numerical difference from 6.82 is not an
+attributed speedup, and public PARI competitiveness remains open.
+
 ## Matched scalar class-number comparison
 
 `run_class_number.py` separately compares the exact scalar Rust count, the
