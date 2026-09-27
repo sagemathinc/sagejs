@@ -18,7 +18,10 @@ function sha256(filename) {
 }
 
 function parseArguments(argv) {
-  const options = { samples: 15, fieldId: undefined, boundary: "polynomial", receipt: undefined };
+  const options = {
+    samples: 15, fieldId: undefined, boundary: "polynomial",
+    operation: "group", receipt: undefined,
+  };
   for (let index = 0; index < argv.length; index += 1) {
     const flag = argv[index];
     if (flag === "--samples" && argv[index + 1] !== undefined) {
@@ -27,6 +30,8 @@ function parseArguments(argv) {
       options.fieldId = argv[++index];
     } else if (flag === "--boundary" && argv[index + 1] !== undefined) {
       options.boundary = argv[++index];
+    } else if (flag === "--operation" && argv[index + 1] !== undefined) {
+      options.operation = argv[++index];
     } else if (flag === "--receipt" && argv[index + 1] !== undefined) {
       options.receipt = argv[++index];
     } else {
@@ -38,6 +43,9 @@ function parseArguments(argv) {
   }
   if (!new Set(["polynomial", "prepared"]).has(options.boundary)) {
     throw new Error("--boundary must be polynomial or prepared");
+  }
+  if (!new Set(["group", "class-number"]).has(options.operation)) {
+    throw new Error("--operation must be group or class-number");
   }
   if (options.fieldId !== undefined && !panel.fields.some((field) => field.id === options.fieldId)) {
     throw new Error(`unknown frozen field: ${options.fieldId}`);
@@ -145,7 +153,8 @@ class ResidentGp {
   }
 }
 
-function expectedSage(field) {
+function expectedSage(field, operation = "group") {
+  if (operation === "class-number") return String(field.expected.classNumber);
   const factors = field.expected.invariantFactors;
   const tuple = factors.length === 0
     ? "()" : `(${factors.join(", ")}${factors.length === 1 ? "," : ""})`;
@@ -153,34 +162,47 @@ function expectedSage(field) {
     `${tuple}, 'exact-unconditional', 'rust']`;
 }
 
-async function timeSage(sage, field, boundary) {
+async function timeSage(sage, field, boundary, operation) {
   const code = `${boundary === "polynomial" ? `K.<a> = NumberField(${field.pariPolynomial})\n` : ""}` +
-    "G = K.class_group(algorithm='rust')\n" +
-    "[K.discriminant(), G.order(), G.invariants(), G.proof_status, G.algorithm]";
+    (operation === "class-number"
+      ? "K.class_number(algorithm='rust')"
+      : "G = K.class_group(algorithm='rust')\n" +
+        "[K.discriminant(), G.order(), G.invariants(), G.proof_status, G.algorithm]");
   const start = performance.now();
   const response = await sage.evaluate(code);
   const elapsed = Math.round((performance.now() - start) * 1_000_000);
-  if (response.repr !== expectedSage(field)) {
+  if (response.repr !== expectedSage(field, operation)) {
     throw new Error(`wrong Sage.js answer for ${field.id}: ${response.repr}`);
   }
   return elapsed;
 }
 
-async function timePari(gp, field, fieldIndex, sampleIndex, boundary) {
+function scalarPariMethod(field) {
+  return Math.abs(field.expected.discriminant) < 2e10
+    ? "qfbclassno-unconditional" : "bnfinit-conditional";
+}
+
+async function timePari(gp, field, fieldIndex, sampleIndex, boundary, operation) {
   const seed = 2_026_092_600 + fieldIndex * 1000 + sampleIndex;
   const preparation = boundary === "polynomial" ? `nf=nfinit(${field.pariPolynomial});` : "";
-  const code = `setrand(${seed});${preparation}b=bnfinit(nf,0);` +
-    "print([nf.disc,b.no,Vecrev(b.clgp[2])])";
+  const scalar = operation === "class-number";
+  const method = scalar && scalarPariMethod(field);
+  const body = method === "qfbclassno-unconditional"
+    ? "h=qfbclassno(nf.disc,0);print([nf.disc,h])"
+    : "b=bnfinit(nf,0);" +
+      (scalar ? "print([nf.disc,b.no])" : "print([nf.disc,b.no,Vecrev(b.clgp[2])])");
+  const code = `setrand(${seed});${preparation}${body}`;
   const start = performance.now();
   const line = await gp.query(code);
   const elapsed = Math.round((performance.now() - start) * 1_000_000);
   let result;
   try { result = JSON.parse(line); }
   catch { throw new Error(`PARI returned non-JSON output: ${line}`); }
-  if (!Array.isArray(result) || result.length !== 3 ||
+  if (!Array.isArray(result) || result.length !== (scalar ? 2 : 3) ||
       result[0] !== field.expected.discriminant ||
       result[1] !== field.expected.classNumber ||
-      JSON.stringify(result[2]) !== JSON.stringify(field.expected.invariantFactors)) {
+      (!scalar && JSON.stringify(result[2]) !==
+        JSON.stringify(field.expected.invariantFactors))) {
     throw new Error(`wrong PARI answer for ${field.id}: ${line}`);
   }
   return elapsed;
@@ -211,7 +233,7 @@ async function main() {
     await sage.evaluate("R.<x> = QQ[]");
     for (const [fieldIndex, field] of panel.fields.entries()) {
       if (options.fieldId !== undefined && field.id !== options.fieldId) continue;
-      process.stderr.write(`measuring ${field.id} (${options.boundary})\n`);
+      process.stderr.write(`measuring ${field.id} (${options.boundary}, ${options.operation})\n`);
       if (options.boundary === "prepared") {
         await sage.evaluate(`K.<a> = NumberField(${field.pariPolynomial})`);
         const discriminant = Number(await gp.query(
@@ -221,17 +243,19 @@ async function main() {
           throw new Error(`wrong prepared PARI discriminant for ${field.id}`);
         }
       }
-      await timeSage(sage, field, options.boundary);
-      await timePari(gp, field, fieldIndex, 0, options.boundary);
+      await timeSage(sage, field, options.boundary, options.operation);
+      await timePari(gp, field, fieldIndex, 0, options.boundary, options.operation);
       const sageNanoseconds = [];
       const pariNanoseconds = [];
       for (let sample = 0; sample < options.samples; sample += 1) {
         const order = sample % 2 === 0 ? ["sagejs", "pari"] : ["pari", "sagejs"];
         for (const arm of order) {
           if (arm === "sagejs") {
-            sageNanoseconds.push(await timeSage(sage, field, options.boundary));
+            sageNanoseconds.push(await timeSage(sage, field, options.boundary, options.operation));
           } else {
-            pariNanoseconds.push(await timePari(gp, field, fieldIndex, sample + 1, options.boundary));
+            pariNanoseconds.push(await timePari(
+              gp, field, fieldIndex, sample + 1, options.boundary, options.operation,
+            ));
           }
         }
       }
@@ -240,6 +264,7 @@ async function main() {
       results.push({
         fieldId: field.id,
         expected: field.expected,
+        ...(options.operation === "class-number" ? { pariMethod: scalarPariMethod(field) } : {}),
         sageNanoseconds,
         pariNanoseconds,
         sageMedianNanoseconds,
@@ -253,14 +278,19 @@ async function main() {
     await gp.close();
   }
   const output = {
-    schema: "sagejs.public-quadratic/public-sagejs-pari-diagnostic-v1",
+    schema: options.operation === "group"
+      ? "sagejs.public-quadratic/public-sagejs-pari-diagnostic-v1"
+      : "sagejs.public-quadratic/public-sagejs-pari-scalar-diagnostic-v1",
     promotedPerformanceReceipt: false,
     panelSchema: panel.schema,
     panelSha256: sha256(path.join(__dirname, "panel-v2.json")),
-    boundary: options.boundary === "polynomial"
-      ? "warm-resident-polynomial-to-public-class-group-and-projection-v1"
-      : "warm-resident-prepared-field-to-public-class-group-and-projection-v1",
-    caveat: "Both arms include interpreter evaluation and exact result projection. Sage.js additionally authenticates and retains a complete ideal-class map; PARI computes rank-zero units and regulator but does not project a complete map. Resident Node/Sage.js and GP have different IPC costs. This diagnostic is not the promoted matched native receipt.",
+    boundary: `warm-resident-${options.boundary}-to-public-${
+      options.operation === "group" ? "class-group-and-projection" : "class-number"
+    }-v1`,
+    caveat: options.operation === "group"
+      ? "Both arms include interpreter evaluation and exact result projection. Sage.js additionally authenticates and retains a complete ideal-class map; PARI computes rank-zero units and regulator but does not project a complete map. Resident Node/Sage.js and GP have different IPC costs. This diagnostic is not the promoted matched native receipt."
+      : "Both arms start from the same public polynomial or prepared field and include interpreter evaluation. For |D| < 2e10 PARI uses unconditional qfbclassno(D,0); larger rows project a GRH-conditional bnfinit(nf,0) full-group result, whereas Sage.js computes an unconditional scalar. Resident IPC costs differ. This mixed-method diagnostic is not a promoted parity receipt.",
+    operation: options.operation,
     samplesPerArmPerField: options.samples,
     runnerSha256: sha256(__filename),
     sageBuildReceiptSha256: sha256(path.join(root, "dist/build-receipt.json")),
@@ -293,6 +323,7 @@ module.exports = {
   parseArguments,
   median,
   expectedSage,
+  scalarPariMethod,
   sha256,
   verifyPariIdentity,
   ResidentGp,

@@ -109,6 +109,21 @@ test("imaginary NumberField group dispatch reuses its exact quadratic backend", 
   assert.equal(answer.repr, "[True, True, 3, (3,), 2, True, True]");
 });
 
+test("fresh imaginary NumberField scalars avoid a generic maximal order", async () => {
+  const answer = await evaluate([
+    ...fixture,
+    "L = NumberField(2*x^2 - 2*x + 12, 'b')",
+    "automatic = L.class_number()",
+    "order_not_forced = runtime.reflect.get(L, '_maximal_order_cache') is runtime.undefined",
+    "backend_reused = L._quadratic_backend_cache is not runtime.undefined",
+    "explicit = L.class_number(algorithm='rust')",
+    "order_still_not_forced = runtime.reflect.get(L, '_maximal_order_cache') is runtime.undefined",
+    "[automatic, explicit, order_not_forced, backend_reused,",
+    " order_still_not_forced, L.discriminant() == L.maximal_order().discriminant()]",
+  ]);
+  assert.equal(answer.repr, "[3, 3, True, True, True, True]");
+});
+
 test("cached quadratic discriminant agrees with the general certified order", async () => {
   const answer = await evaluate([
     "import sagejs.runtime as runtime",

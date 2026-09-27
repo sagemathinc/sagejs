@@ -575,6 +575,23 @@ the prepared-field ratio was 3.41, versus 3.32 in its earlier separate run.
 These diagnostics do not isolate a causal speedup or establish public PARI
 competitiveness, and neither is a promoted performance receipt.
 
+The public scalar `NumberField.class_number()` route also reuses that exact
+quadratic backend before checking its cache or requesting the Rust result.
+This avoids forcing a generic maximal order on a fresh imaginary-quadratic
+field. The separate 11-field, 15-pair resident public-call diagnostics are
+[`public-api-polynomial-class-number-exact-backend-diagnostic.json`](public-api-polynomial-class-number-exact-backend-diagnostic.json)
+and
+[`public-api-prepared-class-number-exact-backend-diagnostic.json`](public-api-prepared-class-number-exact-backend-diagnostic.json).
+All answers matched. Among the seven fields below `2*10^10`, where PARI uses
+its documented-unconditional `qfbclassno(D,0)`, the geometric-mean
+Sage.js/PARI median ratios were 18.89 for fresh-polynomial calls and 8.06 for
+prepared-field calls. Among the four larger fields, PARI's `bnfinit(nf,0)`
+class-number projection is GRH-conditional and computes a full group; the
+ratios were 1.44 and 0.66, respectively. These distinct PARI methods should
+not be pooled into a parity claim. Both receipts are unpromoted, include
+resident interpreter/IPC costs, and show that the public scalar path is not
+yet competitive with PARI's small-discriminant scalar path.
+
 ## Matched scalar class-number comparison
 
 `run_class_number.py` separately compares the exact scalar Rust count, the

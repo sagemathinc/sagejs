@@ -2889,6 +2889,14 @@ class NumberFieldParent(sage.Parent):
                 answer[name[len(prefix) :]] = runtime.reflect.get(limits, name)
         return answer
 
+    def _imaginary_rust_request_field(self, algorithm: str, limits: Any) -> Any:
+        """Reuse the exact quadratic backend for a native scalar or group request."""
+        if self._degree == 2 and algorithm in ("auto", "rust") and len(limits) == 0:
+            constant, linear = self._defining_coefficients[:2]
+            if linear * linear - 4 * constant < 0:
+                return self._quadratic_backend()[0]
+        return self
+
     def class_group(
         self,
         proof: Any = None,
@@ -2905,15 +2913,7 @@ class NumberFieldParent(sage.Parent):
             and self.discriminant() < 0
         ):
             return self._class_group_cache
-        imaginary_rust_field = self
-        if self.degree() == 2 and algorithm in ("auto", "rust") and len(limits) == 0:
-            constant, linear = self._defining_coefficients[:2]
-            if linear * linear - 4 * constant < 0:
-                # The full quadratic group binds to this exact backend below
-                # anyway. Its squarefree radicand already determines the
-                # field discriminant, so do not first construct a general
-                # maximal order just to prepare the Rust request.
-                imaginary_rust_field = self._quadratic_backend()[0]
+        imaginary_rust_field = self._imaginary_rust_request_field(algorithm, limits)
         imaginary_rust = _nf_rust_class_group_runtime_module().rust_imaginary_result(
             imaginary_rust_field,
             operation="imaginary-class-group",
@@ -3087,12 +3087,12 @@ class NumberFieldParent(sage.Parent):
         algorithm: str = "auto",
         **limits: Any,
     ) -> int:
+        imaginary_rust_field = self._imaginary_rust_request_field(algorithm, limits)
         use_imaginary_cache = (
             proof is None
             and algorithm == "auto"
             and len(limits) == 0
-            and self.degree() == 2
-            and self.discriminant() < 0
+            and imaginary_rust_field is not self
         )
         if (
             use_imaginary_cache
@@ -3100,7 +3100,7 @@ class NumberFieldParent(sage.Parent):
         ):
             return int(self._imaginary_quadratic_class_number_cache)
         imaginary_rust = _nf_rust_class_group_runtime_module().rust_imaginary_result(
-            self,
+            imaginary_rust_field,
             operation="imaginary-class-number",
             algorithm=algorithm,
             options=limits,
