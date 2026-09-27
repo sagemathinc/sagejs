@@ -109,19 +109,72 @@ test("imaginary NumberField group dispatch reuses its exact quadratic backend", 
   assert.equal(answer.repr, "[True, True, 3, (3,), 2, True, True]");
 });
 
-test("fresh imaginary NumberField scalars avoid a generic maximal order", async () => {
+test("fresh imaginary NumberField scalars avoid both general and quadratic field setup", async () => {
   const answer = await evaluate([
     ...fixture,
     "L = NumberField(2*x^2 - 2*x + 12, 'b')",
     "automatic = L.class_number()",
     "order_not_forced = runtime.reflect.get(L, '_maximal_order_cache') is runtime.undefined",
-    "backend_reused = L._quadratic_backend_cache is not runtime.undefined",
+    "backend_not_constructed = runtime.reflect.get(L, '_quadratic_backend_cache') is runtime.undefined",
     "explicit = L.class_number(algorithm='rust')",
     "order_still_not_forced = runtime.reflect.get(L, '_maximal_order_cache') is runtime.undefined",
-    "[automatic, explicit, order_not_forced, backend_reused,",
-    " order_still_not_forced, L.discriminant() == L.maximal_order().discriminant()]",
+    "[automatic, explicit, order_not_forced, backend_not_constructed,",
+    " order_still_not_forced, L.discriminant(),",
+    " L.discriminant() == L.maximal_order().discriminant()]",
   ]);
-  assert.equal(answer.repr, "[3, 3, True, True, True, True]");
+  assert.equal(answer.repr, "[3, 3, True, True, True, -23, True]");
+});
+
+test("rational nonmonic scalar discriminant agrees with the independent order", async () => {
+  const answer = await evaluate([
+    ...fixture,
+    "class Backend68(Backend):",
+    "    def call(self, operation, request):",
+    "        if operation == 'capability':",
+    "            return super().call(operation, request)",
+    "        assert operation == 'imaginary-class-number'",
+    "        assert request['polynomialAscending'] == ['17', '0', '1']",
+    "        return {'schema': rust_runtime.HOST_RESPONSE_SCHEMA, 'outcome': 'complete',",
+    "            'operation': operation, 'result': {'discriminant': -68,",
+    "            'classNumber': 4, 'proofStatus': 'unconditional-complete'}}",
+    "backend = Backend68()",
+    "L = NumberField(QQ(1,2)*x^2 + QQ(1,3)*x + 1, 'b')",
+    "h = L.class_number(algorithm='rust')",
+    "backend_not_constructed = runtime.reflect.get(L, '_quadratic_backend_cache') is runtime.undefined",
+    "order_not_forced = runtime.reflect.get(L, '_maximal_order_cache') is runtime.undefined",
+    "[h, L.discriminant(), backend_not_constructed, order_not_forced,",
+    " L.discriminant() == L.maximal_order().discriminant()]",
+  ]);
+  assert.equal(answer.repr, "[4, -68, True, True, True]");
+});
+
+test("scalar-first dispatch retains the complete exact ideal-class map", async () => {
+  const answer = await evaluate([
+    ...fixture,
+    "L = NumberField(2*x^2 - 2*x + 12, 'b')",
+    "h = L.class_number()",
+    "G = L.class_group()",
+    "[h, G.order(), G.invariants(), G(G.gen().ideal()).coordinates(),",
+    " L.discriminant(), L._quadratic_backend_cache is not runtime.undefined]",
+  ]);
+  assert.equal(answer.repr, "[3, 3, (3,), (1,), -23, True]");
+});
+
+test("scalar discriminants with square factors match certified maximal orders", async () => {
+  const answer = await evaluate([
+    "import sagejs.runtime as runtime",
+    "R.<x> = QQ[]",
+    "matches = []",
+    "for d in (-3, -4, -7, -8, -12, -18, -20, -28, -45, -75):",
+    "    L = NumberField(x^2 - d, 'a')",
+    "    request = L._imaginary_rust_scalar_request_field('rust', {})",
+    "    no_backend = runtime.reflect.get(L, '_quadratic_backend_cache') is runtime.undefined",
+    "    no_order = runtime.reflect.get(L, '_maximal_order_cache') is runtime.undefined",
+    "    matches.append(no_backend and no_order and",
+    "        request.discriminant() == L.maximal_order().discriminant())",
+    "[len(matches), all(matches)]",
+  ]);
+  assert.equal(answer.repr, "[10, True]");
 });
 
 test("cached quadratic discriminant agrees with the general certified order", async () => {

@@ -91,9 +91,14 @@ test("recorded 15-pair public diagnostics bind the frozen panel and runner", () 
 });
 
 test("scalar public diagnostics bind exact answers, method, panel, and current runner", () => {
-  for (const boundary of ["polynomial", "prepared"]) {
+  for (const [boundary, phase] of [
+    ["polynomial", "exact-backend"],
+    ["prepared", "exact-backend"],
+    ["polynomial", "scalar-only-discriminant"],
+    ["prepared", "scalar-only-discriminant"],
+  ]) {
     const receipt = require(path.join(directory,
-      `public-api-${boundary}-class-number-exact-backend-diagnostic.json`));
+      `public-api-${boundary}-class-number-${phase}-diagnostic.json`));
     assert.equal(receipt.schema,
       "sagejs.public-quadratic/public-sagejs-pari-scalar-diagnostic-v1");
     assert.equal(receipt.promotedPerformanceReceipt, false);

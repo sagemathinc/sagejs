@@ -575,10 +575,12 @@ the prepared-field ratio was 3.41, versus 3.32 in its earlier separate run.
 These diagnostics do not isolate a causal speedup or establish public PARI
 competitiveness, and neither is a promoted performance receipt.
 
-The public scalar `NumberField.class_number()` route also reuses that exact
-quadratic backend before checking its cache or requesting the Rust result.
-This avoids forcing a generic maximal order on a fresh imaginary-quadratic
-field. The separate 11-field, 15-pair resident public-call diagnostics are
+The previous public scalar `NumberField.class_number()` route reused that
+exact quadratic backend before requesting the Rust result. This avoided
+forcing a generic maximal order on a fresh imaginary-quadratic field, but
+constructed a full `QuadraticField` even though a scalar request only needs
+the exact field discriminant. The separate 11-field, 15-pair resident
+public-call diagnostics for that route are
 [`public-api-polynomial-class-number-exact-backend-diagnostic.json`](public-api-polynomial-class-number-exact-backend-diagnostic.json)
 and
 [`public-api-prepared-class-number-exact-backend-diagnostic.json`](public-api-prepared-class-number-exact-backend-diagnostic.json).
@@ -591,6 +593,23 @@ ratios were 1.44 and 0.66, respectively. These distinct PARI methods should
 not be pooled into a parity claim. Both receipts are unpromoted, include
 resident interpreter/IPC costs, and show that the public scalar path is not
 yet competitive with PARI's small-discriminant scalar path.
+
+The scalar route now computes and caches only the exact quadratic field
+discriminant for its Rust request. It does not construct a `QuadraticField` or
+general maximal order; a later full-group call still builds the ordinary
+quadratic backend and retains its complete ideal-class map. The independent
+order discriminant and nonmonic rational inputs are checked in regression
+tests. The new 11-field, 15-pair diagnostics are
+[`public-api-polynomial-class-number-scalar-only-discriminant-diagnostic.json`](public-api-polynomial-class-number-scalar-only-discriminant-diagnostic.json)
+and
+[`public-api-prepared-class-number-scalar-only-discriminant-diagnostic.json`](public-api-prepared-class-number-scalar-only-discriminant-diagnostic.json).
+Every answer matched. The seven unconditional `qfbclassno` rows have
+Sage.js/PARI median-ratio geometric means of 13.95 from fresh polynomials
+and 7.71 from prepared fields, versus 18.89 and 8.06 in the preceding
+separate run. On the four larger, conditional PARI `bnfinit` projection rows,
+the ratios are 1.17 and 0.67, versus 1.44 and 0.66. These unpromoted
+different-run diagnostics do not isolate a causal speedup or establish PARI
+competitiveness; the scalar and full-group PARI methods remain distinct.
 
 The same scalar operation was measured through an injected development-only
 Wasm evaluator in
