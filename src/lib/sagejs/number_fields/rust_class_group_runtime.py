@@ -302,6 +302,8 @@ def rust_imaginary_result(
             return None
         raise
     if operation not in capability.get("operations", ()):
+        if algorithm == "auto":
+            return None
         raise RustClassGroupCapabilityDecline(
             "the installed Rust service does not support " + operation
         )

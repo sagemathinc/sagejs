@@ -118,6 +118,42 @@ test("fixture capability is checked afresh and a later decline is honored", asyn
   assert.equal(answer.repr, "['unconditional', 2, True]");
 });
 
+test("automatic imaginary dispatch falls back when the service omits an operation", async () => {
+  const answer = await evaluate([
+    ...fixture,
+    "class PartialBackend(Backend):",
+    "    def __init__(self, supported):",
+    "        self.supported = supported",
+    "    def call(self, operation, request):",
+    "        answer = super().call(operation, request)",
+    "        if operation == 'capability':",
+    "            answer['imaginaryQuadratic']['operations'] = [self.supported]",
+    "        return answer",
+    "results = []",
+    "for supported, missing in [('imaginary-class-number', 'imaginary-class-group'),",
+    "                           ('imaginary-class-group', 'imaginary-class-number')]:",
+    "    partial = PartialBackend(supported)",
+    "    results.append(rust_runtime.rust_imaginary_result(K, operation=missing,",
+    "        algorithm='auto', backend=partial) is None)",
+    "    try:",
+    "        rust_runtime.rust_imaginary_result(K, operation=missing,",
+    "            algorithm='rust', backend=partial)",
+    "        results.append(False)",
+    "    except rust_runtime.RustClassGroupCapabilityDecline:",
+    "        results.append(True)",
+    "setattr(runtime, 'class_group_backend',",
+    "    lambda: PartialBackend('imaginary-class-number'))",
+    "fallback_group = NumberField(x^2 + 23, 'b').class_group()",
+    "setattr(runtime, 'class_group_backend',",
+    "    lambda: PartialBackend('imaginary-class-group'))",
+    "fallback_number = NumberField(x^2 + 23, 'c').class_number()",
+    "results.extend([fallback_group.order() == 3,",
+    "    fallback_group.algorithm == 'quadratic-forms', fallback_number == 3])",
+    "results",
+  ]);
+  assert.equal(answer.repr, "[True, True, True, True, True, True, True]");
+});
+
 test("imaginary NumberField group dispatch reuses its exact quadratic backend", async () => {
   const answer = await evaluate([
     ...fixture,
