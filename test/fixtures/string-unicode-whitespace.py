@@ -8,8 +8,12 @@ def codes(parts):
 spaces = " \t\n\r\x0b\x0c\x1c\x1d\x1e\x1f\x85\xa0\u1680\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200a\u2028\u2029\u202f\u205f\u3000"
 for space in spaces:
     text = "a" + space + "b"
-    print(ord(space), space.isspace(), text.split(), text.split(None, 1))
-    print(text.rsplit(None, 1), text.strip(), (space + "a" + space).strip())
+    print(ord(space), space.isspace(), codes(text.split()), codes(text.split(None, 1)))
+    print(
+        codes(text.rsplit(None, 1)),
+        [ord(character) for character in text.strip()],
+        [ord(character) for character in (space + "a" + space).strip()],
+    )
 
 for text in ("", "  ", " a b ", "a\ufeffb", "\ufeff", " a\ufeffb "):
     print(
