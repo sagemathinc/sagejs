@@ -94,58 +94,80 @@ test("the quadratic reactor rejects forged and stale guest pointers", {
     });
     wasi.initialize(instance);
     const { memory, sagejs_class_group_alloc: alloc,
+      sagejs_class_group_abi_version: abiVersion,
+      sagejs_class_group_allocation_length: allocationLength,
       sagejs_class_group_run_json: run,
       sagejs_class_group_dealloc: dealloc } = instance.exports;
+    assert.equal(abiVersion(), 2);
+    const pointerOf = (handle) => Number(handle & 0xffff_ffffn);
+    const replacePointer = (handle, pointer) =>
+      (handle & ~0xffff_ffffn) | BigInt(pointer);
     const request = new TextEncoder().encode(JSON.stringify({
       schema: "sagejs.class-groups/service-request-v1",
       abi: 1,
       id: "owned-pointer-test",
       operation: "capability",
     }));
-    const inputPointer = alloc(request.length);
-    assert.ok(inputPointer > 0);
+    const inputHandle = alloc(request.length);
+    const inputPointer = pointerOf(inputHandle);
+    assert.ok(inputHandle > 0n && inputPointer > 0);
+    assert.equal(allocationLength(inputHandle), 0);
     new Uint8Array(memory.buffer, inputPointer, request.length).set(request);
-    const invoke = (pointer, length) => {
-      const packed = BigInt.asUintN(64, run(pointer, length));
-      const outputPointer = Number(packed & 0xffff_ffffn);
-      const outputLength = Number(packed >> 32n);
+    const invoke = (handle, length) => {
+      const outputHandle = BigInt.asUintN(64, run(handle, length));
+      const outputPointer = pointerOf(outputHandle);
+      const outputLength = allocationLength(outputHandle);
       assert.ok(outputPointer > 0 && outputLength > 0);
       const result = JSON.parse(new TextDecoder().decode(
         new Uint8Array(memory.buffer, outputPointer, outputLength),
       ));
-      return { outputPointer, outputLength, result };
+      return { outputHandle, outputPointer, outputLength, result };
     };
-    const forged = invoke(inputPointer + 1, request.length - 1);
+    const forged = invoke(replacePointer(inputHandle, inputPointer + 1), request.length - 1);
     assert.equal(forged.result.ok, false);
-    dealloc(forged.outputPointer, forged.outputLength);
-    const wrongLength = invoke(inputPointer, request.length - 1);
+    dealloc(forged.outputHandle, forged.outputLength);
+    const wrongLength = invoke(inputHandle, request.length - 1);
     assert.equal(wrongLength.result.ok, false);
-    dealloc(wrongLength.outputPointer, wrongLength.outputLength);
+    dealloc(wrongLength.outputHandle, wrongLength.outputLength);
 
-    dealloc(inputPointer + 1, request.length - 1);
-    dealloc(inputPointer, request.length - 1);
-    const valid = invoke(inputPointer, request.length);
+    dealloc(replacePointer(inputHandle, inputPointer + 1), request.length - 1);
+    dealloc(inputHandle, request.length - 1);
+    const valid = invoke(inputHandle, request.length);
     assert.equal(valid.result.ok, true);
+    assert.equal(allocationLength(valid.outputHandle + (1n << 32n)), 0);
     assert.equal(valid.result.result.imaginaryQuadratic.proofMode, "unconditional");
-    const wrongKind = invoke(valid.outputPointer, valid.outputLength);
+    const wrongKind = invoke(valid.outputHandle, valid.outputLength);
     assert.equal(wrongKind.result.ok, false);
-    dealloc(wrongKind.outputPointer, wrongKind.outputLength);
-    dealloc(valid.outputPointer, valid.outputLength - 1);
+    dealloc(wrongKind.outputHandle, wrongKind.outputLength);
+    dealloc(valid.outputHandle, valid.outputLength - 1);
     assert.equal(new Uint8Array(memory.buffer, valid.outputPointer, 1)[0], 123);
-    dealloc(valid.outputPointer, valid.outputLength);
-    dealloc(valid.outputPointer, valid.outputLength);
-    dealloc(inputPointer, request.length);
-    const stale = invoke(inputPointer, request.length);
+    dealloc(valid.outputHandle, valid.outputLength);
+    dealloc(valid.outputHandle, valid.outputLength);
+    dealloc(inputHandle, request.length);
+    const stale = invoke(inputHandle, request.length);
     assert.equal(stale.result.ok, false);
-    dealloc(stale.outputPointer, stale.outputLength);
-    assert.equal(alloc(0), 0);
-    assert.equal(alloc(1024 * 1024 + 1), 0);
+    dealloc(stale.outputHandle, stale.outputLength);
+    assert.equal(alloc(0), 0n);
+    assert.equal(alloc(1024 * 1024 + 1), 0n);
+    const replacement = alloc(request.length);
+    assert.ok(replacement > 0n && replacement !== inputHandle);
+    assert.equal(pointerOf(replacement), inputPointer,
+      "the regression must exercise a recycled Wasm allocation address");
+    new Uint8Array(memory.buffer, pointerOf(replacement), request.length).set(request);
+    const staleAfterReuse = invoke(inputHandle, request.length);
+    assert.equal(staleAfterReuse.result.ok, false);
+    dealloc(staleAfterReuse.outputHandle, staleAfterReuse.outputLength);
+    dealloc(inputHandle, request.length);
+    const afterStaleDealloc = invoke(replacement, request.length);
+    assert.equal(afterStaleDealloc.result.ok, true);
+    dealloc(afterStaleDealloc.outputHandle, afterStaleDealloc.outputLength);
+    dealloc(replacement, request.length);
     const held = Array.from({ length: 8 }, () => alloc(1));
-    assert.ok(held.every((pointer) => pointer > 0));
-    assert.equal(alloc(1), 0);
-    for (const pointer of held) dealloc(pointer, 1);
+    assert.ok(held.every((handle) => handle > 0n));
+    assert.equal(alloc(1), 0n);
+    for (const handle of held) dealloc(handle, 1);
     const recovered = alloc(1);
-    assert.ok(recovered > 0);
+    assert.ok(recovered > 0n);
     dealloc(recovered, 1);
   } finally {
     wasi.dispose();

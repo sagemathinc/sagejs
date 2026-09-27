@@ -19,7 +19,7 @@
     "declared-ffi-resource": 37,
     "napi-export": 358,
     "runtime-intrinsic": 148,
-    "rust-abi-export": 42,
+    "rust-abi-export": 43,
     "rust-abi-import": 74,
     "wasm-export": 74
   },
@@ -14054,6 +14054,16 @@
       "abi": "C",
       "export": "sagejs_class_group_alloc",
       "symbol": "sagejs_class_group_alloc",
+      "disposition": "experimental-rust-qualification-abi"
+    },
+    {
+      "id": "rust-abi-export:packages/imaginary-quadratic-core/src/reactor.rs:sagejs_class_group_allocation_length",
+      "kind": "rust-abi-export",
+      "path": "packages/imaginary-quadratic-core/src/reactor.rs",
+      "package": "@sagemath/sagejs",
+      "abi": "C",
+      "export": "sagejs_class_group_allocation_length",
+      "symbol": "sagejs_class_group_allocation_length",
       "disposition": "experimental-rust-qualification-abi"
     },
     {

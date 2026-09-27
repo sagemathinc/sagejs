@@ -7,9 +7,9 @@ license opinion, artifact-derived SBOM, or distribution approval.
 ## Exact candidate and reproducible checks
 
 The current `wasm32-wasip1` candidate is
-`target/wasm32-wasip1/release/sagejs_imaginary_quadratic_core.wasm`, 346,369
+`target/wasm32-wasip1/release/sagejs_imaginary_quadratic_core.wasm`, 346,869
 bytes, SHA-256
-`4d07126dd06af23b9460ef0a2feb3aa58e1949dd8dfa891efcf5ec157f9941bc`.
+`7344622aa162561860fef387e2133d59d1908b1aec71c8c1c15c57b7c98cd201`.
 This digest identifies one development build, not a production release. Rebuild
 and review any changed digest. Run:
 
@@ -37,8 +37,10 @@ macros, so the graph must not be misrepresented as a list of code present in
 the final Wasm bytes.
 
 The artifact imports only `environ_get`, `environ_sizes_get`, `fd_write`, and
-`proc_exit` from `wasi_snapshot_preview1`. It exports memory, ABI version,
-allocation, deallocation, and JSON execution. The build requests a 16 MiB
+`proc_exit` from `wasi_snapshot_preview1`. It exports memory, reactor ABI
+version 2, allocation, checked response-length lookup, deallocation,
+and JSON execution. The service-envelope ABI remains version 1 and the host
+retains support for the existing production reactor ABI. The build requests a 16 MiB
 initial and 256 MiB maximum memory. The service caps request and response
 payloads at 1 MiB and 16 MiB; the reactor caps live allocations at eight and
 their total capacity at 48 MiB. These are source and structural observations,
@@ -57,13 +59,13 @@ IPC; it is not a release performance receipt.
 1. Review `src/reactor.rs`, the host in `packages/flint-wasm`, and the compiled
    artifact together. Exercise pointer overflow, memory growth, allocation
    failure, wrong kind/length, repeated calls, and error cleanup. The current
-   owned-allocation table checks exact registered pointer/length pairs without
-   dereferencing unregistered pointers. However, it has no generation token:
-   after allocator address reuse, a stale pair of the same length could refer
-   to a newer allocation. Determine whether that logical ABA case must be
-   eliminated for the production ABI or explicitly constrained by the host
-   contract. The existing stale-pointer test covers deallocation before reuse,
-   not this stronger case.
+   owned-allocation table checks the pointer, length, kind, and monotonically
+   increasing nonrecycled generation without dereferencing unregistered
+   pointers. A regression confirms that the Wasm allocator reuses an address
+   and that the old handle cannot run or deallocate its replacement. Review
+   generation exhaustion, forged handles, host lifetime assumptions, and
+   response-length lookup independently; the passing test is not a safety
+   signoff. The generation is an identity tag, not a secret capability token.
 2. Establish source provenance and distribution obligations for every linked
    component, including the shared `packages/class-groups/src/imaginary.rs`
    source, Rust standard library, third-party crates, and required notices.

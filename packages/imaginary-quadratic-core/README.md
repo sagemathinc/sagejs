@@ -17,9 +17,10 @@ independent host-side enumeration.
 
 The crate is **not** in the production Wasm layout. The reactor now keeps
 request and response buffers in a bounded owned-allocation table, checks the
-exact pointer, length, and request kind before reading, and rejects forged or
-stale deallocation attempts without dereferencing them. A raw-ABI regression
-exercises these failure cases, but an independent byte-bound safety review and
+exact pointer, generation, length, and request kind before reading, and rejects
+forged or stale handles without dereferencing them. A raw-ABI regression
+exercises address reuse as well as these failure cases, but an independent
+byte-bound safety review and
 source/license/notice review remain required before any distribution decision.
 Building it does not satisfy those gates.
 See [DISTRIBUTION-REVIEW.md](DISTRIBUTION-REVIEW.md) for the exact candidate

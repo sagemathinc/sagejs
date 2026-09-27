@@ -205,10 +205,18 @@ export async function instantiateClassGroupCore(bytes) {
   const alloc = requiredFunction(exports, "sagejs_class_group_alloc");
   const dealloc = requiredFunction(exports, "sagejs_class_group_dealloc");
   const runJson = requiredFunction(exports, "sagejs_class_group_run_json");
-  if (abiVersion() !== ABI_VERSION) {
+  const reactorAbiVersion = abiVersion();
+  if (reactorAbiVersion !== 1 && reactorAbiVersion !== 2) {
     wasi.dispose();
-    throw new TypeError(`unsupported class-group ABI version ${abiVersion()}`);
+    throw new TypeError(`unsupported class-group ABI version ${reactorAbiVersion}`);
   }
+  const taggedHandles = reactorAbiVersion === 2;
+  const allocationLength = taggedHandles
+    ? requiredFunction(exports, "sagejs_class_group_allocation_length")
+    : undefined;
+  const pointerOf = (handle) => taggedHandles
+    ? Number(BigInt.asUintN(64, handle) & 0xffff_ffffn)
+    : handle >>> 0;
 
   let closed = false;
   function invoke(request) {
@@ -217,8 +225,10 @@ export async function instantiateClassGroupCore(bytes) {
     if (input.byteLength === 0 || input.byteLength > MAX_INPUT_BYTES) {
       throw new RangeError("class-group request exceeds the transfer limit");
     }
-    const inputPointer = alloc(input.byteLength) >>> 0;
+    const inputHandle = alloc(input.byteLength);
+    const inputPointer = pointerOf(inputHandle);
     if (inputPointer === 0) throw new Error("class-group input allocation failed");
+    let outputHandle = taggedHandles ? 0n : 0;
     let outputPointer = 0;
     let outputLength = 0;
     try {
@@ -229,9 +239,10 @@ export async function instantiateClassGroupCore(bytes) {
         MAX_INPUT_BYTES,
         "input",
       ).set(input);
-      const packed = BigInt.asUintN(64, runJson(inputPointer, input.byteLength));
+      const packed = BigInt.asUintN(64, runJson(inputHandle, input.byteLength));
+      outputHandle = taggedHandles ? packed : Number(packed & 0xffff_ffffn);
       outputPointer = Number(packed & 0xffff_ffffn);
-      outputLength = Number(packed >> 32n);
+      outputLength = taggedHandles ? allocationLength(outputHandle) : Number(packed >> 32n);
       const inputEnd = inputPointer + input.byteLength;
       const outputEnd = outputPointer + outputLength;
       if (inputPointer < outputEnd && outputPointer < inputEnd) {
@@ -249,8 +260,8 @@ export async function instantiateClassGroupCore(bytes) {
       // only duplicates the (potentially megabyte-sized) result buffer.
       return JSON.parse(decoder.decode(output));
     } finally {
-      if (outputPointer !== 0 && outputLength !== 0) dealloc(outputPointer, outputLength);
-      dealloc(inputPointer, input.byteLength);
+      if (outputPointer !== 0 && outputLength !== 0) dealloc(outputHandle, outputLength);
+      dealloc(inputHandle, input.byteLength);
     }
   }
 
@@ -258,7 +269,7 @@ export async function instantiateClassGroupCore(bytes) {
     invoke,
     diagnostics() {
       return Object.freeze({
-        abiVersion: ABI_VERSION,
+        abiVersion: reactorAbiVersion,
         imports: imports.map(({ module, name, kind }) => ({ module, name, kind })),
         exports: WebAssembly.Module.exports(module),
         compileMilliseconds,

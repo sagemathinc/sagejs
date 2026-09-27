@@ -60,6 +60,7 @@ const expectedExports = sorted([
   ...[
     "sagejs_class_group_abi_version",
     "sagejs_class_group_alloc",
+    "sagejs_class_group_allocation_length",
     "sagejs_class_group_dealloc",
     "sagejs_class_group_run_json",
   ].map((name) => ({ name, kind: "function" })),

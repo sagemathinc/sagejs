@@ -455,6 +455,20 @@ paired, but the two Sage-mode receipts were recorded separately under
 different conditions. Neither is a public Wasm release or a PARI-competitive
 result. The production distribution review remains pending.
 
+The standalone reactor now uses generation-tagged allocation handles (reactor
+ABI 2) so a stale handle cannot address a newer allocation at the same Wasm
+pointer. The host still accepts the existing class-group reactor ABI 1, and
+the JSON service-envelope ABI remains 1. A raw-ABI regression observes actual
+address reuse and checks that stale execution and deallocation fail without
+disturbing the new request. The frozen 11-field, 15-pair prepared-field
+development diagnostic is
+[`public-api-prepared-development-wasm-generation-handles-diagnostic.json`](public-api-prepared-development-wasm-generation-handles-diagnostic.json).
+All exact answers matched; the geometric-mean Sage-mode Wasm/PARI median ratio
+was 6.77, versus 6.87 in the earlier separate-run derived-certificate
+diagnostic. The composite field took 28.60 ms versus PARI's 4.55 ms. This
+does not establish a performance improvement, public Wasm availability, or
+distribution safety; the independent review gates still apply.
+
 The native product service now advertises the same `core-v3` transport, while
 retaining `core-v2` and the ordinary response. A 30-pair alternating direct
 service probe on the 33,768-class composite field measured 10.91 ms for
