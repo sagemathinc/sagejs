@@ -305,8 +305,8 @@ pub fn compute_imaginary_class_group(
         match prime_factors.len() {
             1 | 2 => cyclic_orbit_from_class_number(discriminant, linear)?,
             3 if discriminant.rem_euclid(4) == 1 => {
-                rank_two_orbit_from_class_number(discriminant, &prime_factors)?
-                    .map(|(bound, forms, structure)| (bound, forms, structure, None))
+                rank_two_orbit_from_class_number(discriminant, linear, &prime_factors)?
+                    .map(|(bound, forms, structure, map)| (bound, forms, structure, Some(map)))
             }
             _ => None,
         }
@@ -576,8 +576,17 @@ fn cyclic_orbit_from_class_number(
 /// inexpensive exact involution candidates derived from divisors of `|D|`.
 fn rank_two_orbit_from_class_number(
     discriminant: i64,
+    linear: i64,
     prime_factors: &[u64],
-) -> Result<Option<(i64, Vec<BinaryQuadraticForm>, GroupStructure)>, ImaginaryClassGroupError> {
+) -> Result<
+    Option<(
+        i64,
+        Vec<BinaryQuadraticForm>,
+        GroupStructure,
+        Vec<FormClassMapEntry>,
+    )>,
+    ImaginaryClassGroupError,
+> {
     let class_number = count_reduced_forms(discriminant);
     if class_number > MAXIMUM_REDUCED_FORMS {
         return Err(ImaginaryClassGroupError::ReducedFormResourceLimit {
@@ -655,14 +664,29 @@ fn rank_two_orbit_from_class_number(
     if tagged.windows(2).any(|pair| pair[0].0 == pair[1].0) {
         return Err(ImaginaryClassGroupError::GroupLawFailure);
     }
-    let forms = tagged
-        .iter()
-        .map(|&(key, (c, _))| form_from_sort_key(key, c))
-        .collect::<Result<Vec<_>, _>>()?;
-    let coordinates = tagged
-        .into_iter()
-        .map(|(_, (_, ordinal))| smallvec![ordinal % 2, ordinal / 2])
-        .collect();
+    // The orbit ordinal is the mixed-radix coordinate index. Materialize its
+    // exact ideal-class map in the same pass as the sorted completeness list,
+    // avoiding a second coordinate vector and a later full-map traversal.
+    let mut forms = Vec::with_capacity(class_number);
+    let mut complete_class_map = Vec::with_capacity(class_number);
+    let mut seen_coordinates = vec![false; class_number];
+    for (key, (c, ordinal)) in tagged {
+        let form = form_from_sort_key(key, c)?;
+        let coordinate_index =
+            usize::try_from(ordinal).map_err(|_| ImaginaryClassGroupError::InvalidCertificate)?;
+        if coordinate_index >= class_number
+            || std::mem::replace(&mut seen_coordinates[coordinate_index], true)
+        {
+            return Err(ImaginaryClassGroupError::InvalidCertificate);
+        }
+        forms.push(form);
+        complete_class_map.push(checked_class_map_entry(
+            form,
+            smallvec![ordinal % 2, ordinal / 2],
+            linear,
+            i128::from(discriminant),
+        )?);
+    }
     let involution_index = forms
         .binary_search(&involution)
         .map_err(|_| ImaginaryClassGroupError::GroupLawFailure)?;
@@ -674,9 +698,11 @@ fn rank_two_orbit_from_class_number(
         forms,
         GroupStructure {
             invariants: vec![2, order as u64],
-            coordinates,
+            // The prepared map owns every coordinate, as in the cyclic case.
+            coordinates: Vec::new(),
             generator_indices: vec![(involution_index, 2), (generator_index, order as u64)],
         },
+        complete_class_map,
     )))
 }
 
@@ -3355,13 +3381,23 @@ mod tests {
     fn proved_rank_two_orbit_matches_complete_reduced_form_enumeration() {
         let discriminant = -15_000_000_315;
         let factors = [3, 5, 1_000_000_021];
-        let (bound, forms, structure) = rank_two_orbit_from_class_number(discriminant, &factors)
-            .unwrap()
-            .expect("frozen rank-two field has an exact index-two orbit");
+        let (bound, forms, structure, map) =
+            rank_two_orbit_from_class_number(discriminant, -1, &factors)
+                .unwrap()
+                .expect("frozen rank-two field has an exact index-two orbit");
         let (reference_bound, reference_forms) = enumerate_reduced_forms(discriminant);
         assert_eq!(bound, reference_bound);
         assert_eq!(forms, reference_forms);
         assert_eq!(structure.invariants, vec![2, 16_884]);
+        assert_eq!(map.len(), forms.len());
+        let independently_materialized = materialize_class_map(
+            &forms,
+            map.iter().map(|entry| entry.coordinates.clone()).collect(),
+            &structure.invariants,
+            [3_750_000_079, -1, 1],
+        )
+        .unwrap();
+        assert_eq!(map, independently_materialized);
         let involution = forms[structure.generator_indices[0].0];
         let generator = forms[structure.generator_indices[1].0];
         #[cfg(not(target_arch = "wasm32"))]
@@ -3385,7 +3421,7 @@ mod tests {
         }
         for (form, coordinate) in forms
             .iter()
-            .zip(&structure.coordinates)
+            .zip(map.iter().map(|entry| &entry.coordinates))
             .step_by((forms.len() / 64).max(1))
         {
             let power = form_power(generator, coordinate[1] as usize, discriminant).unwrap();
@@ -3396,6 +3432,22 @@ mod tests {
             };
             assert_eq!(*form, expected);
         }
+    }
+
+    #[test]
+    fn prepared_rank_two_map_uses_the_supplied_power_basis() {
+        let input = PublicImaginaryQuadraticInput {
+            id: "imaginary-d15000000315-positive-linear",
+            polynomial_ascending: [3_750_000_079, 1, 1],
+        };
+        let group = compute_imaginary_class_group(input).unwrap();
+        assert_eq!(group.class_number, 33_768);
+        assert_eq!(group.invariant_factors, vec![2, 16_884]);
+        assert_eq!(
+            group.complete_class_map[0].representative_ideal,
+            ideal_representative(1, group.complete_class_map[0].form),
+        );
+        verify_imaginary_class_group(input, &group).unwrap();
     }
 
     #[test]
