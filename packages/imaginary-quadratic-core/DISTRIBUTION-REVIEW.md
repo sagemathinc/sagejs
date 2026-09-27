@@ -104,6 +104,39 @@ establishes reproducibility across two independent Linux hosts with the same
 toolchain inputs. It does not explain the Mac/Linux byte difference or replace
 the independent review and public production benchmarks below.
 
+An additional fresh Linux target directory was built with the same compiler,
+linker, dependencies, and optimization flags plus `-C save-temps` and the
+linker's `--Map` output. Its final Wasm bytes still matched the canonical
+SHA-256 above. The resulting
+[`link-map-inventory-2026-09-27.json`](link-map-inventory-2026-09-27.json)
+records hashes of the 40 selected linked object/archive members and their
+containing archives. In particular, the map identifies 23 members of the Rust
+sysroot's self-contained WASI `libc.a`, including allocator and I/O objects;
+these do not appear as Cargo packages in the build-graph inventory. The
+inventory script refuses a map build whose final Wasm bytes differ from the
+candidate and fails closed on unrecognized linked-input forms. This is
+stronger provenance input for review, **not** an artifact-derived SBOM:
+inlined dependency code may have no separately linked object, linker output
+can transform selected members, and the legal obligations for the bundled
+WASI libc and every other component remain to be established independently.
+
+To reproduce that development inventory after preparing the pinned Wasm
+toolchain and building the candidate, run from the repository root:
+
+```sh
+review_dir=$(mktemp -d -p /tmp sagejs-iq-link-map.XXXXXX)
+toolchain_dir=$(node packages/wasm-toolchain/scripts/toolchain.cjs path)
+CARGO_TARGET_DIR="$review_dir/target" \
+CARGO_TARGET_WASM32_WASIP1_LINKER="$toolchain_dir/sdk/bin/wasm-ld" \
+RUSTFLAGS="-C target-feature=+simd128 -C link-arg=--export-memory -C link-arg=--initial-memory=16777216 -C link-arg=--max-memory=268435456 -C save-temps -C link-arg=--Map=$review_dir/link.map" \
+cargo build --offline --locked --release --target wasm32-wasip1 --lib \
+  --manifest-path packages/imaginary-quadratic-core/Cargo.toml
+node packages/imaginary-quadratic-core/scripts/link-map-inventory.mjs \
+  packages/imaginary-quadratic-core/target/wasm32-wasip1/release/sagejs_imaginary_quadratic_core.wasm \
+  "$review_dir/target/wasm32-wasip1/release/sagejs_imaginary_quadratic_core.wasm" \
+  "$review_dir/link.map"
+```
+
 ## Required independent decisions
 
 1. Review `src/reactor.rs`, the host in `packages/flint-wasm`, and the compiled

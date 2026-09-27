@@ -154,6 +154,7 @@ const inputNames = [
   "packages/imaginary-quadratic-core/src/reactor.rs",
   "packages/imaginary-quadratic-core/scripts/build-wasm.sh",
   "packages/imaginary-quadratic-core/scripts/audit-distribution.mjs",
+  "packages/imaginary-quadratic-core/scripts/link-map-inventory.mjs",
   "packages/class-groups/src/imaginary.rs",
   "packages/class-groups/scripts/verify-wasm.mjs",
   "packages/wasm-toolchain/lock.json",
