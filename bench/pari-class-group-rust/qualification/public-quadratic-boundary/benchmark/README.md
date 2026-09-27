@@ -592,6 +592,20 @@ not be pooled into a parity claim. Both receipts are unpromoted, include
 resident interpreter/IPC costs, and show that the public scalar path is not
 yet competitive with PARI's small-discriminant scalar path.
 
+The same scalar operation was measured through an injected development-only
+Wasm evaluator in
+[`public-api-polynomial-development-wasm-class-number-diagnostic.json`](public-api-polynomial-development-wasm-class-number-diagnostic.json)
+and
+[`public-api-prepared-development-wasm-class-number-diagnostic.json`](public-api-prepared-development-wasm-class-number-diagnostic.json).
+All 11 fields again returned their expected class numbers. The seven
+unconditional `qfbclassno` rows have Sage.js/PARI geometric-mean median ratios
+of 51.11 from a fresh polynomial and 14.22 from a prepared field. The four
+larger, conditional `bnfinit` projection rows have ratios of 4.65 and 1.67.
+These are separate-run, mixed-method diagnostics: the production Wasm kernel
+still declines this unreviewed reactor, and the development harness omits the
+public kernel's outer worker IPC. They neither qualify a Wasm release nor
+establish scalar PARI competitiveness.
+
 ## Matched scalar class-number comparison
 
 `run_class_number.py` separately compares the exact scalar Rust count, the

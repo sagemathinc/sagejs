@@ -16,6 +16,7 @@ const {
   parseArguments,
   median,
   expectedSage,
+  scalarPariMethod,
   sha256,
   verifyPariIdentity,
   ResidentGp,
@@ -69,15 +70,17 @@ async function createDevelopmentEvaluator(artifact, receipt) {
   });
 }
 
-async function timeSage(evaluator, field, boundary) {
+async function timeSage(evaluator, field, boundary, operation) {
   const code = `${boundary === "polynomial"
     ? `K.<a> = NumberField(${field.pariPolynomial})\n` : ""}` +
-    "G = K.class_group(algorithm='rust')\n" +
-    "[K.discriminant(), G.order(), G.invariants(), G.proof_status, G.algorithm]";
+    (operation === "class-number"
+      ? "K.class_number(algorithm='rust')"
+      : "G = K.class_group(algorithm='rust')\n" +
+        "[K.discriminant(), G.order(), G.invariants(), G.proof_status, G.algorithm]");
   const start = performance.now();
   const response = await evaluator.evaluate(code);
   const elapsed = Math.round((performance.now() - start) * 1_000_000);
-  if (response.repr !== expectedSage(field)) {
+  if (response.repr !== expectedSage(field, operation)) {
     throw new Error(`wrong development Wasm answer for ${field.id}: ${response.repr}`);
   }
   return elapsed;
@@ -108,7 +111,7 @@ async function main() {
     await evaluator.evaluate("R.<x> = QQ[]");
     for (const [fieldIndex, field] of panel.fields.entries()) {
       if (options.fieldId !== undefined && options.fieldId !== field.id) continue;
-      process.stderr.write(`measuring ${field.id} (${options.boundary}, development Wasm)\n`);
+      process.stderr.write(`measuring ${field.id} (${options.boundary}, ${options.operation}, development Wasm)\n`);
       if (options.boundary === "prepared") {
         await evaluator.evaluate(`K.<a> = NumberField(${field.pariPolynomial})`);
         const discriminant = Number(await gp.query(
@@ -118,17 +121,18 @@ async function main() {
           throw new Error(`wrong prepared PARI discriminant for ${field.id}`);
         }
       }
-      await timeSage(evaluator, field, options.boundary);
-      await timePari(gp, field, fieldIndex, 0, options.boundary);
+      await timeSage(evaluator, field, options.boundary, options.operation);
+      await timePari(gp, field, fieldIndex, 0, options.boundary, options.operation);
       const sageNanoseconds = [];
       const pariNanoseconds = [];
       for (let sample = 0; sample < options.samples; sample += 1) {
         for (const arm of sample % 2 === 0 ? ["sagejs", "pari"] : ["pari", "sagejs"]) {
           if (arm === "sagejs") {
-            sageNanoseconds.push(await timeSage(evaluator, field, options.boundary));
+            sageNanoseconds.push(await timeSage(evaluator, field, options.boundary,
+              options.operation));
           } else {
             pariNanoseconds.push(await timePari(gp, field, fieldIndex, sample + 1,
-              options.boundary));
+              options.boundary, options.operation));
           }
         }
       }
@@ -137,6 +141,8 @@ async function main() {
       results.push({
         fieldId: field.id,
         expected: field.expected,
+        ...(options.operation === "class-number"
+          ? { pariMethod: scalarPariMethod(field) } : {}),
         sageNanoseconds,
         pariNanoseconds,
         sageMedianNanoseconds,
@@ -151,19 +157,29 @@ async function main() {
     await gp.close();
   }
   const output = {
-    schema: "sagejs.public-quadratic/development-wasm-pari-diagnostic-v1",
+    schema: options.operation === "group"
+      ? "sagejs.public-quadratic/development-wasm-pari-diagnostic-v1"
+      : "sagejs.public-quadratic/development-wasm-pari-scalar-diagnostic-v1",
     promotedPerformanceReceipt: false,
     developmentOnly: true,
     panelSchema: panel.schema,
     panelSha256: sha256(join(here, "panel-v2.json")),
-    boundary: options.boundary === "polynomial"
-      ? "warm-resident-polynomial-to-development-wasm-evaluator-class-group-v1"
-      : "warm-resident-prepared-field-to-development-wasm-evaluator-class-group-v1",
-    caveat: "The production Sage.js Wasm kernel still declines this unreviewed reactor. " +
-      "This harness injects it into a development evaluator and excludes the public " +
-      "kernel's outer worker IPC. Both arms include interpreter evaluation and result " +
-      "projection; Sage.js authenticates a complete ideal-class map while PARI also " +
-      "computes rank-zero unit data. This is not a promoted or symmetric kernel receipt.",
+    boundary: `warm-resident-${options.boundary}-to-development-wasm-evaluator-${
+      options.operation === "group" ? "class-group" : "class-number"
+    }-v1`,
+    caveat: options.operation === "group"
+      ? "The production Sage.js Wasm kernel still declines this unreviewed reactor. " +
+        "This harness injects it into a development evaluator and excludes the public " +
+        "kernel's outer worker IPC. Both arms include interpreter evaluation and result " +
+        "projection; Sage.js authenticates a complete ideal-class map while PARI also " +
+        "computes rank-zero unit data. This is not a promoted or symmetric kernel receipt."
+      : "The production Sage.js Wasm kernel still declines this unreviewed reactor. " +
+        "This harness injects it into a development evaluator and excludes the public " +
+        "kernel's outer worker IPC. For |D| < 2e10, PARI uses unconditional qfbclassno(D,0); " +
+        "larger rows project a GRH-conditional bnfinit(nf,0) full-group result, whereas " +
+        "Sage.js computes an unconditional scalar. Mixed methods and different IPC costs " +
+        "preclude a promoted parity claim.",
+    operation: options.operation,
     samplesPerArmPerField: options.samples,
     runnerSha256: sha256(fileURLToPath(import.meta.url)),
     sageBuildReceiptSha256: sha256(join(root, "dist/build-receipt.json")),

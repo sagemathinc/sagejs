@@ -125,3 +125,41 @@ test("scalar public diagnostics bind exact answers, method, panel, and current r
     }
   }
 });
+
+test("development-Wasm scalar diagnostics stay labeled and bound to their runner", () => {
+  const wasmRunner = path.join(directory, "run-development-wasm-pari.mjs");
+  for (const boundary of ["polynomial", "prepared"]) {
+    const receipt = require(path.join(directory,
+      `public-api-${boundary}-development-wasm-class-number-diagnostic.json`));
+    assert.equal(receipt.schema,
+      "sagejs.public-quadratic/development-wasm-pari-scalar-diagnostic-v1");
+    assert.equal(receipt.promotedPerformanceReceipt, false);
+    assert.equal(receipt.developmentOnly, true);
+    assert.equal(receipt.operation, "class-number");
+    assert.equal(receipt.boundary,
+      `warm-resident-${boundary}-to-development-wasm-evaluator-class-number-v1`);
+    assert.equal(receipt.panelSchema, panel.schema);
+    assert.equal(receipt.panelSha256, sha256(panelPath));
+    assert.equal(receipt.runnerSha256, sha256(wasmRunner));
+    assert.equal(receipt.samplesPerArmPerField, 15);
+    assert.match(receipt.reactorSha256, /^[0-9a-f]{64}$/);
+    assert.ok(Number.isSafeInteger(receipt.reactorBytes) && receipt.reactorBytes > 0);
+    assert.equal(receipt.pariGpSha256, pin.files["Olinux-x86_64/gp-dyn"]);
+    assert.equal(receipt.pariLibrarySha256, pin.files["Olinux-x86_64/libpari-gmp-tls.so.9"]);
+    assert.deepEqual(receipt.results.map((field) => field.fieldId),
+      panel.fields.map((field) => field.id));
+    for (let index = 0; index < panel.fields.length; index += 1) {
+      const field = receipt.results[index];
+      assert.deepEqual(field.expected, panel.fields[index].expected);
+      assert.equal(field.pariMethod, scalarPariMethod(panel.fields[index]));
+      assert.equal(field.sageNanoseconds.length, 15);
+      assert.equal(field.pariNanoseconds.length, 15);
+      assert.ok(field.sageNanoseconds.every((value) => Number.isSafeInteger(value) && value > 0));
+      assert.ok(field.pariNanoseconds.every((value) => Number.isSafeInteger(value) && value > 0));
+      assert.equal(field.sageMedianNanoseconds, median(field.sageNanoseconds));
+      assert.equal(field.pariMedianNanoseconds, median(field.pariNanoseconds));
+      assert.equal(field.sageOverPariMedianRatio,
+        field.sageMedianNanoseconds / field.pariMedianNanoseconds);
+    }
+  }
+});
