@@ -54,6 +54,21 @@ distribution. Likewise, the frozen 11-field development comparison remains
 several times slower than PARI at the Sage-mode boundary and omits outer worker
 IPC; it is not a release performance receipt.
 
+On 2026-09-27, the **current candidate digest above** was rebuilt with
+`cargo build --offline --locked --release --target wasm32-wasip1 --lib` in a
+fresh `CARGO_TARGET_DIR`, using the pinned linker and the exact `RUSTFLAGS`
+from `build-wasm.sh`. The new 346,869-byte artifact matched the candidate
+SHA-256 byte for byte and passed `verify-wasm.mjs` with one defined 256-page
+memory capped at 4096 pages. The read-only distribution inventory again
+validated the four WASI imports, five exported reactor functions plus memory,
+13 locked packages, registry archive checksums, and notice-file hashes.
+`cargo test --locked` passed 31 unit and four service-contract tests; the
+distribution-audit, Wasm product, and Sage-mode evaluator suite passed all
+five tests, including stale-handle rejection and complete ideal maps. This is
+same-host, same-toolchain reproducibility and functional evidence only. It
+does not resolve the independent safety, linked-component provenance,
+distribution-license, or public-production packaging decisions below.
+
 ## Required independent decisions
 
 1. Review `src/reactor.rs`, the host in `packages/flint-wasm`, and the compiled
