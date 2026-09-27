@@ -113,6 +113,9 @@ test("the quadratic reactor rejects forged and stale guest pointers", {
     assert.ok(inputHandle > 0n && inputPointer > 0);
     assert.equal(allocationLength(inputHandle), 0);
     new Uint8Array(memory.buffer, inputPointer, request.length).set(request);
+    const beforeGrowth = memory.buffer.byteLength;
+    assert.equal(memory.grow(1), beforeGrowth / 65_536);
+    assert.equal(memory.buffer.byteLength, beforeGrowth + 65_536);
     const invoke = (handle, length) => {
       const outputHandle = BigInt.asUintN(64, run(handle, length));
       const outputPointer = pointerOf(outputHandle);
@@ -136,6 +139,10 @@ test("the quadratic reactor rejects forged and stale guest pointers", {
     assert.equal(valid.result.ok, true);
     assert.equal(allocationLength(valid.outputHandle + (1n << 32n)), 0);
     assert.equal(valid.result.result.imaginaryQuadratic.proofMode, "unconditional");
+    const beforeResponseGrowth = memory.buffer.byteLength;
+    assert.equal(memory.grow(1), beforeResponseGrowth / 65_536);
+    assert.equal(memory.buffer.byteLength, beforeResponseGrowth + 65_536);
+    assert.equal(allocationLength(valid.outputHandle), valid.outputLength);
     const wrongKind = invoke(valid.outputHandle, valid.outputLength);
     assert.equal(wrongKind.result.ok, false);
     dealloc(wrongKind.outputHandle, wrongKind.outputLength);

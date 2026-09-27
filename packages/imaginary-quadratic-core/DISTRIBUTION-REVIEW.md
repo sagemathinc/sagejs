@@ -61,8 +61,9 @@ IPC; it is not a release performance receipt.
    failure, wrong kind/length, repeated calls, and error cleanup. The current
    owned-allocation table checks the pointer, length, kind, and monotonically
    increasing nonrecycled generation without dereferencing unregistered
-   pointers. A regression confirms that the Wasm allocator reuses an address
-   and that the old handle cannot run or deallocate its replacement. Review
+   pointers. A regression grows linear memory with live request and response
+   handles, confirms that the Wasm allocator reuses an address, and checks that
+   the old handle cannot run or deallocate its replacement. Review
    generation exhaustion, forged handles, host lifetime assumptions, and
    response-length lookup independently; the passing test is not a safety
    signoff. The generation is an identity tag, not a secret capability token.
