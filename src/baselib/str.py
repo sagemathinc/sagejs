@@ -1010,38 +1010,38 @@ def _str_replace(
     string: Any,
     old: _Str,
     replacement: _Str,
-    replacement_count: Any = runtime.undefined,
+    count: Any = runtime.undefined,
 ) -> _Str:
     string = _native_string(string)
     old = _str_require_string(old, "replace")
     replacement = _str_require_string(replacement, "replace")
-    if replacement_count is runtime.undefined:
-        remaining = runtime.number.MAX_SAFE_INTEGER
+    if count is runtime.undefined:
+        left = runtime.number.MAX_SAFE_INTEGER
     else:
-        remaining = int(replacement_count)
-        if remaining < 0:
-            remaining = runtime.number.MAX_SAFE_INTEGER
-    if remaining == 0:
+        left = int(count)
+        if left < 0:
+            left = runtime.number.MAX_SAFE_INTEGER
+    if left == 0:
         return string
     if old == "":
         pieces = []
         position = 0
         while position <= len(string):
-            if remaining > 0:
+            if left > 0:
                 pieces.append(replacement)
-                remaining -= 1
+                left -= 1
             if position < len(string):
                 pieces.append(string[position])
             position += 1
         return _str_join("", pieces)
     position = 0
-    while remaining > 0:
+    while left > 0:
         found = string.indexOf(old, position)
         if found == -1:
             break
         string = string[:found] + replacement + string[found + len(old) :]
         position = found + len(replacement)
-        remaining -= 1
+        left -= 1
     return string
 
 
@@ -1425,7 +1425,11 @@ def _define_string_method(
     name: _Str,
     implementation: Any,
 ) -> None:
+    if name == "replace":
+        implementation.__positional_only__ = 3
     native_method = runtime.native_method(implementation)
+    if name == "replace":
+        native_method.__positional_only__ = 2
     # A function read from ``str`` is an unbound Python method: callers supply
     # the string explicitly (``str.rstrip(value, chars)``).  The separate
     # prototype adapter below supplies the receiver for ``value.rstrip``.
