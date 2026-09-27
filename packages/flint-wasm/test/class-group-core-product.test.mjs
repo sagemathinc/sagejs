@@ -99,6 +99,27 @@ test(
       assert.equal(compact.certificate.reducedFormsFromCoreMap, true);
       assert.equal("reducedFormsPacked" in compact.certificate, false);
 
+      const summary = (await service.call("imaginary-class-group-summary", {
+        polynomialAscending: ["6", "-1", "1"],
+      })).result;
+      assert.equal(summary.classNumber, 3);
+      assert.deepEqual(summary.invariantFactors, [3]);
+      assert.equal("completeClassMap" in summary, false);
+      const verified = await service.call("imaginary-verify-presentation", {
+        polynomialAscending: ["6", "-1", "1"],
+        classNumber: 3,
+        invariantFactors: [3],
+        generatorForms: summary.generators.map(({ form }) =>
+          [form.a, form.b, form.c].map(String)),
+      });
+      assert.equal(verified.outcome, "verified");
+      const coordinate = await service.call("imaginary-class-coordinate", {
+        polynomialAscending: ["6", "-1", "1"],
+        formCoefficients: ["2", "1", "3"],
+      });
+      assert.deepEqual(coordinate.coordinates, [2]);
+      assert.deepEqual(coordinate.presentation, summary);
+
       const noncyclic = await service.imaginaryClassGroup([21, 0, 1]);
       assert.equal(noncyclic.discriminant, -84);
       assert.equal(noncyclic.classNumber, 4);

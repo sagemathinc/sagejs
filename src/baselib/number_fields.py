@@ -3959,11 +3959,16 @@ class QuadraticClassGroup:
 
     def _load_rust_result(self, result: dict[str, Any]) -> None:
         """Bind a complete Rust form map to the ordinary ideal-class API."""
-        form_data, coordinates, generator_data = (
-            _nf_rust_class_group_runtime_module().validate_imaginary_group_result(
-                result, int(self._discriminant), compact=True
+        coordinates = result.get("_coordinateMap")
+        if coordinates is None:
+            form_data, coordinates, generator_data = (
+                _nf_rust_class_group_runtime_module().validate_imaginary_group_result(
+                    result, int(self._discriminant), compact=True
+                )
             )
-        )
+        else:
+            form_data = None
+            generator_data = coordinates.generator_forms
         self._principal_form = _quadratic_principal_form(self._discriminant)
         self._validated_form_data = form_data
         self._forms = runtime.undefined
@@ -3976,6 +3981,21 @@ class QuadraticClassGroup:
             self._from_form(QuadraticBinaryForm(data[0], data[1], data[2]))
             for data in generator_data
         ]
+        if form_data is None:
+
+            def replay(vector: list[int]) -> str:
+                form = self._principal_form
+                for generator, exponent in zip(self._generators, vector, strict=True):
+                    form = _quadratic_compose(
+                        form,
+                        _quadratic_form_power(
+                            generator.form(), exponent, self._discriminant
+                        ),
+                        self._discriminant,
+                    )
+                return _quadratic_form_key(form)
+
+            coordinates.bind_replay(replay)
         self.proof_status = "exact-unconditional"
         self.algorithm = "rust"
         self._certificate = result.get("certificate")
@@ -3984,6 +4004,15 @@ class QuadraticClassGroup:
     @property
     def certificate(self) -> dict[str, Any] | None:
         certificate = self._certificate
+        if (
+            certificate is not None
+            and certificate.get("reducedFormsFromExactCount") is True
+        ):
+            assert self._coordinate_map is not None
+            form_data, coordinates, _, certificate = self._coordinate_map.materialize()
+            self._validated_form_data = form_data
+            self._coordinate_map = coordinates
+            self._certificate = certificate
         if certificate is not None and (
             "reducedFormsPacked" in certificate
             or certificate.get("reducedFormsFromCoreMap") is True
@@ -3997,6 +4026,11 @@ class QuadraticClassGroup:
 
     def _all_forms(self) -> list[QuadraticBinaryForm]:
         if self._forms is runtime.undefined:
+            if (
+                self._certificate is not None
+                and self._certificate.get("reducedFormsFromExactCount") is True
+            ):
+                _ = self.certificate
             if self._validated_form_data is not None:
                 self._forms = [
                     QuadraticBinaryForm(data[0], data[1], data[2])

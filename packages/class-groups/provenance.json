@@ -355,7 +355,7 @@
     },
     {
       "path": "packages/class-groups/src/lib.rs",
-      "sha256": "e8234e9ff768b1ddd0f9678f639dc7b7c4fa320e22ec606eed1b864e5913eec3",
+      "sha256": "b17b6f58917f16e946c25a85074c14162d6c6feaba6330dd0bb1163c593222df",
       "classification": "original",
       "declared_license_expression": "GPL-2.0-or-later",
       "mapping_status": "not_applicable",
@@ -544,7 +544,7 @@
     },
     {
       "path": "packages/class-groups/src/service.rs",
-      "sha256": "e2ec033cf5448284c514d002b5bce4ce70ac8e58f5353f652e23df3c4ee33b4b",
+      "sha256": "f05922e8fc505b10b5603a91792c96b62edeea4d1f27b04ea1ba41af7ddf764f",
       "classification": "original",
       "declared_license_expression": "GPL-2.0-or-later",
       "mapping_status": "not_applicable",

@@ -165,7 +165,7 @@
       "id": "arithmetic",
       "layer": 2,
       "startup": "bootstrap",
-      "max_source_bytes": 825000,
+      "max_source_bytes": 827000,
       "depends_on": ["core-runtime", "native-integration"],
       "files": [
         "src/baselib/algebra.py",
@@ -301,7 +301,7 @@
       "id": "number-field-algorithms",
       "layer": 5,
       "startup": "lazy",
-      "max_source_bytes": 1317000,
+      "max_source_bytes": 1332000,
       "depends_on": [
         "core-runtime",
         "native-integration",

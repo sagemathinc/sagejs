@@ -100,6 +100,7 @@ pub use imaginary::{
     compose_reduced_forms, compute_imaginary_class_group,
     compute_imaginary_class_group_from_coefficients,
     compute_imaginary_class_number_from_coefficients, verify_imaginary_class_group,
+    verify_imaginary_generator_presentation,
 };
 pub use numerical_preparation::{NumericalPreparationError, PreparedCubicEmbedding};
 pub use polynomial_preparation::{

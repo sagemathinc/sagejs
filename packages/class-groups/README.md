@@ -79,6 +79,19 @@ map once and derives the reduced-form certificate from that verified map.
 response retains its full public structure. These encodings change neither
 the mathematical proof nor the exact ideal-class map.
 
+For cyclic and `C2 × Cn` groups, `imaginary-class-group-summary` returns the
+invariants, exact generator forms and ideals, and an exact reduced-form count
+without serializing the full map. The independent
+`imaginary-verify-presentation` operation recounts forms and checks generator
+orders and independence without trusting that map. Public Sage.js replays
+this proof before constructing the group. `imaginary-class-coordinate` obtains
+an arbitrary form's exact coordinates from the same complete Rust computation;
+Sage.js independently recomposes the generators before accepting a query.
+The query is stateless and currently recomputes the group, so it favors cheap
+construction over repeated uncached lookups. Requesting the full certificate
+or enumerating all classes materializes and validates the existing complete
+map. Higher-rank groups keep the complete-map route.
+
 The public Sage.js interface selects this backend automatically when its
 capability is present, and also allows an explicit request:
 

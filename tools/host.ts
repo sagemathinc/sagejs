@@ -168,6 +168,9 @@ const CLASS_GROUP_OPERATIONS = new Set([
   "close",
   "imaginary-class-number",
   "imaginary-class-group",
+  "imaginary-class-group-summary",
+  "imaginary-class-coordinate",
+  "imaginary-verify-presentation",
 ]);
 
 const classGroupServiceWorkerSource = String.raw`
@@ -582,7 +585,9 @@ export class NodeClassGroupBackend {
           // host advertisement silently diverted frozen large-panel inputs
           // to the unrelated legacy class-group algorithm.
           maximumAbsoluteDiscriminant: 200_000_000_000,
-          operations: ["imaginary-class-number", "imaginary-class-group"],
+          operations: ["imaginary-class-number", "imaginary-class-group",
+            "imaginary-class-group-summary", "imaginary-class-coordinate",
+            "imaginary-verify-presentation"],
         },
         operations: [...CLASS_GROUP_OPERATIONS],
         route: "native-resident-worker",
@@ -685,7 +690,10 @@ export class NodeClassGroupBackend {
     let serviceRequest = request;
     let sessionKey: string | undefined;
     if (operation !== "open" && operation !== "imaginary-class-number" &&
-        operation !== "imaginary-class-group") {
+        operation !== "imaginary-class-group" &&
+        operation !== "imaginary-class-group-summary" &&
+        operation !== "imaginary-class-coordinate" &&
+        operation !== "imaginary-verify-presentation") {
       if (typeof request.generation !== "string" ||
           !/^(0|[1-9][0-9]*)$/.test(request.generation) ||
           typeof request.handle !== "string" ||
@@ -728,7 +736,9 @@ export class NodeClassGroupBackend {
     Atomics.store(control, 2, 0);
     Atomics.store(control, 0, 1);
     Atomics.notify(control, 0);
-    const timeout = operation === "open" || operation === "imaginary-class-group"
+    const timeout = operation === "open" || operation === "imaginary-class-group" ||
+      operation === "imaginary-class-group-summary" ||
+      operation === "imaginary-class-coordinate"
       ? 120_000 : 30_000;
     const waited = Atomics.wait(control, 0, 1, timeout);
     if (waited === "timed-out") {

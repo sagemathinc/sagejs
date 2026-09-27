@@ -642,7 +642,7 @@ test("the native service maps public ideals to unconditional coordinates", {
   assert.equal(answer.repr, "[3, (3,), (1,), (1,), 3]");
 });
 
-test("the native host requests the derived core certificate", {
+test("the native host uses a verified small presentation and materializes certificates on demand", {
   skip: !process.env.SAGEJS_CLASS_GROUP_SERVICE,
 }, async () => {
   const answer = await evaluate([
@@ -652,9 +652,9 @@ test("the native host requests the derived core certificate", {
     "result = rust_runtime.rust_imaginary_result(K, operation='imaginary-class-group', algorithm='rust')",
     "certificate = result['certificate']",
     "G = K.class_group(algorithm='rust')",
-    "[certificate.get('reducedFormsFromCoreMap') is True,",
-    " 'reducedFormsPacked' not in certificate,",
-    " len(result['completeClassMapCorePacked']) == 3 * (2 + len(G.invariants())),",
+    "[certificate.get('reducedFormsFromExactCount') is True,",
+    " 'completeClassMapCorePacked' not in result,",
+    " len(G.certificate['reducedForms']) == G.order(),",
     " G(G.gen().ideal()).coordinates()]",
   ]);
   assert.equal(answer.repr, "[True, True, True, (1,)]");
@@ -696,6 +696,68 @@ test("the native service publishes a noncyclic group with exact ideal-class coor
     answer.repr,
     "[4, (2, 2), 'exact-unconditional', ((0, 1), (1, 0)), (1, 1), 4]",
   );
+});
+
+test("the native service retains the eager exact-map fallback for higher-rank groups", {
+  skip: !process.env.SAGEJS_CLASS_GROUP_SERVICE,
+}, async () => {
+  const answer = await evaluate([
+    "R.<x> = QQ[]",
+    "K.<a> = NumberField(x^2 + 105)",
+    "G = K.class_group(algorithm='rust')",
+    "[G.order(), G.invariants(), len(G.certificate['reducedForms']),",
+    " len(set(element.coordinates() for element in G))]",
+  ]);
+  assert.equal(answer.repr, "[8, (2, 2, 2), 8, 8]");
+});
+
+test("the native service keeps a large public group compact until its map is requested", {
+  skip: !process.env.SAGEJS_CLASS_GROUP_SERVICE,
+}, async () => {
+  const answer = await evaluate([
+    "R.<x> = QQ[]",
+    "K.<a> = NumberField(x^2 - x + 3750000079)",
+    "G = K.class_group(algorithm='rust')",
+    "before = len(G._group._coordinate_map.cache)",
+    "I, J = [generator.ideal() for generator in G.gens()]",
+    "product = G(I*J).coordinates()",
+    "after = len(G._group._coordinate_map.cache)",
+    "full = len(G.certificate['reducedForms'])",
+    "[G.order(), G.invariants(), before, after, product, full,",
+    " len(G._group._coordinate_map)]",
+  ]);
+  assert.equal(answer.repr, "[33768, (2, 16884), 3, 4, (1, 1), 33768, 33768]");
+});
+
+test("a forged on-demand Rust coordinate fails independent form composition", {
+  skip: !process.env.SAGEJS_CLASS_GROUP_SERVICE,
+}, async () => {
+  const answer = await evaluate([
+    "from sagejs.number_fields import rust_class_group_runtime as rust_runtime",
+    "R.<x> = QQ[]",
+    "K.<a> = NumberField(x^2 + 23)",
+    "G = K.class_group(algorithm='rust')",
+    "coordinate_map = G._group._coordinate_map",
+    "coordinate_map.cache.pop('2,1,3', None)",
+    "class ForgedBackend:",
+    "    def call(self, operation, request):",
+    "        form = {'a': 2, 'b': 1, 'c': 3}",
+    "        return {'schema': rust_runtime.HOST_RESPONSE_SCHEMA,",
+    "            'outcome': 'complete', 'operation': operation,",
+    "            'presentation': coordinate_map.presentation, 'form': form,",
+    "            'coordinates': [0], 'representativeIdeal':",
+    "            {'norm': 2, 'basisColumns': [[2, 0],",
+    "             [(int(coordinate_map.polynomial[1])-1)//2, 1]]}}",
+    "coordinate_map.backend = ForgedBackend()",
+    "coordinate_map.use_resident_host = False",
+    "try:",
+    "    coordinate_map.get('2,1,3')",
+    "    rejected = False",
+    "except rust_runtime.RustClassGroupPublicationError:",
+    "    rejected = True",
+    "rejected",
+  ]);
+  assert.equal(answer.repr, "True");
 });
 
 test("the native host advertises the product bound above the old ten-million cap", {
