@@ -16,6 +16,7 @@ __all__ = [
     "_delete_instance_attribute",
     "_delete_instance_dict",
     "_get_instance_dict",
+    "_install_slots",
     "_namespace_dict",
     "_replace_function_namespace",
     "_refresh_class_namespace",
@@ -27,6 +28,97 @@ _core: Any = runtime.reflect.get(
     "sagejs._baselib.builtins",
 )
 _MISSING = object()
+
+
+class member_descriptor:
+    """A class-owned Python slot with hidden per-instance storage."""
+
+    def __init__(self, owner: Any, name: str) -> None:
+        self.__objclass__ = owner
+        self.__name__ = name
+        self._values = runtime.reflect.construct(
+            runtime.reflect.get(runtime.global_object, "WeakMap"), []
+        )
+
+    def _check(self, instance: Any) -> None:
+        owner = _core._builtins_attribute_owner(instance)
+        mro = _native_member(owner, "__mro__")
+        if owner is not self.__objclass__ and (
+            not runtime.array.isArray(mro)
+            or not any(base is self.__objclass__ for base in mro)
+        ):
+            raise TypeError("descriptor does not apply to this object")
+
+    def _register_fast_access(self, instance: Any) -> None:
+        """Cache only an ordinary slot lookup with the default attribute hooks."""
+        owner = _core._builtins_attribute_owner(instance)
+        resolution = _core._builtins_class_attribute_resolution(owner, self.__name__)
+        if resolution is runtime.undefined or resolution[3] is not self:
+            return
+        getter = _core._builtins_class_attribute_resolution(owner, "__getattribute__")
+        setter = _core._builtins_class_attribute_resolution(owner, "__setattr__")
+        if getter is not runtime.undefined and (
+            getter[3] is not _core._builtins_object_getattribute
+        ):
+            return
+        if setter is not runtime.undefined and (
+            setter[3] is not _core._builtins_object_setattr
+        ):
+            return
+        prototype = runtime.object.getPrototypeOf(instance)
+        cache = _core._builtins_store_cache.get(prototype)
+        if cache is runtime.undefined:
+            cache = runtime.reflect.construct(runtime.map_class, [])
+            _core._builtins_store_cache.set(prototype, cache)
+        cache.set(self.__name__, [_core._builtins_descriptor_epoch.value, self._values])
+
+    def __get__(self, instance: Any, owner: Any = None) -> Any:
+        if instance is None:
+            return self
+        self._check(instance)
+        if not self._values.has(instance):
+            raise AttributeError(self.__name__)
+        self._register_fast_access(instance)
+        return self._values.get(instance)
+
+    def __set__(self, instance: Any, value: Any) -> None:
+        self._check(instance)
+        self._values.set(instance, value)
+        self._register_fast_access(instance)
+
+    def __delete__(self, instance: Any) -> None:
+        self._check(instance)
+        if not self._values.has(instance):
+            raise AttributeError(self.__name__)
+        self._values.delete(instance)
+
+
+def _install_slots(owner: Any, names: Any) -> None:
+    """Install data descriptors after a heap class has its final MRO."""
+    if isinstance(names, str):
+        names = (names,)
+    prototype = runtime.reflect.get(owner, "prototype")
+    class_name = str(runtime.reflect.get(owner, "__name__")).lstrip("_")
+    for declared in names:
+        if not isinstance(declared, str):
+            raise TypeError("__slots__ items must be strings")
+        if declared in ("__dict__", "__weakref__"):
+            continue
+        name = (
+            "_" + class_name + declared
+            if declared.startswith("__") and not declared.endswith("__")
+            else declared
+        )
+        if (
+            runtime.object.getOwnPropertyDescriptor(prototype, name)
+            is not runtime.undefined
+        ):
+            raise ValueError(
+                "'" + name + "' in __slots__ conflicts with class variable"
+            )
+        runtime.reflect.set(prototype, name, member_descriptor(owner, name))
+        _core._builtins_data_descriptor_names.add(name)
+    _core._builtins_descriptor_epoch.value += 1
 
 
 def _native_member(value: Any, name: str) -> Any:
