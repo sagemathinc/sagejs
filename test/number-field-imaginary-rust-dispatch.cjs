@@ -103,6 +103,40 @@ test("automatic imaginary quadratic dispatch uses the unconditional Rust service
   assert.equal(answer.repr, "[3, 3, (3,), 'rust', 'exact-unconditional', (1,)]");
 });
 
+test("explicit quadratic-forms bypasses Rust even after a Rust answer is cached", async () => {
+  const answer = await evaluate([
+    ...fixture,
+    "class CountingBackend(Backend):",
+    "    group_calls = 0",
+    "    scalar_calls = 0",
+    "    def call(self, operation, request):",
+    "        if operation == 'imaginary-class-group':",
+    "            self.group_calls += 1",
+    "        if operation == 'imaginary-class-number':",
+    "            self.scalar_calls += 1",
+    "        return super().call(operation, request)",
+    "counting = CountingBackend()",
+    "setattr(runtime, 'class_group_backend', lambda: counting)",
+    "K.class_group(algorithm='rust')",
+    "K.class_number(algorithm='rust')",
+    "Q = QuadraticField(-23)",
+    "Q.class_group()",
+    "Q.class_number(algorithm='rust')",
+    "before = (counting.group_calls, counting.scalar_calls)",
+    "G = K.class_group(algorithm='quadratic-forms')",
+    "h = K.class_number(algorithm='quadratic-forms')",
+    "direct = Q.class_group(algorithm='quadratic-forms')",
+    "direct_h = Q.class_number(algorithm='quadratic-forms')",
+    "[before == (counting.group_calls, counting.scalar_calls),",
+    " G.algorithm, G.invariants(), G.gen().ideal().norm(), h,",
+    " direct.algorithm, direct.invariants(), direct_h]",
+  ]);
+  assert.equal(
+    answer.repr,
+    "[True, 'quadratic-forms', (3,), 2, 3, 'quadratic-forms', (3,), 3]",
+  );
+});
+
 test("automatic imaginary quadratic class groups reuse the validated map", async () => {
   const answer = await evaluate([
     ...fixture,
@@ -171,16 +205,20 @@ test("automatic imaginary quadratic dispatch honors the service resource cap", a
   const answer = await evaluate([
     ...fixture,
     "class ExhaustedBackend(Backend):",
+    "    group_calls = 0",
     "    def call(self, operation, request):",
     "        if operation == 'capability':",
     "            return super().call(operation, request)",
+    "        if operation == 'imaginary-class-group':",
+    "            self.group_calls += 1",
     "        return {'schema': rust_runtime.HOST_RESPONSE_SCHEMA, 'outcome': 'error',",
     "            'category': 'resource-exhausted', 'message': 'reduced-form cap'}",
-    "setattr(runtime, 'class_group_backend', lambda: ExhaustedBackend())",
+    "backend = ExhaustedBackend()",
+    "setattr(runtime, 'class_group_backend', lambda: backend)",
     "G = K.class_group()",
-    "[G.order(), G.proof_status]",
+    "[G.order(), G.proof_status, backend.group_calls]",
   ]);
-  assert.equal(answer.repr, "[3, 'exact-unconditional']");
+  assert.equal(answer.repr, "[3, 'exact-unconditional', 1]");
 });
 
 test("automatic imaginary quadratic dispatch does not hide a forged published map", async () => {

@@ -2995,7 +2995,9 @@ class NumberFieldParent(sage.Parent):
                             raise TypeError(
                                 "imaginary quadratic forms do not accept resource limits"
                             )
-                        backend = self._quadratic_backend()[0].class_group()
+                        backend = self._quadratic_backend()[0].class_group(
+                            algorithm="quadratic-forms"
+                        )
                 backend.routing_plan = routing
                 result = NumberFieldClassGroup(self, backend)
         else:
@@ -3161,7 +3163,9 @@ class NumberFieldParent(sage.Parent):
                 raise TypeError(
                     "imaginary quadratic forms do not accept resource limits"
                 )
-            return int(self._quadratic_backend()[0].class_number())
+            return int(
+                self._quadratic_backend()[0].class_number(algorithm="quadratic-forms")
+            )
         return _nf_class_unit_groups_module().class_number(
             self, proof=proof, algorithm=general_algorithm, **limits
         )
@@ -4342,6 +4346,8 @@ class QuadraticField_class(sage.Parent):
             return group
         if algorithm not in ("auto", "quadratic-forms"):
             raise ValueError("unknown imaginary quadratic class-group algorithm")
+        if algorithm == "quadratic-forms":
+            return QuadraticClassGroup(self)
         if self._class_group is runtime.undefined:
             self._class_group = QuadraticClassGroup(self)
         return self._class_group
@@ -4359,21 +4365,20 @@ class QuadraticField_class(sage.Parent):
             return answer
         if algorithm not in ("auto", "quadratic-forms"):
             raise ValueError("unknown imaginary quadratic class-number algorithm")
-        if self._class_number is runtime.undefined:
-            native = _quadratic_native_method("qfbClassNumber")
-            if runtime.jstype(
-                native
-            ) == "function" and _quadratic_native_enumeration_supported(
-                self._field_discriminant
-            ):
-                self._class_number = runtime.normalize_integer(
-                    native(self._field_discriminant)
-                )
-            else:
-                self._class_number = len(
-                    _quadratic_reduced_forms_reference(self._field_discriminant)
-                )
-        return self._class_number
+        if algorithm == "auto" and self._class_number is not runtime.undefined:
+            return self._class_number
+        native = _quadratic_native_method("qfbClassNumber")
+        if runtime.jstype(
+            native
+        ) == "function" and _quadratic_native_enumeration_supported(
+            self._field_discriminant
+        ):
+            answer = runtime.normalize_integer(native(self._field_discriminant))
+        else:
+            answer = len(_quadratic_reduced_forms_reference(self._field_discriminant))
+        if algorithm == "auto":
+            self._class_number = answer
+        return answer
 
     def _ideal_second_generator(self, middle: Any) -> GaussianInteger:
         if self._squarefree_radicand % 4 == 1:
