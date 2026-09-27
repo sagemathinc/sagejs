@@ -399,6 +399,34 @@ test("number fields reject reducible quotients and bound native Galois degree", 
   }
 });
 
+test("quadratic NumberField irreducibility uses the exact rational discriminant", async () => {
+  const session = await createSage();
+  try {
+    assert.equal(
+      (await session.evaluate([
+        "R.<x> = QQ[]",
+        "[NumberField(2*x^2 + 2*x + 1, 'u').degree(),",
+        " NumberField(x^2 - 2, 'v').degree(),",
+        " NumberField(QQ(1, 2)*x^2 + QQ(1, 3)*x + 1, 'w').degree()]",
+      ].join("\n"))).repr,
+      "[2, 2, 2]",
+    );
+    for (const polynomial of [
+      "x^2 - 1",
+      "x^2 + 2*x + 1",
+      "QQ(1, 2)*x^2 + x + QQ(1, 2)",
+      "QQ(1, 2)*x^2 - 2",
+    ]) {
+      await assert.rejects(
+        session.evaluate(`NumberField(${polynomial}, 'a')`),
+        /must be irreducible/,
+      );
+    }
+  } finally {
+    await session.close();
+  }
+});
+
 test("imaginary quadratic maximal orders and class groups match reference data", async () => {
   const session = await createSage();
   try {
@@ -419,9 +447,9 @@ test("imaginary quadratic maximal orders and class groups match reference data",
         "(-5, -20, 2, (2,)), (-6, -24, 2, (2,)), " +
         "(-10, -40, 2, (2,)), (-14, -56, 4, (4,)), " +
         "(-15, -15, 2, (2,)), (-23, -23, 3, (3,)), " +
-        "(-39, -39, 4, (4,)), (-65, -260, 8, (4, 2)), " +
+        "(-39, -39, 4, (4,)), (-65, -260, 8, (2, 4)), " +
         "(-84, -84, 4, (2, 2)), (-105, -420, 8, (2, 2, 2)), " +
-        "(-110, -440, 12, (6, 2))]",
+        "(-110, -440, 12, (2, 6))]",
     );
     assert.equal(
       (

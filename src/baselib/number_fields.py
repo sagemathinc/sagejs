@@ -2070,7 +2070,13 @@ class NumberFieldParent(sage.Parent):
         coefficients = _trim_coefficients(coefficients)
         if len(coefficients) < 2:
             raise ValueError("a number field needs a nonconstant defining polynomial")
-        if not polynomial.is_irreducible():
+        # Over QQ, quadratic reducibility means square discriminant.
+        if len(coefficients) == 3:
+            a, b, c = coefficients
+            reducible = _rational_is_square(b * b - 4 * a * c)
+        else:
+            reducible = not polynomial.is_irreducible()
+        if reducible:
             raise ValueError(
                 "defining polynomial (" + str(polynomial) + ") must be irreducible"
             )

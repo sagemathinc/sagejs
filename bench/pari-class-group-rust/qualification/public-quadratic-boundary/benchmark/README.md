@@ -538,6 +538,18 @@ separate run. The prepared-field ratio was 3.32, versus 3.39 previously. The
 boundary. The receipts are unpromoted, and these different-run figures do not
 isolate a causal speedup. Public PARI competitiveness remains open.
 
+Quadratic `NumberField` construction now applies the exact rational
+discriminant-square irreducibility criterion instead of general polynomial
+factorization. A local 21-sample warm construction probe for the composite
+field measured a 4.55 ms median, versus 6.04 ms in an earlier separate run.
+The unchanged frozen 11-field, 15-pair polynomial-to-group diagnostic is
+[`public-api-polynomial-quadratic-construction-diagnostic.json`](public-api-polynomial-quadratic-construction-diagnostic.json):
+all answers matched, and the geometric-mean Sage.js/PARI median ratio was
+6.82, versus 7.70 in the preceding separate run. The composite field took
+21.39 ms versus PARI's 4.64 ms. These diagnostics do not isolate a causal
+speedup, and neither the public path nor the frozen performance target is yet
+PARI-competitive.
+
 ## Matched scalar class-number comparison
 
 `run_class_number.py` separately compares the exact scalar Rust count, the
