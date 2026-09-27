@@ -462,6 +462,10 @@ def ρσ_instance_prototype(value: Any) -> Any:
 
 def _builtins_store_instance_attribute(value: Any, name: _Str, member: Any) -> _Bool:
     if not _builtins_has_instance_dict(value):
+        if not _builtins_is_python_class(value) and _builtins_heap_class_keys.has(
+            _builtins_attribute_owner(value)
+        ):
+            raise AttributeError("object has no attribute '" + name + "'")
         return False
     if _builtins_data_descriptor_names.has(name):
         resolution = _builtins_class_attribute_resolution(
@@ -3491,25 +3495,6 @@ class _BuiltinsInstanceDictDescriptor:
         _builtins_namespace_module()._delete_instance_dict(self, instance)
 
 
-def _builtins_layout_anchor(owner: Any) -> Any:
-    mro = _builtins_get_member(owner, "__mro__")
-    if not runtime.array.isArray(mro):
-        mro = [owner]
-    for base in mro:
-        if not _builtins_heap_class_keys.has(base):
-            return base
-        prototype = runtime.reflect.get(base, "prototype")
-        slots = runtime.object.getOwnPropertyDescriptor(prototype, "__slots__")
-        if slots is not runtime.undefined:
-            names = runtime.reflect.get(slots, "value")
-            if runtime.strict_equal(runtime.jstype(names), "string"):
-                names = [names]
-            for name in names:
-                if name not in ("__dict__", "__weakref__"):
-                    return base
-    return object
-
-
 def ρσ_install_instance_dict(owner: Any, explicit_dict: _Bool = False) -> None:
     """Finalize heap namespace ownership after the class body and MRO exist."""
     if not _builtins_heap_class_keys.has(owner):
@@ -3518,33 +3503,39 @@ def ρσ_install_instance_dict(owner: Any, explicit_dict: _Bool = False) -> None
     mro = _builtins_get_member(owner, "__mro__")
     if runtime.array.isArray(mro):
         for base in mro:
-            if base is not owner and _builtins_instance_dict_owners.has(base):
+            if base is not owner and (
+                _builtins_instance_dict_owners.has(base)
+                or (
+                    base is not object
+                    and not _builtins_heap_class_keys.has(base)
+                    and _builtins_get_member(base, "__module__") != "builtins"
+                    and runtime.object.getOwnPropertyDescriptor(
+                        runtime.reflect.get(base, "prototype"), "__slots__"
+                    )
+                    is runtime.undefined
+                )
+            ):
                 inherited = True
                 break
     prototype = runtime.reflect.get(owner, "prototype")
     slots = runtime.object.getOwnPropertyDescriptor(prototype, "__slots__")
-    if not inherited and slots is not runtime.undefined:
+    if slots is not runtime.undefined:
         slot_names = runtime.reflect.get(slots, "value")
-        if "__dict__" not in slot_names:
+        _builtins_namespace_module()._install_slots(owner, slot_names)
+        if not inherited and "__dict__" not in slot_names:
             return
     # CPython attaches the descriptor when the selected layout base lacks
     # one, even if a secondary base already contributes dictionary storage.
     bases = _builtins_get_member(owner, "__bases__")
-    selected = object
-    anchor = object
-    for base in bases:
-        candidate_anchor = _builtins_layout_anchor(base)
-        candidate_mro = _builtins_get_member(candidate_anchor, "__mro__")
-        if selected is object or (
-            candidate_anchor is not anchor
-            and (
-                anchor is object
-                or runtime.array.isArray(candidate_mro)
-                and anchor in candidate_mro
-            )
-        ):
-            selected = base
-            anchor = candidate_anchor
+    selected = (
+        object
+        if not bases
+        else bases[0]
+        if len(bases) == 1
+        else _builtins_default_import(
+            "sagejs._slot_layout", fromlist=["*"]
+        ).select_instance_dict_base(bases)
+    )
     introduces = not _builtins_instance_dict_owners.has(selected)
     _builtins_instance_dict_owners.set(owner, explicit_dict or introduces)
     _builtins_descriptor_epoch.value += 1
