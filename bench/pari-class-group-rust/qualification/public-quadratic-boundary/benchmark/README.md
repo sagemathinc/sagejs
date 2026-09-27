@@ -280,6 +280,13 @@ Node/Sage.js and GP IPC costs remain part of this user-facing diagnostic, so
 these are not symmetric algorithmic-kernel timings or a promoted performance
 receipt.
 
+Before timing full groups, the runner verifies that Sage.js actually loaded
+the compiled packed imaginary-map verifier. A build with the optional native
+kernel pack absent still gives correct answers through the dynamic fallback,
+but measures a different and potentially orders-of-magnitude slower path; the
+runner now refuses to call that an optimized public-group comparison. Scalar
+class-number diagnostics do not require the map verifier.
+
 ```sh
 SAGEJS_CLASS_GROUP_SERVICE="$PWD/packages/class-groups/target/release/class-group-service" \
   node bench/pari-class-group-rust/qualification/public-quadratic-boundary/benchmark/run-public-sagejs-pari.cjs \

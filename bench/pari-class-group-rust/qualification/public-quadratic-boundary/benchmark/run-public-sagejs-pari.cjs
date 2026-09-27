@@ -162,6 +162,17 @@ function expectedSage(field, operation = "group") {
     `${tuple}, 'exact-unconditional', 'rust']`;
 }
 
+async function assertProductionImaginaryMapKernel(sage) {
+  const response = await sage.evaluate(
+    "from sagejs.kernels.matrix.imaginary_map import verify_packed_imaginary_map\n" +
+    "callable(getattr(verify_packed_imaginary_map, 'packExactInt64Buffer', None))",
+  );
+  if (response.repr !== "True") {
+    throw new Error("the compiled imaginary-map verifier is unavailable; " +
+      "build the production native-kernel pack before timing public class groups");
+  }
+}
+
 async function timeSage(sage, field, boundary, operation) {
   const code = `${boundary === "polynomial" ? `K.<a> = NumberField(${field.pariPolynomial})\n` : ""}` +
     (operation === "class-number"
@@ -230,6 +241,9 @@ async function main() {
     if (JSON.stringify(policy) !== "[192,1]") {
       throw new Error("PARI precision or thread policy was not applied");
     }
+    if (options.operation === "group") {
+      await assertProductionImaginaryMapKernel(sage);
+    }
     await sage.evaluate("R.<x> = QQ[]");
     for (const [fieldIndex, field] of panel.fields.entries()) {
       if (options.fieldId !== undefined && field.id !== options.fieldId) continue;
@@ -288,7 +302,7 @@ async function main() {
       options.operation === "group" ? "class-group-and-projection" : "class-number"
     }-v1`,
     caveat: options.operation === "group"
-      ? "Both arms include interpreter evaluation and exact result projection. Sage.js additionally authenticates and retains a complete ideal-class map; PARI computes rank-zero units and regulator but does not project a complete map. Resident Node/Sage.js and GP have different IPC costs. This diagnostic is not the promoted matched native receipt."
+      ? "Both arms include interpreter evaluation and exact result projection. Sage.js requires the compiled imaginary-map verifier and additionally authenticates and retains a complete ideal-class map; PARI computes rank-zero units and regulator but does not project a complete map. Resident Node/Sage.js and GP have different IPC costs. This diagnostic is not the promoted matched native receipt."
       : "Both arms start from the same public polynomial or prepared field and include interpreter evaluation. For |D| < 2e10 PARI uses unconditional qfbclassno(D,0); larger rows project a GRH-conditional bnfinit(nf,0) full-group result, whereas Sage.js computes an unconditional scalar. Resident IPC costs differ. This mixed-method diagnostic is not a promoted parity receipt.",
     operation: options.operation,
     samplesPerArmPerField: options.samples,
@@ -323,6 +337,7 @@ module.exports = {
   parseArguments,
   median,
   expectedSage,
+  assertProductionImaginaryMapKernel,
   scalarPariMethod,
   sha256,
   verifyPariIdentity,

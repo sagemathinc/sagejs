@@ -13,13 +13,20 @@ const runner = path.join(directory, "run-public-sagejs-pari.cjs");
 const panelPath = path.join(directory, "panel-v2.json");
 const panel = require(panelPath);
 const pin = require("../bench/pari-class-group-rust/qualification/pari-control/pinned-identity.json");
-const { parseArguments, median, expectedSage, scalarPariMethod } = require(runner);
+const {
+  assertProductionImaginaryMapKernel, parseArguments, median, expectedSage,
+  scalarPariMethod,
+} = require(runner);
 // These receipts were recorded by the runner at 28ce31583, before it gained
 // later diagnostics. The hash below matches that committed source exactly.
 // A measurement's runner identity is historical; changing its hash to match
 // today's source would misrepresent the code that actually produced it.
 const recordedRunnerSha256 =
   "904d79cef6d31c772e1d13a590888f72ab2b60a9581d878577e1274612926896";
+// Scalar diagnostics were recorded after that revision, but still before the
+// group benchmark began requiring the production imaginary-map verifier.
+const scalarRecordedRunnerSha256 =
+  "7c3c58fb419f9d6a56274251ebf5bce76c03a15d434e75fe533c15c7f552935c";
 
 function sha256(filename) {
   return createHash("sha256").update(fs.readFileSync(filename)).digest("hex");
@@ -48,6 +55,22 @@ test("public Sage.js/PARI diagnostic rejects unfrozen inputs and unsafe receipt 
   assert.equal(scalarPariMethod(panel.fields.find(
     (field) => Math.abs(field.expected.discriminant) >= 2e10,
   )), "bnfinit-conditional");
+});
+
+test("group comparison requires the loaded production imaginary-map verifier", async () => {
+  const sources = [];
+  const sage = {
+    async evaluate(source) {
+      sources.push(source);
+      return { repr: "True" };
+    },
+  };
+  await assertProductionImaginaryMapKernel(sage);
+  assert.match(sources[0], /verify_packed_imaginary_map/);
+  assert.match(sources[0], /packExactInt64Buffer/);
+  sage.evaluate = async () => ({ repr: "False" });
+  await assert.rejects(assertProductionImaginaryMapKernel(sage),
+    /build the production native-kernel pack/);
 });
 
 test("recorded 15-pair public diagnostics bind the frozen panel and runner", () => {
@@ -90,7 +113,7 @@ test("recorded 15-pair public diagnostics bind the frozen panel and runner", () 
   }
 });
 
-test("scalar public diagnostics bind exact answers, method, panel, and current runner", () => {
+test("scalar public diagnostics bind exact answers, method, panel, and recorded runner", () => {
   for (const [boundary, phase] of [
     ["polynomial", "exact-backend"],
     ["prepared", "exact-backend"],
@@ -107,7 +130,7 @@ test("scalar public diagnostics bind exact answers, method, panel, and current r
       `warm-resident-${boundary}-to-public-class-number-v1`);
     assert.equal(receipt.panelSchema, panel.schema);
     assert.equal(receipt.panelSha256, sha256(panelPath));
-    assert.equal(receipt.runnerSha256, sha256(runner));
+    assert.equal(receipt.runnerSha256, scalarRecordedRunnerSha256);
     assert.equal(receipt.samplesPerArmPerField, 15);
     assert.equal(receipt.pariPrecisionBits, 192);
     assert.equal(receipt.pariThreads, 1);
