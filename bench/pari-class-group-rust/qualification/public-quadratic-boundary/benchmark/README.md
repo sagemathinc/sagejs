@@ -262,6 +262,19 @@ comparison or a claim that all of the approximately 8 ms difference is due to
 the worker change. The 11-field public answer panel and exact native-map
 regressions still pass.
 
+The 2026-09-27 compact-presentation implementation defers transfer and
+validation of the complete map while independently recounting forms and
+checking the published generators. A fresh prepared-field public call for
+`D=-15000000315` now has a 9.28 ms median in the 15-pair
+[`lazy-presentation diagnostic`](public-api-prepared-lazy-presentation-diagnostic.json),
+versus 24.75 ms in the earlier derived-certificate diagnostic and 4.51 ms for
+PARI in the new run. The full frozen-panel public ratios range from 1.53 to
+6.31; tiny fields still pay substantial fixed evaluator overhead, and the
+rank-four field retains the eager map route. These are public-boundary
+diagnostics, not a promotion of the matched native receipt or a claim of
+public PARI parity. Exact coordinate queries and full certificates remain
+available on demand; the Wasm public evaluator exercises both paths.
+
 ## Matched resident public-call diagnostic
 
 `run-public-sagejs-pari.cjs` adds a separate end-to-end diagnostic against the

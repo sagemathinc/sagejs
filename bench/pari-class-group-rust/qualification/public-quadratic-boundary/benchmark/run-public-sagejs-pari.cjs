@@ -302,7 +302,7 @@ async function main() {
       options.operation === "group" ? "class-group-and-projection" : "class-number"
     }-v1`,
     caveat: options.operation === "group"
-      ? "Both arms include interpreter evaluation and exact result projection. Sage.js requires the compiled imaginary-map verifier and additionally authenticates and retains a complete ideal-class map; PARI computes rank-zero units and regulator but does not project a complete map. Resident Node/Sage.js and GP have different IPC costs. This diagnostic is not the promoted matched native receipt."
+      ? "Both arms include interpreter evaluation and exact result projection. Sage.js verifies a small generator presentation for supported ranks and materializes the exact class map on demand; other ranks retain the complete-map route. PARI computes rank-zero units and regulator but does not project a complete map. Resident Node/Sage.js and GP have different IPC costs. This diagnostic is not the promoted matched native receipt."
       : "Both arms start from the same public polynomial or prepared field and include interpreter evaluation. For |D| < 2e10 PARI uses unconditional qfbclassno(D,0); larger rows project a GRH-conditional bnfinit(nf,0) full-group result, whereas Sage.js computes an unconditional scalar. Resident IPC costs differ. This mixed-method diagnostic is not a promoted parity receipt.",
     operation: options.operation,
     samplesPerArmPerField: options.samples,
