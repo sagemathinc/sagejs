@@ -14,8 +14,8 @@ const {
 } = require("../dist/tools/host.js");
 
 function fakeService(directory, corrupt = false, wrongId = false, declined = false, badCore = false,
-  legacyCompact = false) {
-  const fixtureName = legacyCompact ? "legacy-compact" : corrupt ? "corrupt" : wrongId ? "wrong-id" : declined ? "declined" :
+  legacyCompact = false, badFrame = false) {
+  const fixtureName = badFrame ? "bad-frame" : legacyCompact ? "legacy-compact" : corrupt ? "corrupt" : wrongId ? "wrong-id" : declined ? "declined" :
     badCore ? "bad-core" : "normal";
   const filename = path.join(directory, fixtureName + "-service");
   const startup = path.join(directory, fixtureName + "-started");
@@ -36,6 +36,10 @@ lines.on("line", (input) => {
   }
   if (${JSON.stringify(corrupt)}) {
     process.stdout.write(JSON.stringify({ schema: "wrong", abi: 1, id: request.id, ok: true, result: {} }) + "\\n");
+    return;
+  }
+  if (request.operation === "imaginary-class-group" && ${JSON.stringify(badFrame)}) {
+    process.stdout.write("{}\\nextra");
     return;
   }
   if (request.operation === "imaginary-class-group" && ${JSON.stringify(wrongId)}) {
@@ -84,6 +88,7 @@ lines.on("line", (input) => {
       }
       delete result.result.certificate.reducedForms;
     }
+    if (request.largePadding === 650000) result.padding = "x".repeat(request.largePadding);
   } else if (request.generation !== generation || request.handle !== "1") {
     process.stdout.write(JSON.stringify({ schema: "sagejs.class-groups/service-response-v1", abi: 1, id: request.id, ok: false, error: { schema: "sagejs.class-groups/service-response-v1", outcome: "error", category: "stale-handle", operation: request.operation, message: "stale fixture handle" } }) + "\\n");
     return;
@@ -195,6 +200,12 @@ async function main() {
     assert.equal(compactGroup.value.result.certificate.reducedForms, undefined);
     assert.equal(compactGroup.value.result.certificate.reducedFormsFromCoreMap, true);
     assert.equal(compactGroup.value.result.certificate.reducedFormsPacked, undefined);
+    const fragmentedGroup = host.call("classGroupCompact", ["imaginary-class-group", {
+      polynomialAscending: ["1", "-1", "1"], largePadding: 650000,
+    }]);
+    assert.equal(fragmentedGroup.ok, true);
+    assert.equal(fragmentedGroup.value.padding.length, 650000);
+    assert.deepEqual(fragmentedGroup.value.result.completeClassMapCorePacked, [1, 1]);
 
     const opened = backend.call("open", { request: { polynomialAscending: ["-1", "-1", "0", "1"] } });
     assert.match(opened.generation, /^[0-9]+$/);
@@ -289,6 +300,18 @@ async function main() {
     );
     wrongIdBackend.close();
     await assertProcessExited(Number(fs.readFileSync(wrongIdFixture.startup, "utf8")));
+
+    const badFrameFixture = fakeService(directory, false, false, false, false, false, true);
+    process.env.SAGEJS_CLASS_GROUP_SERVICE = badFrameFixture.filename;
+    const badFrameBackend = new NodeClassGroupBackend();
+    assert.throws(
+      () => badFrameBackend.call("imaginary-class-group", {
+        polynomialAscending: ["1", "-1", "1"], transport: "core-v3",
+      }),
+      (error) => error.code === "EBADMSG",
+    );
+    badFrameBackend.close();
+    await assertProcessExited(Number(fs.readFileSync(badFrameFixture.startup, "utf8")));
 
     const declinedFixture = fakeService(directory, false, false, true);
     process.env.SAGEJS_CLASS_GROUP_SERVICE = declinedFixture.filename;

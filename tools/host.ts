@@ -173,7 +173,6 @@ const CLASS_GROUP_OPERATIONS = new Set([
 const classGroupServiceWorkerSource = String.raw`
 const { workerData } = require("node:worker_threads");
 const { spawn } = require("node:child_process");
-const readline = require("node:readline");
 const control = new Int32Array(workerData.shared, 0, 4);
 const input = new Uint8Array(
   workerData.shared,
@@ -259,45 +258,50 @@ function startService() {
     stderr = (stderr + chunk.toString("utf8")).slice(-4096);
   });
   let lineBytes = 0;
+  let lineChunks = [];
   child.stdout.on("data", chunk => {
-    let start = 0;
-    for (;;) {
-      const newline = chunk.indexOf(10, start);
-      if (newline < 0) break;
-      lineBytes += newline - start;
-      if (lineBytes > workerData.responseBytes) {
-        failProtocol(corrupt("class-group service response exceeds the byte limit"));
-        return;
-      }
-      lineBytes = 0;
-      start = newline + 1;
-    }
-    lineBytes += chunk.length - start;
-    if (lineBytes > workerData.responseBytes) {
-      failProtocol(corrupt("class-group service response exceeds the byte limit"));
-    }
-  });
-  const lines = readline.createInterface({ input: child.stdout, crlfDelay: Infinity });
-  lines.on("line", line => {
     if (protocolError !== undefined) return;
-    // The synchronous shared-buffer protocol has at most one request in
-    // flight.  For a large packed response, forward the service's original
-    // JSON to the parent instead of parsing the entire class map twice.  The
-    // parent checks the envelope, including the service id, before use.
-    if (pending.size === 1) {
-      const [packedId, packedSlot] = pending.entries().next().value;
-      if (packedSlot.directPacked) {
-        pending.delete(packedId);
-        packedSlot.resolve({ raw: line, id: packedId });
-        return;
-      }
+    if (pending.size !== 1) {
+      failProtocol(corrupt("class-group service wrote an unsolicited response"));
+      return;
     }
+    const [id, slot] = pending.entries().next().value;
+    const newline = chunk.indexOf(10);
+    if (newline >= 0 && newline !== chunk.length - 1) {
+      failProtocol(corrupt("class-group service violated one-response framing"));
+      return;
+    }
+    const bodyLength = newline < 0 ? chunk.length : newline;
+    const offset = lineBytes;
+    lineBytes += bodyLength;
+    if (lineBytes > workerData.responseBytes ||
+        (slot.directPacked && slot.prefixLength + lineBytes > output.length)) {
+      failProtocol(corrupt("class-group service response exceeds the byte limit"));
+      return;
+    }
+    if (slot.directPacked) {
+      // Keep the service's original bytes in shared memory. The parent checks
+      // the response identity and exact map before publishing the result.
+      output.set(chunk.subarray(0, bodyLength), slot.prefixLength + offset);
+    } else {
+      lineChunks.push(chunk.subarray(0, bodyLength));
+    }
+    if (newline < 0) return;
+    if (slot.directPacked) {
+      pending.delete(id);
+      slot.resolve({ rawLength: slot.prefixLength + lineBytes, id });
+      lineBytes = 0;
+      return;
+    }
+    const line = lineChunks.length === 1
+      ? lineChunks[0].toString("utf8")
+      : Buffer.concat(lineChunks, lineBytes).toString("utf8");
+    lineBytes = 0;
+    lineChunks = [];
     let value;
     try { value = JSON.parse(line); }
     catch { value = corrupt("class-group service wrote non-JSON output"); }
-    const id = plainRecord(value) && typeof value.id === "string" ? value.id : undefined;
-    const slot = id === undefined ? undefined : pending.get(id);
-    if (slot === undefined) {
+    if (!plainRecord(value) || value.id !== id) {
       failProtocol(corrupt("class-group service response id mismatch"));
       return;
     }
@@ -337,10 +341,14 @@ function serviceCall(operation, request) {
     operation,
   };
   return new Promise((resolve, reject) => {
+    const directPacked = operation === "imaginary-class-group" &&
+      (request.transport === "core-v2" || request.transport === "core-v3");
+    const prefix = directPacked ? encoder.encode(id + "\n") : undefined;
+    if (prefix !== undefined) output.set(prefix);
     pending.set(id, {
       resolve, reject,
-      directPacked: operation === "imaginary-class-group" &&
-        (request.transport === "core-v2" || request.transport === "core-v3"),
+      directPacked,
+      prefixLength: prefix?.length ?? 0,
     });
     child.stdin.write(JSON.stringify(message) + "\n", error => {
       if (!error) return;
@@ -367,16 +375,8 @@ function finish(value) {
   Atomics.notify(control, 0);
 }
 
-function finishRawServiceResponse(raw, id) {
-  const prefix = encoder.encode(id + "\n");
-  const bytes = encoder.encode(raw);
-  if (prefix.length + bytes.length > output.length) {
-    finish({ __sagejs_worker_error__: recordError(new RangeError("class-group response exceeds the shared buffer")) });
-    return;
-  }
-  output.set(prefix);
-  output.set(bytes, prefix.length);
-  Atomics.store(control, 2, prefix.length + bytes.length);
+function finishRawServiceResponse(length) {
+  Atomics.store(control, 2, length);
   Atomics.store(control, 0, 2);
   Atomics.notify(control, 0);
 }
@@ -410,7 +410,7 @@ async function main() {
       if (envelope.operation === "imaginary-class-group" &&
           (envelope.request.transport === "core-v2" ||
             envelope.request.transport === "core-v3")) {
-        finishRawServiceResponse(response.raw, response.id);
+        finishRawServiceResponse(response.rawLength);
       } else {
         finish(response.value);
       }
