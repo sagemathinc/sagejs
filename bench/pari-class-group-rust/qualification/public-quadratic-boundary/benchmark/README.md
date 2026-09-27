@@ -561,6 +561,20 @@ The host's one-minute load average was 4.49. This is another unpromoted,
 separate-run diagnostic: the small numerical difference from 6.82 is not an
 attributed speedup, and public PARI competitiveness remains open.
 
+The public `NumberField` group route now reuses its exact imaginary-quadratic
+backend before requesting the Rust result, avoiding construction of a generic
+maximal order solely to obtain the field discriminant. That same backend
+supplies the subsequent exact public discriminant. The final-build, 15-pair
+receipts on the unchanged eleven-field panel are
+[`public-api-polynomial-quadratic-backend-diagnostic.json`](public-api-polynomial-quadratic-backend-diagnostic.json)
+and
+[`public-api-prepared-quadratic-backend-diagnostic.json`](public-api-prepared-quadratic-backend-diagnostic.json).
+Every projected answer matched. The polynomial-to-public-group geometric-mean
+Sage.js/PARI median ratio was 5.64, versus 6.77 in the earlier separate run;
+the prepared-field ratio was 3.41, versus 3.32 in its earlier separate run.
+These diagnostics do not isolate a causal speedup or establish public PARI
+competitiveness, and neither is a promoted performance receipt.
+
 ## Matched scalar class-number comparison
 
 `run_class_number.py` separately compares the exact scalar Rust count, the
