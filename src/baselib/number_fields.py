@@ -2549,6 +2549,11 @@ class NumberFieldParent(sage.Parent):
         )
 
     def discriminant(self) -> Any:
+        if self._degree == 2 and self._quadratic_backend_cache is not runtime.undefined:
+            # The already-constructed exact quadratic backend knows the field
+            # discriminant from its squarefree radicand. Reuse it rather than
+            # constructing a general maximal order just for this scalar.
+            return self._quadratic_backend_cache[0].discriminant()
         return self.maximal_order().discriminant()
 
     def _quadratic_backend(self) -> Any:
@@ -2900,8 +2905,17 @@ class NumberFieldParent(sage.Parent):
             and self.discriminant() < 0
         ):
             return self._class_group_cache
+        imaginary_rust_field = self
+        if self.degree() == 2 and algorithm in ("auto", "rust") and len(limits) == 0:
+            constant, linear = self._defining_coefficients[:2]
+            if linear * linear - 4 * constant < 0:
+                # The full quadratic group binds to this exact backend below
+                # anyway. Its squarefree radicand already determines the
+                # field discriminant, so do not first construct a general
+                # maximal order just to prepare the Rust request.
+                imaginary_rust_field = self._quadratic_backend()[0]
         imaginary_rust = _nf_rust_class_group_runtime_module().rust_imaginary_result(
-            self,
+            imaginary_rust_field,
             operation="imaginary-class-group",
             algorithm=algorithm,
             options=limits,

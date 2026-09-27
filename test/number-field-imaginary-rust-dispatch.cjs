@@ -93,6 +93,35 @@ test("explicit Rust quadratic class group retains exact form coordinates and ide
   );
 });
 
+test("imaginary NumberField group dispatch reuses its exact quadratic backend", async () => {
+  const answer = await evaluate([
+    ...fixture,
+    "L = NumberField(2*x^2 - 2*x + 12, 'b')",
+    "G = L.class_group(algorithm='rust')",
+    "order_not_forced = runtime.reflect.get(L, '_maximal_order_cache') is runtime.undefined",
+    "backend_reused = L._quadratic_backend_cache is not runtime.undefined",
+    "fast_discriminant = L.discriminant()",
+    "order_still_not_forced = runtime.reflect.get(L, '_maximal_order_cache') is runtime.undefined",
+    "[order_not_forced, backend_reused, G.order(), G.invariants(),",
+    " G.gen().ideal().norm(), order_still_not_forced,",
+    " fast_discriminant == L.maximal_order().discriminant()]",
+  ]);
+  assert.equal(answer.repr, "[True, True, 3, (3,), 2, True, True]");
+});
+
+test("cached quadratic discriminant agrees with the general certified order", async () => {
+  const answer = await evaluate([
+    "import sagejs.runtime as runtime",
+    "R.<x> = QQ[]",
+    "K = NumberField(QQ(1, 2)*x^2 + QQ(1, 3)*x + 1, 'a')",
+    "K._quadratic_backend()",
+    "fast = K.discriminant()",
+    "order_not_forced = runtime.reflect.get(K, '_maximal_order_cache') is runtime.undefined",
+    "[fast, order_not_forced, fast == K.maximal_order().discriminant()]",
+  ]);
+  assert.equal(answer.repr, "[-68, True, True]");
+});
+
 test("automatic imaginary quadratic dispatch uses the unconditional Rust service", async () => {
   const answer = await evaluate([
     ...fixture,
