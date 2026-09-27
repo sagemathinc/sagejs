@@ -508,6 +508,22 @@ tiny-field gap is primarily a public evaluation-boundary issue, whereas the
 large composite path still spends substantial time in service transport and
 independent exact-map verification.
 
+Repeated ordinary Sage cells now reuse compiled JavaScript only after two
+successive compilations produce identical code and optimizer reports in a
+stable compiler context. Each call still executes the code and constructs a
+fresh result. The 15-pair diagnostics on the unchanged panel are
+[`public-api-prepared-repeat-cell-diagnostic.json`](public-api-prepared-repeat-cell-diagnostic.json)
+and
+[`public-api-polynomial-repeat-cell-diagnostic.json`](public-api-polynomial-repeat-cell-diagnostic.json).
+All 11 exact answers matched in both runs. The prepared-field geometric-mean
+Sage.js/PARI ratio was 3.39, with a 2.00--6.57 field range; the composite
+field took 14.39 ms versus 4.54 ms for PARI. The full polynomial-to-group
+ratio was 12.40, with a 4.68--50.25 field range. These are separate-run,
+unpromoted diagnostics; the difference from earlier receipts cannot all be
+assigned to the compiler cache. In particular, repeated construction of the
+number field remains expensive, and neither public boundary is yet
+PARI-competitive.
+
 ## Matched scalar class-number comparison
 
 `run_class_number.py` separately compares the exact scalar Rust count, the
