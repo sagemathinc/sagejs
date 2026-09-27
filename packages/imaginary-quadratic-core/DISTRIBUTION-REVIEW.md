@@ -114,8 +114,19 @@ containing archives. In particular, the map identifies 23 members of the Rust
 sysroot's self-contained WASI `libc.a`, including allocator and I/O objects;
 these do not appear as Cargo packages in the build-graph inventory. The
 inventory script refuses a map build whose final Wasm bytes differ from the
-candidate and fails closed on unrecognized linked-input forms. This is
-stronger provenance input for review, **not** an artifact-derived SBOM:
+candidate and fails closed on unrecognized linked-input forms. The linked Rust
+sysroot `libc.a` is byte-for-byte identical to the archive in the pinned
+WASI SDK 33.0 Linux x64 sysroot (both SHA-256
+`5d8ba34d8c6fd0ac59e0efe37241143887f8f232864bbeacc4181ae739f63371`).
+The inventory now requires and records that archive equality when given the
+SDK path. The official
+[`wasi-sdk-33` source tag](https://github.com/WebAssembly/wasi-sdk/tree/wasi-sdk-33/src)
+points its `src/wasi-libc` submodule at
+[`161b3195fc2558d2b1ba3eb9ffae3b2b47407623`](https://github.com/WebAssembly/wasi-libc/tree/161b3195fc2558d2b1ba3eb9ffae3b2b47407623).
+This is a specific upstream source candidate for notice review, not a proof
+that the distributed archive was built from that commit or a conclusion about
+which per-file notices apply. Together these observations provide stronger
+provenance input for review, **not** an artifact-derived SBOM:
 inlined dependency code may have no separately linked object, linker output
 can transform selected members, and the legal obligations for the bundled
 WASI libc and every other component remain to be established independently.
@@ -134,7 +145,8 @@ cargo build --offline --locked --release --target wasm32-wasip1 --lib \
 node packages/imaginary-quadratic-core/scripts/link-map-inventory.mjs \
   packages/imaginary-quadratic-core/target/wasm32-wasip1/release/sagejs_imaginary_quadratic_core.wasm \
   "$review_dir/target/wasm32-wasip1/release/sagejs_imaginary_quadratic_core.wasm" \
-  "$review_dir/link.map"
+  "$review_dir/link.map" \
+  "$toolchain_dir/sdk/share/wasi-sysroot/lib/wasm32-wasip1/libc.a"
 ```
 
 ## Required independent decisions

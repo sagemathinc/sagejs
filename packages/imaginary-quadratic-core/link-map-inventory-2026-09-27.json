@@ -12,6 +12,12 @@
     "linkedContributionCount": 1127,
     "internalContributions": 6
   },
+  "wasiLibc": {
+    "linkedArchiveSha256": "5d8ba34d8c6fd0ac59e0efe37241143887f8f232864bbeacc4181ae739f63371",
+    "sdkArchiveSha256": "5d8ba34d8c6fd0ac59e0efe37241143887f8f232864bbeacc4181ae739f63371",
+    "byteIdentical": true,
+    "linkedMemberCount": 23
+  },
   "inputs": [
     {
       "input": "cargo-target/wasm32-wasip1/release/deps/libitoa-25f8d7d2650c7642.rlib(itoa-25f8d7d2650c7642.itoa.1ef311d5a178ac51-cgu.0.rcgu.o)",

@@ -1,10 +1,11 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 
-import { inspectLinkMap, parseLinkMap } from "../scripts/link-map-inventory.mjs";
+import { inspectLinkMap, parseLinkMap, verifyWasiLibcMatch } from "../scripts/link-map-inventory.mjs";
 
 const header = "    Addr      Off     Size Out     In      Symbol\n";
 
@@ -75,6 +76,34 @@ test("a hash-equal map records and confines direct linked objects", () => {
       header + `       -      5c6       10         ${candidate}.o:(symbol)\n`);
     assert.throws(() => inspectLinkMap(candidate, mapped, map,
       { targetRoot: target, sysroot }), /outside the build target and Rust sysroot/);
+  } finally {
+    fs.rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("linked sysroot WASI libc must equal the pinned SDK archive", () => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), "sagejs-iq-wasi-libc-test-"));
+  try {
+    const sdkLibc = path.join(directory, "libc.a");
+    const bytes = Buffer.from("test WASI libc archive");
+    fs.writeFileSync(sdkLibc, bytes);
+    const digest = createHash("sha256").update(bytes).digest("hex");
+    const linked = [{
+      input: "rust-sysroot/lib/rustlib/wasm32-wasip1/lib/self-contained/libc.a(write.c.obj)",
+      archiveSha256: digest,
+    }];
+    assert.deepEqual(verifyWasiLibcMatch(linked, sdkLibc), {
+      linkedArchiveSha256: digest,
+      sdkArchiveSha256: digest,
+      byteIdentical: true,
+      linkedMemberCount: 1,
+    });
+    assert.throws(() => verifyWasiLibcMatch([], sdkLibc), /does not identify/);
+    assert.throws(() => verifyWasiLibcMatch([
+      ...linked, { ...linked[0], archiveSha256: "0".repeat(64) },
+    ], sdkLibc), /does not identify/);
+    fs.writeFileSync(sdkLibc, "different archive");
+    assert.throws(() => verifyWasiLibcMatch(linked, sdkLibc), /differs from/);
   } finally {
     fs.rmSync(directory, { recursive: true, force: true });
   }

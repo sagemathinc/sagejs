@@ -62,6 +62,25 @@ function inventoryInput(source, count, targetRoot, sysroot) {
   };
 }
 
+export function verifyWasiLibcMatch(inputs, sdkLibc) {
+  const linkedLibc = inputs.filter((item) => item.input.startsWith(
+    "rust-sysroot/lib/rustlib/wasm32-wasip1/lib/self-contained/libc.a("));
+  if (linkedLibc.length === 0 || linkedLibc.some((item) =>
+    item.archiveSha256 !== linkedLibc[0].archiveSha256)) {
+    throw new TypeError("the map does not identify one Rust sysroot WASI libc archive");
+  }
+  const sdkArchiveSha256 = sha256(fs.readFileSync(sdkLibc));
+  if (sdkArchiveSha256 !== linkedLibc[0].archiveSha256) {
+    throw new TypeError("the linked Rust sysroot WASI libc differs from the pinned SDK archive");
+  }
+  return {
+    linkedArchiveSha256: linkedLibc[0].archiveSha256,
+    sdkArchiveSha256,
+    byteIdentical: true,
+    linkedMemberCount: linkedLibc.length,
+  };
+}
+
 export function inspectLinkMap(candidateFile, mappedFile, mapFile, options = {}) {
   const candidate = fs.readFileSync(candidateFile);
   const mapped = fs.readFileSync(mappedFile);
@@ -80,6 +99,8 @@ export function inspectLinkMap(candidateFile, mappedFile, mapFile, options = {})
   const inputs = [...contributions].map(([source, count]) =>
     inventoryInput(source, count, targetRoot, sysroot)).sort((a, b) =>
     a.input.localeCompare(b.input));
+  const wasiLibc = options.wasiSdkLibc === undefined ? undefined :
+    verifyWasiLibcMatch(inputs, options.wasiSdkLibc);
   const normalizedMap = map.replaceAll(targetRoot, "<CARGO_TARGET>")
     .replaceAll(sysroot, "<RUST_SYSROOT>");
   return {
@@ -93,6 +114,7 @@ export function inspectLinkMap(candidateFile, mappedFile, mapFile, options = {})
       linkedContributionCount: inputs.reduce((total, input) => total + input.contributions, 0),
       internalContributions,
     },
+    ...(wasiLibc === undefined ? {} : { wasiLibc }),
     inputs,
     limitations: [
       "Inlined dependency code may reside in another crate's object and not appear as a separate linked member.",
@@ -103,12 +125,14 @@ export function inspectLinkMap(candidateFile, mappedFile, mapFile, options = {})
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  if (process.argv.length !== 5) {
-    console.error("usage: node link-map-inventory.mjs CANDIDATE.wasm MAPPED.wasm LINK.map");
+  if (process.argv.length !== 5 && process.argv.length !== 6) {
+    console.error("usage: node link-map-inventory.mjs CANDIDATE.wasm MAPPED.wasm LINK.map [SDK-libc.a]");
     process.exitCode = 2;
   } else {
     try {
-      console.log(JSON.stringify(inspectLinkMap(...process.argv.slice(2)), null, 2));
+      const [, , candidate, mapped, map, sdkLibc] = process.argv;
+      console.log(JSON.stringify(inspectLinkMap(candidate, mapped, map,
+        sdkLibc === undefined ? {} : { wasiSdkLibc: sdkLibc }), null, 2));
     } catch (error) {
       console.error(error?.stack ?? String(error));
       process.exitCode = 1;
