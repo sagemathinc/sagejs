@@ -481,6 +481,19 @@ PARI's 4.51 ms. The historical host-v2 run measured 7.63 and 24.75 ms versus
 4.52 ms, respectively. These are separate runs, not a controlled paired
 speedup measurement, and Sage.js remains slower than PARI on this panel.
 
+After the rank-two orbit began constructing its checked ideal-class map in
+one pass, a source-current 15-pair prepared-field diagnostic on the unchanged
+11-field panel measured a 6.49 geometric-mean Sage.js/PARI ratio, with a
+nearest-rank p90 of 14.71. The composite field measured 19.48 ms versus
+PARI's 4.53 ms; the tiny trivial field was still 22.14 times PARI. The raw
+clocks and executable hashes are in
+[`public-api-prepared-rank-two-map-diagnostic.json`](public-api-prepared-rank-two-map-diagnostic.json).
+This is a different-run, unpromoted public-boundary diagnostic, not a measured
+attribution to the orbit change or evidence of PARI competitiveness. The
+tiny-field gap is primarily a public evaluation-boundary issue, whereas the
+large composite path still spends substantial time in service transport and
+independent exact-map verification.
+
 ## Matched scalar class-number comparison
 
 `run_class_number.py` separately compares the exact scalar Rust count, the
