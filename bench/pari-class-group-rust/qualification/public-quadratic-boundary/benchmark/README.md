@@ -379,6 +379,23 @@ for PARI (previous Sage.js median: 29.0 ms). See
 This is a different-run diagnostic, not a controlled attribution or a promoted
 matched receipt; the public PARI-competitiveness target remains open.
 
+After the resident capability cache at commit `f593eaea5`, three more frozen
+15-pair public diagnostics checked all exact answers against the same panel and
+pinned PARI control. The seven fields with unconditional PARI `qfbclassno(D,0)`
+comparators had Sage.js/PARI geometric-mean median ratios of 11.04 from fresh
+polynomials and 6.72 from prepared fields for scalar class numbers; the raw
+receipts are
+[`public-api-polynomial-class-number-capability-epoch-diagnostic.json`](public-api-polynomial-class-number-capability-epoch-diagnostic.json)
+and
+[`public-api-prepared-class-number-capability-epoch-diagnostic.json`](public-api-prepared-class-number-capability-epoch-diagnostic.json).
+The prepared full-group ratio across all eleven fields was 3.52; its receipt is
+[`public-api-prepared-group-capability-epoch-diagnostic.json`](public-api-prepared-group-capability-epoch-diagnostic.json).
+Earlier separate runs measured 13.95, 7.71, and 3.41 respectively. These are
+different-run diagnostics under different load, not controlled attribution of
+a speedup to the cache or promoted performance evidence. The four large-field
+PARI full-group comparators retain their GRH-conditional status. Public class
+numbers and groups remain short of the PARI-competitive goal.
+
 ### Development-only Wasm evaluator diagnostic
 
 The standalone imaginary-quadratic reactor can be injected into a local
