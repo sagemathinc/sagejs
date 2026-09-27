@@ -8,7 +8,11 @@ import { fileURLToPath } from "node:url";
 import test from "node:test";
 
 const packageRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const repositoryRoot = path.resolve(packageRoot, "../..");
 const script = path.join(packageRoot, "scripts/audit-distribution.mjs");
+const recordedInventory = path.join(
+  packageRoot, "development-distribution-inventory-2026-09-27.json",
+);
 const artifact = path.join(
   packageRoot,
   "target/wasm32-wasip1/release/sagejs_imaginary_quadratic_core.wasm",
@@ -17,6 +21,9 @@ const sha256 = (bytes) => createHash("sha256").update(bytes).digest("hex");
 
 test("the development build has a complete locked archive and ABI inventory", () => {
   const summary = JSON.parse(execFileSync("node", [script], { encoding: "utf8" }));
+  assert.equal(summary.schema,
+    "sagejs.imaginary-quadratic/development-distribution-inventory-v1");
+  assert.match(summary.scope, /not an artifact-derived SBOM or distribution approval/);
   assert.equal(summary.artifact.sha256, sha256(fs.readFileSync(artifact)));
   assert.equal(summary.packages.length, 13);
   assert.equal(summary.packages.filter(({ source }) => source !== "first-party").length, 12);
@@ -31,14 +38,66 @@ test("the development build has a complete locked archive and ABI inventory", ()
   ]);
 });
 
+test("the saved development inventory remains bound to its source inputs", () => {
+  const recorded = JSON.parse(fs.readFileSync(recordedInventory, "utf8"));
+  assert.equal(recorded.schema,
+    "sagejs.imaginary-quadratic/development-distribution-inventory-v1");
+  assert.equal(recorded.artifact.bytes, 346869);
+  assert.equal(recorded.artifact.sha256,
+    "7344622aa162561860fef387e2133d59d1908b1aec71c8c1c15c57b7c98cd201");
+  assert.equal(recorded.inputs.length, 12);
+  for (const input of recorded.inputs) {
+    assert.equal(input.sha256, sha256(fs.readFileSync(
+      path.join(repositoryRoot, input.file),
+    )), `stale source input ${input.file}`);
+  }
+});
+
+test("the review inventory can be saved without changing its verified contents", () => {
+  const temp = fs.mkdtempSync(path.join(os.tmpdir(), "sagejs-quadratic-inventory-"));
+  try {
+    const output = path.join(temp, "inventory.json");
+    const printed = JSON.parse(execFileSync("node", [script], { encoding: "utf8" }));
+    const stdout = execFileSync("node", [script, "--output", output], {
+      encoding: "utf8",
+    });
+    assert.equal(stdout, "");
+    assert.deepEqual(JSON.parse(fs.readFileSync(output, "utf8")), printed);
+  } finally {
+    fs.rmSync(temp, { recursive: true });
+  }
+});
+
 test("the inventory refuses an unverified artifact", () => {
   const temp = fs.mkdtempSync(path.join(os.tmpdir(), "sagejs-quadratic-audit-"));
   try {
     const bad = path.join(temp, "not-a-reactor.wasm");
+    const output = path.join(temp, "unverified.json");
     fs.writeFileSync(bad, "not a wasm module");
-    const result = spawnSync("node", [script, bad], { encoding: "utf8" });
+    const result = spawnSync("node", [script, bad, "--output", output], {
+      encoding: "utf8",
+    });
     assert.notEqual(result.status, 0);
     assert.equal(result.stdout, "");
+    assert.equal(fs.existsSync(output), false);
+  } finally {
+    fs.rmSync(temp, { recursive: true });
+  }
+});
+
+test("saving an inventory rejects an existing output symlink", {
+  skip: process.platform === "win32" && "creating file symlinks may require elevation",
+}, () => {
+  const temp = fs.mkdtempSync(path.join(os.tmpdir(), "sagejs-quadratic-output-"));
+  try {
+    const output = path.join(temp, "inventory.json");
+    const before = sha256(fs.readFileSync(artifact));
+    fs.symlinkSync(artifact, output, "file");
+    const result = spawnSync("node", [script, "--output", output], {
+      encoding: "utf8",
+    });
+    assert.notEqual(result.status, 0);
+    assert.equal(sha256(fs.readFileSync(artifact)), before);
   } finally {
     fs.rmSync(temp, { recursive: true });
   }

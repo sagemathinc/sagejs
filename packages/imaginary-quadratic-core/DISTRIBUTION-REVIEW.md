@@ -36,6 +36,21 @@ Unicode-3.0 expressions. Some resolved packages are build-time procedural
 macros, so the graph must not be misrepresented as a list of code present in
 the final Wasm bytes.
 
+The saved
+[`development-distribution-inventory-2026-09-27.json`](development-distribution-inventory-2026-09-27.json)
+binds this development candidate's SHA-256 to the audit's 12 source/toolchain
+input hashes, four WASI imports, export and memory inventories, and 13 locked
+packages with registry-archive and notice-file hashes. Regenerate it only
+after inspecting a changed candidate or input:
+
+```sh
+node packages/imaginary-quadratic-core/scripts/audit-distribution.mjs \
+  --output packages/imaginary-quadratic-core/development-distribution-inventory-2026-09-27.json
+```
+
+It is a review input, not the independent linked-component, license, or
+production-artifact receipt required for release.
+
 The artifact imports only `environ_get`, `environ_sizes_get`, `fd_write`, and
 `proc_exit` from `wasi_snapshot_preview1`. It exports memory, reactor ABI
 version 2, allocation, checked response-length lookup, deallocation,

@@ -14,10 +14,30 @@ const defaultArtifact = path.join(
   packageRoot,
   "target/wasm32-wasip1/release/sagejs_imaginary_quadratic_core.wasm",
 );
-if (process.argv.length > 3) {
-  throw new Error("usage: node audit-distribution.mjs [DEVELOPMENT-ARTIFACT.wasm]");
+const args = process.argv.slice(2);
+let artifactArgument;
+let outputArgument;
+for (let index = 0; index < args.length; index += 1) {
+  const argument = args[index];
+  if (argument === "--output" && args[index + 1] !== undefined &&
+      !args[index + 1].startsWith("-") && outputArgument === undefined) {
+    outputArgument = args[++index];
+  } else if (!argument.startsWith("-") && artifactArgument === undefined) {
+    artifactArgument = argument;
+  } else {
+    throw new Error(
+      "usage: node audit-distribution.mjs [DEVELOPMENT-ARTIFACT.wasm] [--output FILE.json]",
+    );
+  }
 }
-const artifact = path.resolve(process.argv[2] ?? defaultArtifact);
+const artifact = path.resolve(artifactArgument ?? defaultArtifact);
+const output = outputArgument === undefined ? undefined : path.resolve(outputArgument);
+if (output !== undefined && (!output.endsWith(".json") || output === artifact)) {
+  throw new Error("--output must name a JSON file distinct from the reactor artifact");
+}
+if (output !== undefined && fs.lstatSync(output, { throwIfNoEntry: false })?.isSymbolicLink()) {
+  throw new Error("--output must not follow a symbolic link");
+}
 const sha256 = (bytes) => createHash("sha256").update(bytes).digest("hex");
 const read = (file) => fs.readFileSync(file);
 const run = (command, args, options = {}) => {
@@ -164,6 +184,7 @@ const inputs = inputNames.map((name) => ({ file: name, sha256: sha256(read(path.
 const toolchainRoot = run("node", [path.join(root, "packages/wasm-toolchain/scripts/toolchain.cjs"), "path"]);
 const linker = path.join(toolchainRoot, "sdk/bin/wasm-ld");
 const result = {
+  schema: "sagejs.imaginary-quadratic/development-distribution-inventory-v1",
   scope: "development-build-closure-inventory; not an artifact-derived SBOM or distribution approval",
   target: "wasm32-wasip1",
   artifact: { file: rel(artifact), bytes: bytes.length, sha256: sha256(bytes) },
@@ -178,4 +199,6 @@ const result = {
   packages,
   resolvedEdges: edges,
 };
-console.log(JSON.stringify(result, null, 2));
+const serialized = `${JSON.stringify(result, null, 2)}\n`;
+if (output === undefined) process.stdout.write(serialized);
+else fs.writeFileSync(output, serialized);
