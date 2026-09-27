@@ -22,6 +22,8 @@ stale deallocation attempts without dereferencing them. A raw-ABI regression
 exercises these failure cases, but an independent byte-bound safety review and
 source/license/notice review remain required before any distribution decision.
 Building it does not satisfy those gates.
+See [DISTRIBUTION-REVIEW.md](DISTRIBUTION-REVIEW.md) for the exact candidate
+inventory and the independent decisions required before production staging.
 
 For local verification, run:
 

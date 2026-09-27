@@ -1,101 +1,85 @@
-# Imaginary-quadratic Wasm distribution review boundary
+# Imaginary-quadratic Wasm distribution review request
 
-This is an engineering inventory for human release review, **not** a legal
-conclusion, an artifact-derived SBOM, or authorization to distribute the
-reactor. The production Wasm layout still excludes it.
+Status: **development-only; do not stage in the production Wasm layout**. This
+document makes the independent review actionable. It is not a safety finding,
+license opinion, artifact-derived SBOM, or distribution approval.
 
-## Exact source route
+## Exact candidate and reproducible checks
 
-`src/lib.rs` includes `../../class-groups/src/imaginary.rs` by source path. The
-standalone crate compiles that shared, first-party reduced-form mathematics
-with only its own `src/service.rs` and `src/reactor.rs`. Its `Cargo.toml` has
-three direct Rust dependencies: `serde`, `serde_json`, and `smallvec`. The
-locked transitive package set additionally includes `serde_core`,
-`serde_derive`, `proc-macro2`, `quote`, `syn`, `unicode-ident`, `itoa`,
-`memchr`, and `zmij`. The build does not link the cubic source modules or
-GMP, MPFR, FLINT, Arb, or PARI. Proc-macro packages participate in building
-the source; this list alone does not prove which code is present in a final
-artifact.
-
-The package and shared mathematical source declare `GPL-2.0-or-later`; the
-Sage.js repository declares `GPL-3.0-only`. Registry metadata reports
-permissive expressions for the listed crates, including
-`(MIT OR Apache-2.0) AND Unicode-3.0` for `unicode-ident`. These are
-declarations to review, not a compatibility or notice-sufficiency finding.
-Use the exact crate archives, license files, notices, Cargo lockfile,
-toolchain, and final artifact for that review.
-
-## Reactor boundary
-
-The current `wasm32-wasip1` artifact defines one non-shared memory with 256
-initial and 4096 maximum pages. It imports only the observed WASI Preview 1
-environment/output/exit functions. The JSON request limit is 1 MiB and the
-response limit 16 MiB. The exported allocation ABI retains request and
-response vectors in a safe-Rust ownership table: it caps outstanding entries
-and capacity, requires an exact live pointer/length pair before dropping an
-allocation, and accepts only a live request-kind allocation of the exact
-length before reading request bytes. The raw-ABI test covers forged,
-wrong-length, wrong-kind, and immediately stale pointers, plus the allocation
-count bound. It does not replace independent safety review, including review
-of memory exhaustion, reentrancy, Wasm host isolation, and every exported ABI.
-
-Reproduce the current development checks from the repository root:
+The current `wasm32-wasip1` candidate is
+`target/wasm32-wasip1/release/sagejs_imaginary_quadratic_core.wasm`, 346,369
+bytes, SHA-256
+`4d07126dd06af23b9460ef0a2feb3aa58e1949dd8dfa891efcf5ec157f9941bc`.
+This digest identifies one development build, not a production release. Rebuild
+and review any changed digest. Run:
 
 ```sh
-cargo test --locked --manifest-path packages/imaginary-quadratic-core/Cargo.toml
 sh packages/imaginary-quadratic-core/scripts/build-wasm.sh
-node --test packages/flint-wasm/test/quadratic-core-product.test.mjs \
-  packages/flint-wasm/test/quadratic-core-evaluator.test.mjs
-cargo metadata --locked --format-version 1 \
-  --manifest-path packages/imaginary-quadratic-core/Cargo.toml
-cargo tree --locked --target wasm32-wasip1 --edges normal \
-  --manifest-path packages/imaginary-quadratic-core/Cargo.toml
-node --test packages/imaginary-quadratic-core/test/distribution-audit.test.mjs
 node packages/imaginary-quadratic-core/scripts/audit-distribution.mjs
+node --test packages/imaginary-quadratic-core/test/distribution-audit.test.mjs
+cargo test --locked --manifest-path packages/imaginary-quadratic-core/Cargo.toml
+node --test packages/flint-wasm/test/quadratic-core-product.test.mjs packages/flint-wasm/test/quadratic-core-evaluator.test.mjs
 ```
 
-The read-only audit emits a JSON build-closure inventory for the **exact
-development artifact** it is given. It refuses unexpected imports/exports or
-memory limits; resolves the `wasm32-wasip1` Cargo graph offline with the
-lockfile; verifies every registry `.crate` archive against its locked SHA-256;
-and hashes root license/notice files extracted from those archives. It also
-records first-party source/build-script hashes, compiler identity, linker
-hash, artifact hash, and the build flags. The CI test runs immediately after
-building the development reactor. This is a reproducible review input, **not**
-an artifact-derived SBOM, proof of which dependency code survived linking, a
-license compatibility conclusion, or permission to publish these bytes.
+`src/lib.rs` includes the shared first-party
+`packages/class-groups/src/imaginary.rs` by source path. The standalone crate
+does not link the cubic source modules or GMP, MPFR, FLINT, Arb, or PARI. Its
+direct Rust dependencies are `serde`, `serde_json`, and `smallvec`. The audit
+checks the artifact bytes, import/export inventory, a resolved Cargo build
+graph, Cargo archive checksums, and notice-file hashes. It also records source
+and build-script hashes, compiler identity, linker hash, and build flags. Its
+own scope label is `development-build-closure-inventory`; it does **not**
+establish an artifact-derived list of linked code. The graph has 13 packages,
+including first-party GPL-2.0-or-later code (the repository declares
+GPL-3.0-only) and registry crates declaring MIT, Apache-2.0, Unlicense, and
+Unicode-3.0 expressions. Some resolved packages are build-time procedural
+macros, so the graph must not be misrepresented as a list of code present in
+the final Wasm bytes.
 
-For example, the 2026-09-26 local `wasm32-wasip1` build with Rust 1.98.1
-produced 346,194 bytes with SHA-256
-`44e93a7848a61606c40c751bb053e3fc6cb3e7f80b02bbf77509980e0f1b5388`.
-An independent offline target-directory rebuild with the same pinned compiler,
-linker, lockfile, and flags was byte-identical. That observation is about
-these exact development inputs, not a claim of cross-host reproducibility or
-a substitute for the final shipped-artifact review.
+The artifact imports only `environ_get`, `environ_sizes_get`, `fd_write`, and
+`proc_exit` from `wasi_snapshot_preview1`. It exports memory, ABI version,
+allocation, deallocation, and JSON execution. The build requests a 16 MiB
+initial and 256 MiB maximum memory. The service caps request and response
+payloads at 1 MiB and 16 MiB; the reactor caps live allocations at eight and
+their total capacity at 48 MiB. These are source and structural observations,
+not yet an independent byte-bound proof.
 
-The evaluator test injects the development artifact and exercises exact
-ideal-class coordinates; the ordinary distributed Wasm kernel still declines
-it. The frozen 11-field 15-pair development comparison is documented under
-`bench/pari-class-group-rust/qualification/public-quadratic-boundary/benchmark/`.
-That diagnostic remains several times slower than PARI at the Sage-mode
-boundary and omits outer worker IPC. It is not a release performance receipt.
+An earlier 2026-09-26 development build of the same source route was rebuilt
+in an independent offline target directory with the same pinned compiler,
+linker, lockfile, and flags; its bytes matched. That check did not use the
+candidate digest above, establish cross-host reproducibility, or approve
+distribution. Likewise, the frozen 11-field development comparison remains
+several times slower than PARI at the Sage-mode boundary and omits outer worker
+IPC; it is not a release performance receipt.
 
-## Required before production staging
+## Required independent decisions
 
-1. Review the exact source/license/notice closure and artifact-derived SBOM,
-   including the final target and build features; make and record the human
-   legal conclusion. The shared cubic package's existing pending conclusion
-   does not authorize this standalone artifact.
-2. Independently review the reactor and host ABI safety properties above,
-   including raw-pointer misuse and fail-closed allocation exhaustion.
-3. Assemble corresponding source, dependency archives, applicable notices,
-   toolchain/build inputs, and reproducible artifact-to-source evidence for
-   the exact bytes to be shipped. Decide any source-delivery or relinking
-   obligations rather than inferring them from this inventory.
-4. Update the production layout and its distribution gate only after those
-   reviews. Then run Node, browser, platform, and complete ideal-map tests on
-   the staged artifact, including forged-publication tests and arbitrary
-   ideal-class queries.
-5. Rebenchmark the **public** Wasm path with the frozen diverse panel and
-   pinned PARI policy, including worker IPC, before making a competitiveness
-   claim. Keep the unconditional proof and exact maps in that boundary.
+1. Review `src/reactor.rs`, the host in `packages/flint-wasm`, and the compiled
+   artifact together. Exercise pointer overflow, memory growth, allocation
+   failure, wrong kind/length, repeated calls, and error cleanup. The current
+   owned-allocation table checks exact registered pointer/length pairs without
+   dereferencing unregistered pointers. However, it has no generation token:
+   after allocator address reuse, a stale pair of the same length could refer
+   to a newer allocation. Determine whether that logical ABA case must be
+   eliminated for the production ABI or explicitly constrained by the host
+   contract. The existing stale-pointer test covers deallocation before reuse,
+   not this stronger case.
+2. Establish source provenance and distribution obligations for every linked
+   component, including the shared `packages/class-groups/src/imaginary.rs`
+   source, Rust standard library, third-party crates, and required notices.
+   Confirm that the exact production packaging satisfies the applicable
+   licenses; the declared expressions and archive notices above are not a
+   legal conclusion.
+3. Produce an artifact-bound build/source/notice receipt and review the exact
+   byte-identical artifact that would be staged. The existing build-graph
+   inventory is useful input but is not a substitute for this gate.
+4. Only after those reviews, wire the reactor into the public production Wasm
+   package and run the normal browser and Node-Wasm public API, exact ideal-map,
+   forged-result rejection, resource-limit, and frozen PARI comparisons.
+   Development injection tests prove behavior of the candidate, not public
+   availability or speed competitiveness.
+
+The review should record reviewer identity, artifact digest, source revision,
+scope, findings, required changes, and a separate distribution decision. No
+status flag or release manifest should be changed merely because this request
+exists.
