@@ -286,9 +286,10 @@ control's policy. Both arms start either
 from the public polynomial or from a prepared field, include interpreter
 evaluation and result projection in the clock, and check the expected field
 discriminant, class number, and invariant factors on every sample. Sage.js also checks its
-unconditional proof status and Rust route. The Sage.js call authenticates and
-retains its complete ideal-class map; PARI additionally computes rank-zero
-unit/regulator data but does not project an entire ideal-class map. Different
+unconditional proof status and Rust route. The Sage.js call verifies a compact
+presentation and retains exact on-demand ideal-class coordinates for supported
+ranks; other ranks authenticate and retain the complete map. PARI additionally
+computes rank-zero unit/regulator data but does not project an entire ideal-class map. Different
 Node/Sage.js and GP IPC costs remain part of this user-facing diagnostic, so
 these are not symmetric algorithmic-kernel timings or a promoted performance
 receipt.

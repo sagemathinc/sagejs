@@ -9,9 +9,12 @@ license opinion, artifact-derived SBOM, or distribution approval.
 The current `wasm32-wasip1` candidate is
 `target/wasm32-wasip1/release/sagejs_imaginary_quadratic_core.wasm`, 346,869
 bytes, SHA-256
-`7344622aa162561860fef387e2133d59d1908b1aec71c8c1c15c57b7c98cd201`.
+`5aad704d7d6f9af61301431f1f76807e54a614d5132b9b5066626e7aff51915e`.
 This digest identifies one development build, not a production release. Rebuild
-and review any changed digest. Run:
+and review any changed digest. The independent same-host, cross-Linux-host,
+and linked-object receipts below concern the earlier
+`7344622aa162561860fef387e2133d59d1908b1aec71c8c1c15c57b7c98cd201`
+artifact; they do not certify these new bytes. Run:
 
 ```sh
 sh packages/imaginary-quadratic-core/scripts/build-wasm.sh
@@ -69,10 +72,12 @@ distribution. Likewise, the frozen 11-field development comparison remains
 several times slower than PARI at the Sage-mode boundary and omits outer worker
 IPC; it is not a release performance receipt.
 
-On 2026-09-27, the **current candidate digest above** was rebuilt with
+On 2026-09-27, the **earlier candidate digest**
+`7344622aa162561860fef387e2133d59d1908b1aec71c8c1c15c57b7c98cd201`
+was rebuilt with
 `cargo build --offline --locked --release --target wasm32-wasip1 --lib` in a
 fresh `CARGO_TARGET_DIR`, using the pinned linker and the exact `RUSTFLAGS`
-from `build-wasm.sh`. The new 346,869-byte artifact matched the candidate
+from `build-wasm.sh`. That 346,869-byte artifact matched the earlier candidate
 SHA-256 byte for byte and passed `verify-wasm.mjs` with one defined 256-page
 memory capped at 4096 pages. The read-only distribution inventory again
 validated the four WASI imports, five exported reactor functions plus memory,

@@ -76,6 +76,42 @@ async function diagnoseEvaluationBoundary(sage, freshCall, groupExpected, scalar
 }
 
 async function diagnosePhases(sage, expectedClassNumber) {
+  const presentationResponse = await sage.evaluate([
+    "import time",
+    "from sagejs.number_fields import rust_class_group_runtime as rust_runtime",
+    "started = time.perf_counter()",
+    "result = rust_runtime.rust_imaginary_result(K, operation='imaginary-class-group', algorithm='rust')",
+    "received = time.perf_counter()",
+    "if '_coordinateMap' in result:",
+    "    backend, capability, resident = rust_runtime._imaginary_backend()",
+    "    discriminant, polynomial = rust_runtime._imaginary_polynomial(K)",
+    "    request = {'polynomialAscending': polynomial}",
+    "    summary_started = time.perf_counter()",
+    "    answer = rust_runtime._imaginary_call(backend, resident, 'imaginary-class-group-summary', request)",
+    "    summary_finished = time.perf_counter()",
+    "    generators = rust_runtime._validate_imaginary_presentation(answer['result'], discriminant, polynomial)",
+    "    validated = time.perf_counter()",
+    "    rust_runtime._verify_imaginary_presentation(answer['result'], polynomial, backend, resident, generators)",
+    "    verified = time.perf_counter()",
+    "    phase_result = [1, (received-started)*1000, (summary_finished-summary_started)*1000, (validated-summary_finished)*1000, (verified-validated)*1000, result['classNumber']]",
+    "else:",
+    "    phase_result = [0, result['classNumber']]",
+    "phase_result",
+  ].join("\n"));
+  const presentation = JSON.parse(presentationResponse.repr);
+  if ((presentation[0] === 0 && presentation[1] !== expectedClassNumber) ||
+      (presentation[0] === 1 && presentation[5] !== expectedClassNumber)) {
+    throw new Error("presentation phase diagnostic returned the wrong class number");
+  }
+  if (presentation[0] === 1) {
+    const [, publicReceiptMs, summaryServiceMs, validationMs, detachedVerificationMs] = presentation;
+    if (![publicReceiptMs, summaryServiceMs, validationMs, detachedVerificationMs]
+      .every((value) => Number.isFinite(value) && value >= 0)) {
+      throw new Error("presentation phase diagnostic omitted a timing");
+    }
+    return { publicReceiptMs, summaryServiceMs, validationMs, detachedVerificationMs,
+      note: "Summary and detached verification timings come from a separate replay after the public receipt; they are not additive components of publicReceiptMs." };
+  }
   const response = await sage.evaluate([
     "import time",
     "import sagejs.runtime as runtime",
@@ -202,7 +238,7 @@ async function main() {
     panelSchema: panel.schema,
     promotedPerformanceReceipt: false,
     boundary: "warm-node-kernel-evaluate-public-sagejs-call-v1",
-    caveat: "Includes public Python/Sage.js dispatch, exact host map validation, and kernel evaluation overhead; excludes kernel startup and field construction. The optional evaluation-boundary probe separates parent-observed wall time from the evaluator's execution-only duration; their difference is not attributed to any one phase. Not directly comparable to the promoted Rust/PARI coefficient boundary.",
+    caveat: "Includes public Python/Sage.js dispatch, exact presentation or map validation, and kernel evaluation overhead; excludes kernel startup and field construction. The optional evaluation-boundary probe separates parent-observed wall time from the evaluator's execution-only duration; their difference is not attributed to any one phase. Not directly comparable to the promoted Rust/PARI coefficient boundary.",
     node: process.version,
     platform: `${process.platform}-${process.arch}`,
     samplesPerField: samples,
