@@ -118,6 +118,47 @@ test("a malformed reactor export fails without poisoning the next load", {
   assert.equal(disposedHosts, 2);
 });
 
+test("a failed WASI initialization disposes the quadratic reactor host", {
+  skip: !existsSync(artifact) && "build the standalone quadratic development reactor first",
+}, async () => {
+  const runtimeModule = existsSync(path.join(root,
+    "packages/flint-wasm/dist/wasi-runtime.mjs"))
+    ? "../dist/wasi-runtime.mjs" : "../src/wasi-runtime.mjs";
+  const { createWasiHost: createLoaderWasiHost } = await import(runtimeModule);
+  let disposedHosts = 0;
+  const wasiHostFactory = (options) => {
+    const host = createLoaderWasiHost(options);
+    return {
+      ...host,
+      initialize(instance) {
+        host.initialize(instance);
+        throw new Error("forced WASI initialization failure");
+      },
+      dispose() {
+        disposedHosts += 1;
+        host.dispose();
+      },
+    };
+  };
+  const bytes = new Uint8Array(await readFile(artifact));
+  await assert.rejects(instantiateClassGroupCore(bytes, { wasiHostFactory }),
+    /forced WASI initialization failure/);
+  assert.equal(disposedHosts, 1);
+
+  const valid = await instantiateClassGroupCore(bytes);
+  try {
+    const response = valid.invoke({
+      schema: "sagejs.class-groups/service-request-v1",
+      abi: 1,
+      id: "valid-after-failed-initialization",
+      operation: "capability",
+    });
+    assert.equal(response.ok, true);
+  } finally {
+    valid.close();
+  }
+});
+
 test("the quadratic reactor rejects forged and stale guest pointers", {
   skip: !existsSync(artifact) && "build the standalone quadratic development reactor first",
 }, async () => {
