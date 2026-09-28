@@ -188,15 +188,26 @@ class MatchObject:
                 self.lastindex = index
 
     def _resolve(self, group):
-        if isinstance(group, str):
+        group_type = runtime.jstype(group)
+        if runtime.strict_equal(group_type, "string") or (
+            runtime.strict_equal(group_type, "object") and isinstance(group, str)
+        ):
+            # A str subclass is a boxed String; ignore its overridden __str__.
+            key = (
+                group
+                if runtime.strict_equal(group_type, "string")
+                else runtime.reflect.apply(
+                    runtime.string_class.prototype.valueOf, group, []
+                )
+            )
             groups = _property(self._match, "groups")
             if groups is None or groups is runtime.undefined:
                 raise IndexError("no such group")
-            if not runtime.reflect.has(groups, group):
+            if not runtime.reflect.has(groups, key):
                 raise IndexError("no such group")
-            value = runtime.reflect.get(groups, group)
+            value = runtime.reflect.get(groups, key)
             indices = _property(self._indices, "groups")
-            pair = _property(indices, group, runtime.undefined)
+            pair = _property(indices, key, runtime.undefined)
             return value, pair
         index = int(group)
         if index < 0 or index >= len(self._match):
@@ -207,13 +218,23 @@ class MatchObject:
 
     def group(self, group=0, /, *groups):
         if not groups:
-            if isinstance(group, str):
+            group_type = runtime.jstype(group)
+            if runtime.strict_equal(group_type, "string") or (
+                runtime.strict_equal(group_type, "object") and isinstance(group, str)
+            ):
+                key = (
+                    group
+                    if runtime.strict_equal(group_type, "string")
+                    else runtime.reflect.apply(
+                        runtime.string_class.prototype.valueOf, group, []
+                    )
+                )
                 named = _property(self._match, "groups")
                 if named is None or named is runtime.undefined:
                     raise IndexError("no such group")
-                if not runtime.reflect.has(named, group):
+                if not runtime.reflect.has(named, key):
                     raise IndexError("no such group")
-                value = runtime.reflect.get(named, group)
+                value = runtime.reflect.get(named, key)
             else:
                 index = int(group)
                 if index < 0 or index >= len(self._match):
