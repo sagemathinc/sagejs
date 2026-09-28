@@ -14,5 +14,3 @@ for text in ("", "aaaa", "abab", "a\U0001f600a", "a\ud800a"):
 
 for old, new, count in (("a", "", -1), ("a", "zz", 2), ("", "x", -1)):
     print(codes(("a" * 1000).replace(old, new, count)))
-
-print(codes(str.replace("ababa", "a", "$&", count=2)))
