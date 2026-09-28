@@ -7,6 +7,7 @@
 //! data, or expected field answers.  All mathematical state starts with the
 //! four public polynomial coefficients.
 
+use crate::imaginary::MAXIMUM_COMPACT_HIGH_RANK_CLASSES;
 use crate::{
     ArbitraryIdealReductionLimits, BinaryQuadraticForm, CompactImaginaryPresentation,
     CompactPresentationContinuationCache, CompactPresentationLimits, CompleteImaginaryClassGroup,
@@ -2134,7 +2135,8 @@ impl ProductService {
         let coefficients = Self::imaginary_coefficients(operation, polynomial_ascending)?;
         let group = compute_imaginary_class_group_from_coefficients(coefficients)
             .map_err(|error| Self::imaginary_error(operation, error))?;
-        if group.invariant_factors.len() > 2
+        if (group.invariant_factors.len() > 2
+            && group.class_number > MAXIMUM_COMPACT_HIGH_RANK_CLASSES)
             || group
                 .invariant_factors
                 .first()
@@ -2238,7 +2240,8 @@ impl ProductService {
         request: ImaginaryPresentationServiceRequest,
     ) -> Result<Value, ServiceError> {
         let operation = "imaginary-verify-presentation";
-        if request.invariant_factors.len() > 2
+        if (request.invariant_factors.len() > 2
+            && request.class_number > MAXIMUM_COMPACT_HIGH_RANK_CLASSES as u64)
             || request.generator_forms.len() != request.invariant_factors.len()
         {
             return Err(ServiceError::new(

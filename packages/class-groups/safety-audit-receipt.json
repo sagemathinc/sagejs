@@ -1213,7 +1213,7 @@
     {
       "file": "src/imaginary.rs",
       "scope": "product-candidate",
-      "sha256": "5f162decef9d49fe3f97abc6cf737e3274ed124805cae50bf0cb4989481dabbc",
+      "sha256": "bd3784f119b1a8562124870aa93bcfdc78b2bcc75ff43c98a23e9cea230f5cfe",
       "bytes": 164432,
       "copyrightNotices": [
         "Copyright (C) Sage.js contributors."
@@ -1357,7 +1357,7 @@
     {
       "file": "src/service.rs",
       "scope": "product-candidate",
-      "sha256": "579a924c368fae7dca9341d05e7ea8c6d9bd7b4a4093177e3f735a0acaca9d02",
+      "sha256": "b641bb64ad31295533015b411cbbc1ca670b940740d6546b17fa60a2bc9d2e32",
       "bytes": 137413,
       "copyrightNotices": [
         "Copyright (C) Sage.js contributors."
@@ -1489,7 +1489,7 @@
     {
       "file": "tests/service_contract.rs",
       "scope": "product-candidate-test",
-      "sha256": "32b79aa8d89e46a3d657a030ae3dadfff595e9ce5f9f5e9f71297f3cf93c31f8",
+      "sha256": "b58c0116e99a5696449282eccb1bb6f626235c2ac4fa7622ed471e14222cc729",
       "bytes": 17234,
       "copyrightNotices": [
         "Copyright (C) Sage.js contributors."

@@ -7,9 +7,9 @@ license opinion, artifact-derived SBOM, or distribution approval.
 ## Exact candidate and reproducible checks
 
 The current `wasm32-wasip1` candidate is
-`target/wasm32-wasip1/release/sagejs_imaginary_quadratic_core.wasm`, 346,982
+`target/wasm32-wasip1/release/sagejs_imaginary_quadratic_core.wasm`, 346,889
 bytes, SHA-256
-`2133f2b425c84580a15441b06810c1126839b80fdde0c3d15acd412f6d318eb3`.
+`cc437c7db9cd5e6744c9309ce48afa6e9c515dc404aa74e30bcc023c2acf3696`.
 This digest identifies one development build, not a production release. Rebuild
 and review any changed digest. The cross-Linux-host and macOS receipts below
 concern earlier `7344622a` and `e28a3e01` artifacts; they do not certify these
@@ -215,7 +215,7 @@ functional evidence, **not** cross-host byte identity, independent safety
 review, or distribution approval. Do not silently substitute the Mac bytes
 for the current candidate.
 
-On 2026-09-28, the new 346,982-byte candidate above passed `verify-wasm.mjs`,
+On 2026-09-28, the new 346,889-byte candidate above passed `verify-wasm.mjs`,
 the locked source/build/ABI inventory, and a fresh same-host `-C save-temps`
 link-map rebuild that matched its SHA-256 byte for byte. The updated
 [`link-map-inventory-2026-09-28-current.json`](link-map-inventory-2026-09-28-current.json)
@@ -228,7 +228,11 @@ the commands below. This evidence is for the current digest, but it does not
 replace a new independent cross-host rebuild, source or license review, or
 production distribution approval. The medium-range cyclic
 presentation change is also covered by native Rust and Sage-mode exact-map
-regressions, including a noncyclic fallback.
+regressions, including a noncyclic fallback. The shared source now also
+verifies bounded higher-rank presentations by independently counting reduced
+forms and checking that all products of generator powers are distinct. The
+standalone development reactor still returns the complete exact map; this
+source change is not a production-Wasm distribution decision.
 
 To reproduce the linked-object inventory for the current candidate after
 preparing the pinned Wasm toolchain, run from the repository root:

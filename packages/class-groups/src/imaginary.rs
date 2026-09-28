@@ -13,7 +13,7 @@
 //! forms; all other inputs fail closed.
 
 use serde::Serialize;
-use smallvec::{smallvec, SmallVec};
+use smallvec::{SmallVec, smallvec};
 use std::{
     collections::{BTreeSet, VecDeque},
     fmt,
@@ -26,6 +26,8 @@ const LARGE_PRESENTATION_MINIMUM_DISCRIMINANT: u64 = 1_000_000_000;
 const MIDRANGE_PRESENTATION_MINIMUM_CLASSES: usize = 1_000;
 const LARGE_PRESENTATION_MINIMUM_CLASSES: usize = 10_000;
 const MIDRANGE_CYCLIC_PRIME_NORM_PROBES: usize = 2;
+/// Cartesian generator replay is intentionally bounded for higher-rank groups.
+pub const MAXIMUM_COMPACT_HIGH_RANK_CLASSES: usize = 512;
 const RESULT_SCHEMA: &str = "sagejs.rust-class-group/complete-imaginary-quadratic-v2";
 const CERTIFICATE_THEOREM: &str = "primitive reduced positive-definite forms uniquely enumerate proper ideal classes of a negative fundamental discriminant";
 
@@ -406,8 +408,10 @@ pub fn try_compute_imaginary_presentation_from_coefficients(
 /// proves that the two generators span `2n` distinct classes. A cyclic group
 /// of even order has only one involution, so comparing the supplied
 /// involution with `generator^(n/2)` certifies independence without receiving
-/// or traversing a complete coordinate map. Other structures must retain the
-/// existing full-map proof path.
+/// or traversing a complete coordinate map. For a higher-rank group of at most
+/// 512 classes, exact orders and distinctness of all products of generator
+/// powers prove that the proposed direct product exhausts the independently
+/// counted reduced forms. Larger higher-rank groups retain the full-map path.
 pub fn verify_imaginary_generator_presentation(
     polynomial_ascending: [i64; 3],
     class_number: usize,
@@ -424,7 +428,7 @@ pub fn verify_imaginary_generator_presentation(
     }
     if counted != class_number
         || generators.len() != invariant_factors.len()
-        || invariant_factors.len() > 2
+        || (invariant_factors.len() > 2 && class_number > MAXIMUM_COMPACT_HIGH_RANK_CLASSES)
         || invariant_factors.iter().any(|&factor| factor <= 1)
         || invariant_factors
             .iter()
@@ -455,6 +459,38 @@ pub fn verify_imaginary_generator_presentation(
                 Err(ImaginaryClassGroupError::InvalidCertificate)
             } else {
                 Ok(())
+            }
+        }
+        (factors, forms) if factors.len() >= 3 => {
+            if factors.windows(2).any(|pair| pair[1] % pair[0] != 0) {
+                return Err(ImaginaryClassGroupError::InvalidCertificate);
+            }
+            let mut generated = BTreeSet::from([principal]);
+            for (&factor, &generator) in factors.iter().zip(forms) {
+                if !has_exact_form_order(generator, factor as usize, discriminant, principal)? {
+                    return Err(ImaginaryClassGroupError::InvalidCertificate);
+                }
+                let base = generated;
+                let mut next = BTreeSet::new();
+                let mut power = principal;
+                for _ in 0..factor {
+                    for &entry in &base {
+                        let product = compose_reduced_forms_unchecked(entry, power, discriminant)?;
+                        if !next.insert(product) {
+                            return Err(ImaginaryClassGroupError::InvalidCertificate);
+                        }
+                    }
+                    power = compose_reduced_forms_unchecked(power, generator, discriminant)?;
+                }
+                if power != principal || next.len() > class_number {
+                    return Err(ImaginaryClassGroupError::InvalidCertificate);
+                }
+                generated = next;
+            }
+            if generated.len() == class_number {
+                Ok(())
+            } else {
+                Err(ImaginaryClassGroupError::InvalidCertificate)
             }
         }
         _ => Err(ImaginaryClassGroupError::InvalidCertificate),
@@ -3359,14 +3395,20 @@ mod tests {
     }
 
     #[test]
-    fn map_free_generator_proof_covers_cyclic_and_rank_two_groups() {
+    fn map_free_generator_proof_covers_cyclic_and_bounded_higher_rank_groups() {
         for input in SMALL_IMAGINARY_CASES
             .into_iter()
             .chain(GENERAL_IMAGINARY_CASES)
-            .chain([PublicImaginaryQuadraticInput {
-                id: "imaginary-d15000000315-c2xc16884",
-                polynomial_ascending: [3_750_000_079, -1, 1],
-            }])
+            .chain([
+                PublicImaginaryQuadraticInput {
+                    id: "imaginary-d15015-rank4",
+                    polynomial_ascending: [3_754, -1, 1],
+                },
+                PublicImaginaryQuadraticInput {
+                    id: "imaginary-d15000000315-c2xc16884",
+                    polynomial_ascending: [3_750_000_079, -1, 1],
+                },
+            ])
         {
             let group = compute_imaginary_class_group(input).unwrap();
             let generators = group
@@ -3380,7 +3422,9 @@ mod tests {
                 &group.invariant_factors,
                 &generators,
             );
-            if group.invariant_factors.len() > 2 {
+            if group.invariant_factors.len() > 2
+                && group.class_number > MAXIMUM_COMPACT_HIGH_RANK_CLASSES
+            {
                 assert_eq!(proof, Err(ImaginaryClassGroupError::InvalidCertificate));
             } else {
                 assert_eq!(proof, Ok(()), "{}", input.id);
@@ -3395,6 +3439,24 @@ mod tests {
                 );
             }
         }
+
+        let rank_four = compute_imaginary_class_group_from_coefficients([3_754, -1, 1]).unwrap();
+        assert_eq!(rank_four.invariant_factors, vec![2, 2, 2, 12]);
+        let mut forged = rank_four
+            .generators
+            .iter()
+            .map(|entry| entry.form)
+            .collect::<Vec<_>>();
+        forged[1] = forged[0];
+        assert_eq!(
+            verify_imaginary_generator_presentation(
+                [3_754, -1, 1],
+                rank_four.class_number,
+                &rank_four.invariant_factors,
+                &forged,
+            ),
+            Err(ImaginaryClassGroupError::InvalidCertificate),
+        );
 
         let input = GENERAL_IMAGINARY_CASES[2];
         let group = compute_imaginary_class_group(input).unwrap();

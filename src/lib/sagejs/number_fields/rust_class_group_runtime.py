@@ -28,6 +28,7 @@ IMAGINARY_GROUP_SCHEMA = "sagejs.rust-class-group/complete-imaginary-quadratic-v
 IMAGINARY_PRESENTATION_SCHEMA = (
     "sagejs.class-groups/imaginary-generator-presentation-v1"
 )
+_MAXIMUM_COMPACT_HIGH_RANK_CLASSES = 512
 
 EXACT_UNCONDITIONAL = "exact-unconditional"
 EXACT_RELATIONS_CONDITIONAL_GRH = "exact-relations-conditional-grh"
@@ -323,7 +324,10 @@ def _validate_imaginary_presentation(
     generators = result.get("generators")
     if (
         not isinstance(invariants, list)
-        or len(invariants) > 2
+        or (
+            len(invariants) > 2
+            and result["classNumber"] > _MAXIMUM_COMPACT_HIGH_RANK_CLASSES
+        )
         or not isinstance(generators, list)
         or len(generators) != len(invariants)
     ):
@@ -337,8 +341,13 @@ def _validate_imaginary_presentation(
                 "the Rust invariant factors are invalid"
             )
         product *= factor
-    if product != result["classNumber"] or (
-        len(invariants) == 2 and (invariants[0] != 2 or invariants[1] % 2)
+    if (
+        product != result["classNumber"]
+        or (len(invariants) == 2 and (invariants[0] != 2 or invariants[1] % 2))
+        or (
+            len(invariants) > 2
+            and any(right % left for left, right in zip(invariants, invariants[1:]))
+        )
     ):
         raise RustClassGroupPublicationError("the Rust generator orders are invalid")
     certificate = result.get("certificate")

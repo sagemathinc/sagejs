@@ -2,12 +2,12 @@
   "schema": "sagejs.imaginary-quadratic/hash-equal-link-map-inventory-v1",
   "scope": "linked-object evidence from a byte-identical development rebuild; not an artifact-derived SBOM, complete source inventory, or distribution approval",
   "artifact": {
-    "bytes": 346982,
-    "sha256": "2133f2b425c84580a15441b06810c1126839b80fdde0c3d15acd412f6d318eb3"
+    "bytes": 346889,
+    "sha256": "cc437c7db9cd5e6744c9309ce48afa6e9c515dc404aa74e30bcc023c2acf3696"
   },
   "linkMap": {
-    "rawSha256": "35dd6a13d5732f42cd65f87bb43b4709c158aed5657e175d6c4ba62f0aa6f57a",
-    "normalizedSha256": "a7decdc54361088ed6c2b4418a12fd3230ea54cebece1b79c7d305b067ffe5ba",
+    "rawSha256": "391d9163c97bd53911a73a6f6e106147421e9417cd796770f35d3aab14f1de90",
+    "normalizedSha256": "a301f784b73a1251cbdd3be8aae903e588059b3279513649a6cefbad7b621e24",
     "linkedInputCount": 40,
     "linkedContributionCount": 1127,
     "internalContributions": 6
@@ -20,26 +20,26 @@
   },
   "inputs": [
     {
-      "input": "cargo-target/wasm32-wasip1/release/deps/libitoa-755f3af3363ce344.rlib(itoa-755f3af3363ce344.itoa.1ef311d5a178ac51-cgu.0.rcgu.o)",
-      "archiveSha256": "1d9e8f4f65fddf0740f92ada49c00599e666c21e4483f4a16755028aed4c6b00",
+      "input": "cargo-target/wasm32-wasip1/release/deps/libitoa-972525382df5f4b5.rlib(itoa-972525382df5f4b5.itoa.1ef311d5a178ac51-cgu.0.rcgu.o)",
+      "archiveSha256": "dc01019a1e93be785d0a00b10c2b6a62d8c43d7e8119f8af4f59ea32b9ca2559",
       "memberSha256": "14e7e17ec57d15b799c52f98cd4d02df9a647534420be15a58c221754ee4bae6",
       "contributions": 5
     },
     {
-      "input": "cargo-target/wasm32-wasip1/release/deps/libserde_core-79eb9ee3957cce6e.rlib(serde_core-79eb9ee3957cce6e.serde_core.8cb1457bf566527a-cgu.0.rcgu.o)",
-      "archiveSha256": "cc9071061cd050e9200f09415e5acccc40b66cd5456d7e53e77a1c8e292212a8",
+      "input": "cargo-target/wasm32-wasip1/release/deps/libserde_core-6b0ae66d4682306e.rlib(serde_core-6b0ae66d4682306e.serde_core.8cb1457bf566527a-cgu.0.rcgu.o)",
+      "archiveSha256": "cf75415eba3a846053b45f8e512ddb016e1249fff7f2e5e9f0689fbd9802500e",
       "memberSha256": "548197c91862e10aa38493b50f166c4ca4e5986a24047e163f2021af81d3d1b5",
       "contributions": 32
     },
     {
-      "input": "cargo-target/wasm32-wasip1/release/deps/libserde_json-81e250f381800c2e.rlib(serde_json-81e250f381800c2e.serde_json.8bceedf4b9df52d0-cgu.0.rcgu.o)",
-      "archiveSha256": "983e754582b37ebfa5d74c029db6992ca6fc2b3923148a331df7e2cfe4927b9d",
+      "input": "cargo-target/wasm32-wasip1/release/deps/libserde_json-7615760aa4aa7754.rlib(serde_json-7615760aa4aa7754.serde_json.8bceedf4b9df52d0-cgu.0.rcgu.o)",
+      "archiveSha256": "a84e58702ea26cfe543d9f314ad609330d64f79637575e7e306b4b16f4776a7d",
       "memberSha256": "78e114c341932d2c4800043d955ee4d982912e1069dcaf9be9695dab4d906a9a",
       "contributions": 105
     },
     {
-      "input": "cargo-target/wasm32-wasip1/release/deps/libzmij-ad53c1e8ccb963a4.rlib(zmij-ad53c1e8ccb963a4.zmij.ee83300467b97445-cgu.0.rcgu.o)",
-      "archiveSha256": "abeea3a98255f1b9c783125eb20204ab9f9f9bbe200ebc3e94c424f340b0a087",
+      "input": "cargo-target/wasm32-wasip1/release/deps/libzmij-82f90d25f1f8a5a4.rlib(zmij-82f90d25f1f8a5a4.zmij.ee83300467b97445-cgu.0.rcgu.o)",
+      "archiveSha256": "c191b9e974fb5c43f25d0028415a59ca79bffff988371b62e5e8eb2416a790d4",
       "memberSha256": "bf27e3f3101a86491cf3934f89769186b0e4e2aa9c8bdee7d0d9ef3d71ba2cdd",
       "contributions": 2
     },
@@ -52,7 +52,7 @@
     {
       "input": "cargo-target/wasm32-wasip1/release/deps/sagejs_imaginary_quadratic_core.sagejs_imaginary_quadratic_core.42d5cc941363e777-cgu.0.rcgu.o",
       "archiveSha256": null,
-      "memberSha256": "4424d8e7765e8815c01ed8de8c06070f225456e0a0229825f70d8948f3cd7cca",
+      "memberSha256": "bc3f737eb3860be1e34cd81aed4fb516b061fe1814e14b97c79cd63ca536871e",
       "contributions": 459
     },
     {

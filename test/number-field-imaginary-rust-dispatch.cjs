@@ -719,17 +719,28 @@ test("the native service publishes a noncyclic group with exact ideal-class coor
   );
 });
 
-test("the native service retains the eager exact-map fallback for higher-rank groups", {
+test("bounded higher-rank summaries defer but retain exact ideal-class maps", {
   skip: !process.env.SAGEJS_CLASS_GROUP_SERVICE,
 }, async () => {
   const answer = await evaluate([
+    "import sagejs.runtime as runtime",
     "R.<x> = QQ[]",
-    "K.<a> = NumberField(x^2 + 105)",
-    "G = K.class_group(algorithm='rust')",
-    "[G.order(), G.invariants(), len(G.certificate['reducedForms']),",
-    " len(set(element.coordinates() for element in G))]",
+    "answers = []",
+    "for polynomial, expected in ((x^2 + 105, (2, 2, 2)), (x^2 - x + 3754, (2, 2, 2, 12))):",
+    "    K = NumberField(polynomial, 'a')",
+    "    G = K.class_group(algorithm='rust')",
+    "    deferred = runtime.reflect.get(K, '_quadratic_backend_cache') is runtime.undefined",
+    "    backend_group = G._group._realize()",
+    "    I, J = [generator.ideal() for generator in G.gens()[:2]]",
+    "    coordinates = G(I*J).coordinates()",
+    "    answers.append((deferred, G.invariants() == expected,",
+    "        len(backend_group._coordinate_map.cache) >= len(expected) + 1,",
+    "        coordinates == (1, 1) + (0,) * (len(expected) - 2),",
+    "        len(G.certificate['reducedForms']) == G.order(),",
+    "        len(set(element.coordinates() for element in G)) == G.order()))",
+    "answers",
   ]);
-  assert.equal(answer.repr, "[8, (2, 2, 2), 8, 8]");
+  assert.equal(answer.repr, "[(True, True, True, True, True, True), (True, True, True, True, True, True)]");
 });
 
 test("a verified imaginary summary defers quadratic backend until ideal access", {

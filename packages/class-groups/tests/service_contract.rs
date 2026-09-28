@@ -57,6 +57,74 @@ fn tiny_request() -> Value {
 }
 
 #[test]
+fn bounded_rank_four_summary_has_a_detached_proof_and_exact_coordinates() {
+    let mut service = ProductService::new();
+    let polynomial = ["3754", "-1", "1"];
+    let summary = call(
+        &mut service,
+        "rank4-summary",
+        "imaginary-class-group-summary",
+        json!({"polynomialAscending": polynomial}),
+    );
+    assert_eq!(summary["ok"], true, "{summary}");
+    let presentation = &summary["result"]["result"];
+    assert_eq!(presentation["classNumber"], 96);
+    assert_eq!(presentation["invariantFactors"], json!([2, 2, 2, 12]));
+    let generator_forms = presentation["generators"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|generator| {
+            let form = &generator["form"];
+            json!([
+                form["a"].to_string(),
+                form["b"].to_string(),
+                form["c"].to_string()
+            ])
+        })
+        .collect::<Vec<_>>();
+    let verified = call(
+        &mut service,
+        "rank4-proof",
+        "imaginary-verify-presentation",
+        json!({
+            "polynomialAscending": polynomial,
+            "classNumber": 96,
+            "invariantFactors": [2, 2, 2, 12],
+            "generatorForms": generator_forms,
+        }),
+    );
+    assert_eq!(verified["ok"], true, "{verified}");
+    let mut forged = generator_forms.clone();
+    forged[1] = forged[0].clone();
+    let rejected = call(
+        &mut service,
+        "rank4-forgery",
+        "imaginary-verify-presentation",
+        json!({
+            "polynomialAscending": polynomial,
+            "classNumber": 96,
+            "invariantFactors": [2, 2, 2, 12],
+            "generatorForms": forged,
+        }),
+    );
+    assert_eq!(rejected["ok"], false);
+    assert_eq!(rejected["error"]["category"], "invalid-request");
+    let coordinate = call(
+        &mut service,
+        "rank4-coordinate",
+        "imaginary-class-coordinate",
+        json!({
+            "polynomialAscending": polynomial,
+            "formCoefficients": generator_forms[3],
+        }),
+    );
+    assert_eq!(coordinate["ok"], true, "{coordinate}");
+    assert_eq!(coordinate["result"]["presentation"], *presentation);
+    assert_eq!(coordinate["result"]["coordinates"], json!([0, 0, 0, 1]));
+}
+
+#[test]
 fn imaginary_quadratic_operations_are_unconditional_and_public() {
     let mut service = ProductService::new();
     let capability = call(&mut service, "iq-cap", "capability", json!({}));
@@ -288,8 +356,8 @@ fn imaginary_presentation_omits_the_map_but_retains_exact_coordinate_queries() {
         "imaginary-class-group-summary",
         json!({"polynomialAscending": ["105", "0", "1"]}),
     );
-    assert_eq!(higher_rank["ok"], false);
-    assert_eq!(higher_rank["error"]["category"], "capability-declined");
+    assert_eq!(higher_rank["ok"], true, "{higher_rank}");
+    assert_eq!(higher_rank["result"]["result"]["invariantFactors"], json!([2, 2, 2]));
     let eager = call(
         &mut service,
         "iq-higher-rank-eager",

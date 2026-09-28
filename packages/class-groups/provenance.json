@@ -309,7 +309,7 @@
     },
     {
       "path": "packages/class-groups/src/imaginary.rs",
-      "sha256": "5f162decef9d49fe3f97abc6cf737e3274ed124805cae50bf0cb4989481dabbc",
+      "sha256": "bd3784f119b1a8562124870aa93bcfdc78b2bcc75ff43c98a23e9cea230f5cfe",
       "classification": "original",
       "declared_license_expression": "GPL-2.0-or-later",
       "mapping_status": "not_applicable",
@@ -544,7 +544,7 @@
     },
     {
       "path": "packages/class-groups/src/service.rs",
-      "sha256": "579a924c368fae7dca9341d05e7ea8c6d9bd7b4a4093177e3f735a0acaca9d02",
+      "sha256": "b641bb64ad31295533015b411cbbc1ca670b940740d6546b17fa60a2bc9d2e32",
       "classification": "original",
       "declared_license_expression": "GPL-2.0-or-later",
       "mapping_status": "not_applicable",
