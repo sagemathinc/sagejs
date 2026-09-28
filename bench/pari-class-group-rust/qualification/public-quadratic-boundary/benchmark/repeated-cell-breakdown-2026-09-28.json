@@ -1,0 +1,974 @@
+{
+  "schema": "sagejs.public-quadratic/public-sagejs-latency-diagnostic-v1",
+  "panelSchema": "sagejs.public-quadratic/benchmark-panel-v2",
+  "promotedPerformanceReceipt": false,
+  "boundary": "warm-node-kernel-evaluate-public-sagejs-call-v1",
+  "caveat": "Includes public Python/Sage.js dispatch, exact presentation or map validation, and kernel evaluation overhead; excludes kernel startup and field construction. The optional evaluation-boundary probe separates parent-observed wall time from the evaluator's execution-only duration; their difference is not attributed to any one phase. Not directly comparable to the promoted Rust/PARI coefficient boundary.",
+  "node": "v26.10.0",
+  "platform": "linux-x64",
+  "samplesPerField": 15,
+  "phaseDiagnosticEnabled": false,
+  "repeatedCellPhaseEnabled": true,
+  "repeatedCellPhaseCaveat": "Each exact source is evaluated consecutively after one warmup. These separate medians are not additive, cannot isolate a causal speedup, and must not be substituted for the matched public Sage.js/PARI panel.",
+  "runnerSha256": "9c7bdabc6f9dddfd7b35880b3cf2cc937451ecdc3b0825a7dea2754fe2e57689",
+  "panelSha256": "3e5bf27142c382e4a1dd31f32656554ada0e20f586b7058f83df8cbf096a8825",
+  "sageBuildReceiptSha256": "bf24a830590a4c5c32d7fbcee543ba88a9d7b03005066aea309229541ae446d1",
+  "serviceSha256": "a1eb623d53a702514b7fac21669471ff74f4630f4ac64b6722a4b77d6200a62f",
+  "cpuModel": "AMD EPYC 7B13",
+  "loadAverage1m5m15m": [
+    7.83,
+    9.28,
+    7.25
+  ],
+  "results": [
+    {
+      "fieldId": "tiny-trivial-d3",
+      "discriminant": -3,
+      "classNumber": 1,
+      "invariantFactors": [],
+      "firstDefaultNanoseconds": 239322106,
+      "cachedDefaultNanoseconds": [
+        8638490,
+        10863540,
+        9153519,
+        8653310,
+        7074760,
+        6712570,
+        7027620,
+        9241559,
+        6855960,
+        7796229,
+        6765290,
+        6369520,
+        6032340,
+        5850070,
+        5689780
+      ],
+      "cachedDefaultMedianNanoseconds": 7027620,
+      "freshExplicitNanoseconds": [
+        10949250,
+        14112549,
+        14575760,
+        13590509,
+        9699660,
+        9345050,
+        10701429,
+        12288730,
+        9137299,
+        12922129,
+        9016209,
+        8835389,
+        8234239,
+        7984029,
+        7995229
+      ],
+      "freshExplicitMedianNanoseconds": 9699660,
+      "scalarExplicitNanoseconds": [
+        5510180,
+        6417320,
+        5833279,
+        6312620,
+        4675109,
+        4676009,
+        5956500,
+        6238059,
+        13420370,
+        4513199,
+        4764920,
+        4385330,
+        4595710,
+        3948500,
+        3912510
+      ],
+      "scalarExplicitMedianNanoseconds": 4764920,
+      "rssAfterFieldBytes": 312246272,
+      "repeatedCellPhases": {
+        "empty": {
+          "wallMedianNanoseconds": 733531,
+          "executionMedianNanoseconds": 362440
+        },
+        "polynomial": {
+          "wallMedianNanoseconds": 2308390,
+          "executionMedianNanoseconds": 1904780
+        },
+        "fieldFromPolynomial": {
+          "wallMedianNanoseconds": 1603360,
+          "executionMedianNanoseconds": 1268250
+        },
+        "preparedGroup": {
+          "wallMedianNanoseconds": 2437690,
+          "executionMedianNanoseconds": 1928300
+        },
+        "freshPolynomialGroup": {
+          "wallMedianNanoseconds": 5565030,
+          "executionMedianNanoseconds": 5104240
+        }
+      }
+    },
+    {
+      "fieldId": "tiny-cyclic-d47",
+      "discriminant": -47,
+      "classNumber": 5,
+      "invariantFactors": [
+        5
+      ],
+      "firstDefaultNanoseconds": 11732349,
+      "cachedDefaultNanoseconds": [
+        5551810,
+        5617260,
+        5528990,
+        5912990,
+        5825420,
+        6199990,
+        5412420,
+        5743270,
+        5482900,
+        5603630,
+        5583310,
+        6193480,
+        5942769,
+        5457620,
+        5578179
+      ],
+      "cachedDefaultMedianNanoseconds": 5603630,
+      "freshExplicitNanoseconds": [
+        8283020,
+        8285110,
+        9069549,
+        8435990,
+        9818130,
+        8130799,
+        7966090,
+        8066790,
+        7627139,
+        8116120,
+        7924679,
+        7680610,
+        8365670,
+        7717850,
+        7858330
+      ],
+      "freshExplicitMedianNanoseconds": 8116120,
+      "scalarExplicitNanoseconds": [
+        3819350,
+        3664310,
+        4529030,
+        3612030,
+        4278219,
+        3719640,
+        3879789,
+        3540509,
+        3941919,
+        4895309,
+        3533940,
+        3619829,
+        3683920,
+        3820710,
+        3603619
+      ],
+      "scalarExplicitMedianNanoseconds": 3719640,
+      "rssAfterFieldBytes": 317882368,
+      "repeatedCellPhases": {
+        "empty": {
+          "wallMedianNanoseconds": 723490,
+          "executionMedianNanoseconds": 369400
+        },
+        "polynomial": {
+          "wallMedianNanoseconds": 2606710,
+          "executionMedianNanoseconds": 2113050
+        },
+        "fieldFromPolynomial": {
+          "wallMedianNanoseconds": 1487190,
+          "executionMedianNanoseconds": 1063890
+        },
+        "preparedGroup": {
+          "wallMedianNanoseconds": 2783390,
+          "executionMedianNanoseconds": 2271140
+        },
+        "freshPolynomialGroup": {
+          "wallMedianNanoseconds": 6434779,
+          "executionMedianNanoseconds": 5915999
+        }
+      }
+    },
+    {
+      "fieldId": "tiny-noncyclic-d231",
+      "discriminant": -231,
+      "classNumber": 12,
+      "invariantFactors": [
+        2,
+        6
+      ],
+      "firstDefaultNanoseconds": 10137909,
+      "cachedDefaultNanoseconds": [
+        5608449,
+        5584020,
+        5703400,
+        5782589,
+        5872940,
+        6040910,
+        5533630,
+        6707170,
+        5638890,
+        5343980,
+        5531730,
+        5467630,
+        6429740,
+        5334160,
+        6121540
+      ],
+      "cachedDefaultMedianNanoseconds": 5638890,
+      "freshExplicitNanoseconds": [
+        8527010,
+        8513070,
+        9877560,
+        8623519,
+        9928509,
+        9005560,
+        8306619,
+        9807659,
+        8300709,
+        8461649,
+        8494729,
+        8188359,
+        9148709,
+        7967229,
+        8225919
+      ],
+      "freshExplicitMedianNanoseconds": 8513070,
+      "scalarExplicitNanoseconds": [
+        3718049,
+        6125230,
+        4190951,
+        4028560,
+        5292409,
+        3822099,
+        4441139,
+        3695350,
+        3637720,
+        3749980,
+        3751530,
+        3991050,
+        4930650,
+        3719960,
+        3812150
+      ],
+      "scalarExplicitMedianNanoseconds": 3822099,
+      "rssAfterFieldBytes": 327581696,
+      "repeatedCellPhases": {
+        "empty": {
+          "wallMedianNanoseconds": 773110,
+          "executionMedianNanoseconds": 375510
+        },
+        "polynomial": {
+          "wallMedianNanoseconds": 2579719,
+          "executionMedianNanoseconds": 2109810
+        },
+        "fieldFromPolynomial": {
+          "wallMedianNanoseconds": 1377940,
+          "executionMedianNanoseconds": 1002750
+        },
+        "preparedGroup": {
+          "wallMedianNanoseconds": 5997030,
+          "executionMedianNanoseconds": 4309640
+        },
+        "freshPolynomialGroup": {
+          "wallMedianNanoseconds": 6233350,
+          "executionMedianNanoseconds": 5655090
+        }
+      }
+    },
+    {
+      "fieldId": "rank4-d15015",
+      "discriminant": -15015,
+      "classNumber": 96,
+      "invariantFactors": [
+        2,
+        2,
+        2,
+        12
+      ],
+      "firstDefaultNanoseconds": 24313188,
+      "cachedDefaultNanoseconds": [
+        5476400,
+        5697030,
+        5705900,
+        6365649,
+        5515210,
+        6198990,
+        5622350,
+        5461370,
+        5599409,
+        7993360,
+        9159839,
+        8988159,
+        6728030,
+        6463419,
+        5627449
+      ],
+      "cachedDefaultMedianNanoseconds": 5705900,
+      "freshExplicitNanoseconds": [
+        11374729,
+        11024719,
+        11047439,
+        11410820,
+        10647090,
+        12157539,
+        11548409,
+        11117129,
+        12705880,
+        13026399,
+        13629769,
+        13997769,
+        13338579,
+        10772059,
+        12076340
+      ],
+      "freshExplicitMedianNanoseconds": 11548409,
+      "scalarExplicitNanoseconds": [
+        4223559,
+        4268410,
+        6986400,
+        5990049,
+        4457679,
+        4004740,
+        3847150,
+        3876880,
+        4975129,
+        13821840,
+        5327190,
+        5989329,
+        5421590,
+        4833210,
+        3792189
+      ],
+      "scalarExplicitMedianNanoseconds": 4833210,
+      "rssAfterFieldBytes": 334921728,
+      "repeatedCellPhases": {
+        "empty": {
+          "wallMedianNanoseconds": 801910,
+          "executionMedianNanoseconds": 377830
+        },
+        "polynomial": {
+          "wallMedianNanoseconds": 2396960,
+          "executionMedianNanoseconds": 1990929
+        },
+        "fieldFromPolynomial": {
+          "wallMedianNanoseconds": 1412089,
+          "executionMedianNanoseconds": 1053530
+        },
+        "preparedGroup": {
+          "wallMedianNanoseconds": 4787530,
+          "executionMedianNanoseconds": 4358379
+        },
+        "freshPolynomialGroup": {
+          "wallMedianNanoseconds": 9279759,
+          "executionMedianNanoseconds": 8802949
+        }
+      }
+    },
+    {
+      "fieldId": "near-limit-h1715-d9999991",
+      "discriminant": -9999991,
+      "classNumber": 1715,
+      "invariantFactors": [
+        1715
+      ],
+      "firstDefaultNanoseconds": 8775020,
+      "cachedDefaultNanoseconds": [
+        5424280,
+        5560150,
+        5480000,
+        5759540,
+        5573800,
+        6866670,
+        5326010,
+        6836940,
+        5459929,
+        5352860,
+        5453999,
+        5374370,
+        5204760,
+        5360900,
+        6278030
+      ],
+      "cachedDefaultMedianNanoseconds": 5459929,
+      "freshExplicitNanoseconds": [
+        8400269,
+        8437319,
+        9321330,
+        8706320,
+        8785519,
+        9112979,
+        8163459,
+        9299959,
+        9786689,
+        8091189,
+        8189929,
+        8309579,
+        8196659,
+        8459509,
+        8275329
+      ],
+      "freshExplicitMedianNanoseconds": 8437319,
+      "scalarExplicitNanoseconds": [
+        4090130,
+        4163980,
+        5579029,
+        4409150,
+        4518260,
+        4496130,
+        4176420,
+        3891060,
+        3944000,
+        3806250,
+        3713830,
+        3667870,
+        3926530,
+        3857650,
+        3735790
+      ],
+      "scalarExplicitMedianNanoseconds": 3944000,
+      "rssAfterFieldBytes": 341606400,
+      "repeatedCellPhases": {
+        "empty": {
+          "wallMedianNanoseconds": 779060,
+          "executionMedianNanoseconds": 399831
+        },
+        "polynomial": {
+          "wallMedianNanoseconds": 2184350,
+          "executionMedianNanoseconds": 1819829
+        },
+        "fieldFromPolynomial": {
+          "wallMedianNanoseconds": 1263279,
+          "executionMedianNanoseconds": 915509
+        },
+        "preparedGroup": {
+          "wallMedianNanoseconds": 3183160,
+          "executionMedianNanoseconds": 2741000
+        },
+        "freshPolynomialGroup": {
+          "wallMedianNanoseconds": 6371340,
+          "executionMedianNanoseconds": 5876490
+        }
+      }
+    },
+    {
+      "fieldId": "near-limit-h4378-d8173415",
+      "discriminant": -8173415,
+      "classNumber": 4378,
+      "invariantFactors": [
+        4378
+      ],
+      "firstDefaultNanoseconds": 9707190,
+      "cachedDefaultNanoseconds": [
+        5187819,
+        7007129,
+        5636520,
+        5389900,
+        5312850,
+        5204450,
+        5248020,
+        5165310,
+        5236780,
+        5194120,
+        5344080,
+        5401030,
+        6080300,
+        5103190,
+        5355260
+      ],
+      "cachedDefaultMedianNanoseconds": 5312850,
+      "freshExplicitNanoseconds": [
+        9354110,
+        9317770,
+        9338480,
+        9862029,
+        9038489,
+        9226449,
+        10608949,
+        9273559,
+        8920239,
+        8842439,
+        9148279,
+        9164939,
+        8962469,
+        8944139,
+        9468529
+      ],
+      "freshExplicitMedianNanoseconds": 9226449,
+      "scalarExplicitNanoseconds": [
+        3721849,
+        3684479,
+        4301560,
+        4070740,
+        3639280,
+        3819600,
+        3635340,
+        3847240,
+        3735120,
+        3973320,
+        3790700,
+        3679700,
+        3592640,
+        3861160,
+        3760160
+      ],
+      "scalarExplicitMedianNanoseconds": 3760160,
+      "rssAfterFieldBytes": 346456064,
+      "repeatedCellPhases": {
+        "empty": {
+          "wallMedianNanoseconds": 818130,
+          "executionMedianNanoseconds": 432790
+        },
+        "polynomial": {
+          "wallMedianNanoseconds": 2458520,
+          "executionMedianNanoseconds": 2015509
+        },
+        "fieldFromPolynomial": {
+          "wallMedianNanoseconds": 1255940,
+          "executionMedianNanoseconds": 878690
+        },
+        "preparedGroup": {
+          "wallMedianNanoseconds": 4498580,
+          "executionMedianNanoseconds": 3924040
+        },
+        "freshPolynomialGroup": {
+          "wallMedianNanoseconds": 7366560,
+          "executionMedianNanoseconds": 6891380
+        }
+      }
+    },
+    {
+      "fieldId": "larger-odd-prime-d20000000179",
+      "discriminant": -20000000179,
+      "classNumber": 27325,
+      "invariantFactors": [
+        27325
+      ],
+      "firstDefaultNanoseconds": 13055599,
+      "cachedDefaultNanoseconds": [
+        7082639,
+        5935100,
+        5598240,
+        5617859,
+        6433700,
+        6314680,
+        5185470,
+        6857470,
+        6119870,
+        5570879,
+        5340489,
+        6126550,
+        6036429,
+        6199310,
+        5547180
+      ],
+      "cachedDefaultMedianNanoseconds": 6036429,
+      "freshExplicitNanoseconds": [
+        12402780,
+        12078839,
+        11995949,
+        11722090,
+        13200869,
+        11195609,
+        12314909,
+        12574979,
+        12589439,
+        11626050,
+        12583450,
+        11897069,
+        12636679,
+        13452869,
+        12154810
+      ],
+      "freshExplicitMedianNanoseconds": 12314909,
+      "scalarExplicitNanoseconds": [
+        6481009,
+        6571990,
+        5538240,
+        5630719,
+        5545130,
+        5552210,
+        6101079,
+        5570970,
+        6414320,
+        5456839,
+        8826849,
+        6511069,
+        6854700,
+        6121670,
+        6661059
+      ],
+      "scalarExplicitMedianNanoseconds": 6121670,
+      "rssAfterFieldBytes": 352100352,
+      "repeatedCellPhases": {
+        "empty": {
+          "wallMedianNanoseconds": 667680,
+          "executionMedianNanoseconds": 352240
+        },
+        "polynomial": {
+          "wallMedianNanoseconds": 2173160,
+          "executionMedianNanoseconds": 1830299
+        },
+        "fieldFromPolynomial": {
+          "wallMedianNanoseconds": 1217350,
+          "executionMedianNanoseconds": 887460
+        },
+        "preparedGroup": {
+          "wallMedianNanoseconds": 6723559,
+          "executionMedianNanoseconds": 6069500
+        },
+        "freshPolynomialGroup": {
+          "wallMedianNanoseconds": 9578420,
+          "executionMedianNanoseconds": 9013220
+        }
+      }
+    },
+    {
+      "fieldId": "larger-odd-prime-d40000000003",
+      "discriminant": -40000000003,
+      "classNumber": 29199,
+      "invariantFactors": [
+        29199
+      ],
+      "firstDefaultNanoseconds": 12566039,
+      "cachedDefaultNanoseconds": [
+        6324330,
+        5437509,
+        5394550,
+        6418530,
+        5612440,
+        6146089,
+        5509620,
+        5559049,
+        5850310,
+        5604400,
+        5332729,
+        5575510,
+        6093390,
+        5525090,
+        6580919
+      ],
+      "cachedDefaultMedianNanoseconds": 5604400,
+      "freshExplicitNanoseconds": [
+        13578479,
+        12672249,
+        13104149,
+        17520499,
+        12981019,
+        13819180,
+        13034319,
+        14133190,
+        12886019,
+        13438079,
+        13472520,
+        13047939,
+        13061770,
+        13514249,
+        14081360
+      ],
+      "freshExplicitMedianNanoseconds": 13438079,
+      "scalarExplicitNanoseconds": [
+        6410180,
+        6079039,
+        6914670,
+        6983399,
+        6987890,
+        6499089,
+        7196070,
+        6670209,
+        6593200,
+        5890860,
+        6746979,
+        6978440,
+        7089679,
+        6562220,
+        6083590
+      ],
+      "scalarExplicitMedianNanoseconds": 6670209,
+      "rssAfterFieldBytes": 356425728,
+      "repeatedCellPhases": {
+        "empty": {
+          "wallMedianNanoseconds": 747920,
+          "executionMedianNanoseconds": 390090
+        },
+        "polynomial": {
+          "wallMedianNanoseconds": 2175289,
+          "executionMedianNanoseconds": 1803671
+        },
+        "fieldFromPolynomial": {
+          "wallMedianNanoseconds": 1216360,
+          "executionMedianNanoseconds": 866520
+        },
+        "preparedGroup": {
+          "wallMedianNanoseconds": 7616149,
+          "executionMedianNanoseconds": 7091630
+        },
+        "freshPolynomialGroup": {
+          "wallMedianNanoseconds": 11344210,
+          "executionMedianNanoseconds": 10704279
+        }
+      }
+    },
+    {
+      "fieldId": "larger-odd-prime-d60000000091",
+      "discriminant": -60000000091,
+      "classNumber": 42885,
+      "invariantFactors": [
+        42885
+      ],
+      "firstDefaultNanoseconds": 12669790,
+      "cachedDefaultNanoseconds": [
+        5163620,
+        5627019,
+        5567350,
+        5205780,
+        5266400,
+        5201150,
+        5490490,
+        6603189,
+        5968340,
+        5778980,
+        5308550,
+        5866879,
+        5307180,
+        5194760,
+        5843570
+      ],
+      "cachedDefaultMedianNanoseconds": 5490490,
+      "freshExplicitNanoseconds": [
+        12980379,
+        13861759,
+        18352859,
+        13599049,
+        12380839,
+        13646679,
+        13899209,
+        13812910,
+        15183539,
+        13803690,
+        13600759,
+        13757380,
+        13013089,
+        14309399,
+        14679809
+      ],
+      "freshExplicitMedianNanoseconds": 13803690,
+      "scalarExplicitNanoseconds": [
+        6730179,
+        7124570,
+        6494290,
+        6367080,
+        6149769,
+        7117130,
+        7421340,
+        7117980,
+        7950320,
+        6344159,
+        7198720,
+        6956639,
+        6362570,
+        7484249,
+        6973270
+      ],
+      "scalarExplicitMedianNanoseconds": 6973270,
+      "rssAfterFieldBytes": 361275392,
+      "repeatedCellPhases": {
+        "empty": {
+          "wallMedianNanoseconds": 823900,
+          "executionMedianNanoseconds": 431500
+        },
+        "polynomial": {
+          "wallMedianNanoseconds": 2242490,
+          "executionMedianNanoseconds": 1828170
+        },
+        "fieldFromPolynomial": {
+          "wallMedianNanoseconds": 1248420,
+          "executionMedianNanoseconds": 889470
+        },
+        "preparedGroup": {
+          "wallMedianNanoseconds": 9014919,
+          "executionMedianNanoseconds": 8378519
+        },
+        "freshPolynomialGroup": {
+          "wallMedianNanoseconds": 11612399,
+          "executionMedianNanoseconds": 11067809
+        }
+      }
+    },
+    {
+      "fieldId": "larger-even-d20000001124",
+      "discriminant": -20000001124,
+      "classNumber": 44488,
+      "invariantFactors": [
+        44488
+      ],
+      "firstDefaultNanoseconds": 11203230,
+      "cachedDefaultNanoseconds": [
+        5114300,
+        5648619,
+        5643250,
+        5482389,
+        5227990,
+        5164560,
+        5117329,
+        5094189,
+        5070380,
+        5200110,
+        5543329,
+        5167999,
+        5340830,
+        6059260,
+        5501779
+      ],
+      "cachedDefaultMedianNanoseconds": 5227990,
+      "freshExplicitNanoseconds": [
+        12194100,
+        17022759,
+        11952070,
+        12265220,
+        11008489,
+        11481309,
+        11501409,
+        12642880,
+        11781930,
+        11529209,
+        11469460,
+        11641990,
+        12569229,
+        13732139,
+        11569570
+      ],
+      "freshExplicitMedianNanoseconds": 11781930,
+      "scalarExplicitNanoseconds": [
+        6775259,
+        5969750,
+        6369620,
+        5757999,
+        5273460,
+        5569770,
+        5505840,
+        5398560,
+        5477749,
+        5704940,
+        5256580,
+        5599149,
+        6600880,
+        6100090,
+        5567969
+      ],
+      "scalarExplicitMedianNanoseconds": 5599149,
+      "rssAfterFieldBytes": 366256128,
+      "repeatedCellPhases": {
+        "empty": {
+          "wallMedianNanoseconds": 713730,
+          "executionMedianNanoseconds": 369090
+        },
+        "polynomial": {
+          "wallMedianNanoseconds": 1914590,
+          "executionMedianNanoseconds": 1525480
+        },
+        "fieldFromPolynomial": {
+          "wallMedianNanoseconds": 1378250,
+          "executionMedianNanoseconds": 992670
+        },
+        "preparedGroup": {
+          "wallMedianNanoseconds": 7493819,
+          "executionMedianNanoseconds": 6805529
+        },
+        "freshPolynomialGroup": {
+          "wallMedianNanoseconds": 9424929,
+          "executionMedianNanoseconds": 8941819
+        }
+      }
+    },
+    {
+      "fieldId": "larger-composite-d15000000315",
+      "discriminant": -15000000315,
+      "classNumber": 33768,
+      "invariantFactors": [
+        2,
+        16884
+      ],
+      "firstDefaultNanoseconds": 12870349,
+      "cachedDefaultNanoseconds": [
+        5474060,
+        5435599,
+        5662950,
+        5812770,
+        5244859,
+        5104959,
+        6244550,
+        5317210,
+        6076389,
+        5631030,
+        5507220,
+        5519299,
+        5564380,
+        5824920,
+        5476120
+      ],
+      "cachedDefaultMedianNanoseconds": 5519299,
+      "freshExplicitNanoseconds": [
+        12009959,
+        12645750,
+        12470919,
+        11555429,
+        11027580,
+        10744250,
+        11750339,
+        11539519,
+        12511750,
+        12295409,
+        11179599,
+        12145979,
+        11022569,
+        11640209,
+        11204650
+      ],
+      "freshExplicitMedianNanoseconds": 11640209,
+      "scalarExplicitNanoseconds": [
+        8356820,
+        6095399,
+        6393590,
+        5619180,
+        5284100,
+        5583749,
+        6382750,
+        6013130,
+        7013259,
+        5514340,
+        5495320,
+        5601910,
+        6308190,
+        5595830,
+        5444520
+      ],
+      "scalarExplicitMedianNanoseconds": 5619180,
+      "rssAfterFieldBytes": 370843648,
+      "repeatedCellPhases": {
+        "empty": {
+          "wallMedianNanoseconds": 791500,
+          "executionMedianNanoseconds": 390020
+        },
+        "polynomial": {
+          "wallMedianNanoseconds": 2085360,
+          "executionMedianNanoseconds": 1758330
+        },
+        "fieldFromPolynomial": {
+          "wallMedianNanoseconds": 1209460,
+          "executionMedianNanoseconds": 847271
+        },
+        "preparedGroup": {
+          "wallMedianNanoseconds": 6969490,
+          "executionMedianNanoseconds": 6406349
+        },
+        "freshPolynomialGroup": {
+          "wallMedianNanoseconds": 10107859,
+          "executionMedianNanoseconds": 9482409
+        }
+      }
+    }
+  ]
+}

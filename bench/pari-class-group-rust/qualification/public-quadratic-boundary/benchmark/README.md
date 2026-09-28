@@ -712,6 +712,27 @@ comparison or a PARI-competitive public result. The previously recorded
 map-free run was not interleaved with this run, and the two programs still
 have different evaluator/IPC costs.
 
+The separate [repeated-cell breakdown](repeated-cell-breakdown-2026-09-28.json)
+uses the same frozen 11 fields and 15 samples per phase. `run-public-sagejs.cjs
+15 --repeated-phases` evaluates each exact source consecutively after one
+warmup, recording both parent-observed wall time and the evaluator's reported
+execution time. It checks the public group order, invariant factors, proof
+status, and algorithm on every group sample. These phase medians are **not
+additive** and were not alternated with PARI; they diagnose the Sage.js side
+only. On the tiny cyclic `D=-47` field, evaluator-execution medians are
+0.37 ms for a cached empty cell, 2.11 ms for `x^2-x+12`, 1.06 ms for
+`NumberField(P)` with an already-built polynomial, 2.27 ms for the prepared
+verified Rust group, and 5.92 ms for the complete fresh-polynomial group cell.
+The fresh cell's parent-observed wall median is 6.43 ms. The four smallest
+fields' polynomial-expression medians all lie between 1.90 and 2.11 ms;
+their prepared-group medians are 1.93--4.36 ms, with the rank-four field on
+the complete-map route. Thus, in this warmed repeated-source diagnostic,
+polynomial expression construction and verified group work both materially
+contribute to the tiny-field gap; attributing it solely to worker transport
+would be incorrect. The five larger fields' prepared-group execution medians
+are 6.07--8.38 ms. None of these independent phase measurements changes the
+matched public Sage.js/PARI result above.
+
 ## Matched scalar class-number comparison
 
 `run_class_number.py` separately compares the exact scalar Rust count, the

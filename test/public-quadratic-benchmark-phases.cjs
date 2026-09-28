@@ -3,7 +3,8 @@
 
 const assert = require("node:assert/strict");
 const test = require("node:test");
-const { diagnoseEvaluationBoundary, diagnosePhases, parseArguments, timedBoundary } = require(
+const { diagnoseEvaluationBoundary, diagnosePhases, diagnoseRepeatedCellPhases,
+  parseArguments, timedBoundary } = require(
   "../bench/pari-class-group-rust/qualification/public-quadratic-boundary/benchmark/run-public-sagejs.cjs"
 );
 
@@ -12,13 +13,57 @@ test("public quadratic diagnostic enables phases only on explicit request", () =
   assert.equal(ordinary.samples, 1);
   assert.equal(ordinary.fields.length, 1);
   assert.equal(ordinary.phases, false);
+  assert.equal(ordinary.repeatedPhases, false);
 
-  const profiled = parseArguments(["1", "larger-composite-d15000000315", "--phases"]);
+  const profiled = parseArguments(["1", "larger-composite-d15000000315", "--phases",
+    "--repeated-phases", "--receipt", "repeated-cell-diagnostic.json"]);
   assert.equal(profiled.samples, 1);
   assert.equal(profiled.fields.length, 1);
   assert.equal(profiled.phases, true);
+  assert.equal(profiled.repeatedPhases, true);
+  assert.equal(profiled.receipt, "repeated-cell-diagnostic.json");
   assert.throws(() => parseArguments(["1", "--phases", "--phases"]), /usage/);
+  assert.throws(() => parseArguments(["1", "--repeated-phases", "--repeated-phases"]), /usage/);
+  assert.throws(() => parseArguments(["--receipt", "../escape.json"]), /usage/);
   assert.throws(() => parseArguments(["1", "unknown", "--phases"]), /unknown frozen field/);
+});
+
+test("repeated-cell probe keeps the exact source consecutive and checks the field", async () => {
+  const calls = [];
+  const expected = "[5, (5,), 'exact-unconditional', 'rust']";
+  const sage = {
+    async evaluate(source) {
+      calls.push(source);
+      return {
+        repr: source === "0" ? "0" : source === "L.discriminant()" ? "-47" :
+          source.includes("G.order()") ? expected : "",
+        durationMs: 0.25,
+      };
+    },
+  };
+  const field = {
+    pariPolynomial: "x^2-x+12",
+    expected: { discriminant: -47, classNumber: 5, invariantFactors: [5] },
+  };
+  const phases = await diagnoseRepeatedCellPhases(sage, field, 2);
+  assert.deepEqual(Object.keys(phases), ["empty", "polynomial", "fieldFromPolynomial",
+    "preparedGroup", "freshPolynomialGroup"]);
+  for (const phase of Object.values(phases)) {
+    assert.ok(phase.wallMedianNanoseconds > 0);
+    assert.equal(phase.executionMedianNanoseconds, 250000);
+  }
+  assert.equal(calls.length, 16);
+  for (let offset = 0; offset < 15; offset += 3) {
+    assert.equal(calls[offset], calls[offset + 1]);
+    assert.equal(calls[offset], calls[offset + 2]);
+  }
+  assert.equal(calls.at(-1), "L.discriminant()");
+  sage.evaluate = async (source) => ({
+    repr: source === "L.discriminant()" ? "-3" : source === "0" ? "0" :
+      source.includes("G.order()") ? expected : "",
+    durationMs: 0.25,
+  });
+  await assert.rejects(diagnoseRepeatedCellPhases(sage, field, 1), /wrong discriminant/);
 });
 
 test("evaluation-boundary probe keeps public wall and execution clocks distinct", async () => {

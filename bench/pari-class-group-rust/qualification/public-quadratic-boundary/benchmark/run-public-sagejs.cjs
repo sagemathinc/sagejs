@@ -3,6 +3,8 @@
 
 // Diagnostic public Sage.js timings, not a promoted Rust/PARI comparison.
 const fs = require("node:fs");
+const crypto = require("node:crypto");
+const os = require("node:os");
 const path = require("node:path");
 const { performance } = require("node:perf_hooks");
 
@@ -11,11 +13,24 @@ const panel = require("./panel-v2.json");
 const { createSage } = require(path.join(root, "dist/tools/kernel.js"));
 
 function parseArguments(args) {
-  const phases = args.includes("--phases");
-  const positional = args.filter((value) => value !== "--phases");
-  if (positional.length > 2 || args.length !== positional.length + Number(phases)) {
-    throw new Error("usage: run-public-sagejs.cjs [samples] [field-id] [--phases]");
+  const usage = "usage: run-public-sagejs.cjs [samples] [field-id] [--phases] [--repeated-phases] [--receipt filename.json]";
+  let phases = false;
+  let repeatedPhases = false;
+  let receipt;
+  const positional = [];
+  for (let index = 0; index < args.length; index += 1) {
+    const argument = args[index];
+    if (argument === "--phases" && !phases) phases = true;
+    else if (argument === "--repeated-phases" && !repeatedPhases) repeatedPhases = true;
+    else if (argument === "--receipt" && receipt === undefined) {
+      receipt = args[++index];
+      if (typeof receipt !== "string" || !/^[a-z][a-z0-9-]*\.json$/.test(receipt)) {
+        throw new Error(usage);
+      }
+    } else if (argument.startsWith("--")) throw new Error(usage);
+    else positional.push(argument);
   }
+  if (positional.length > 2) throw new Error(usage);
   const samples = positional[0] === undefined ? 5 : Number(positional[0]);
   if (!Number.isSafeInteger(samples) || samples < 1 || samples > 30) {
     throw new Error("samples must be an integer from 1 through 30");
@@ -24,7 +39,7 @@ function parseArguments(args) {
     ? panel.fields.filter((field) => field.id === positional[1])
     : panel.fields;
   if (fields.length === 0) throw new Error(`unknown frozen field: ${positional[1]}`);
-  return { samples, fields, phases };
+  return { samples, fields, phases, repeatedPhases, receipt };
 }
 
 function expectedGroup(field) {
@@ -73,6 +88,39 @@ async function diagnoseEvaluationBoundary(sage, freshCall, groupExpected, scalar
     wallMedianNanoseconds: median(values.map((value) => value.wallNanoseconds)),
     executionMedianNanoseconds: median(values.map((value) => value.executionNanoseconds)),
   }]));
+}
+
+async function diagnoseRepeatedCellPhases(sage, field, samples) {
+  const expected = expectedGroup(field);
+  const group = (name) => `G = ${name}.class_group(algorithm='rust')\n` +
+    "[G.order(), G.invariants(), G.proof_status, G.algorithm]";
+  const cases = [
+    ["empty", "0", "0"],
+    ["polynomial", `P = ${field.pariPolynomial}`, ""],
+    ["fieldFromPolynomial", "L = NumberField(P)", ""],
+    ["preparedGroup", group("K"), expected],
+    ["freshPolynomialGroup",
+      `L.<b> = NumberField(${field.pariPolynomial})\n${group("L")}`, expected],
+  ];
+  const result = {};
+  for (const [name, code, answer] of cases) {
+    await timedBoundary(sage, code, answer);
+    const values = [];
+    for (let index = 0; index < samples; index += 1) {
+      values.push(await timedBoundary(sage, code, answer));
+    }
+    result[name] = {
+      wallMedianNanoseconds: median(values.map((value) => value.wallNanoseconds)),
+      executionMedianNanoseconds: median(
+        values.map((value) => value.executionNanoseconds),
+      ),
+    };
+  }
+  const discriminant = await sage.evaluate("L.discriminant()");
+  if (discriminant.repr !== String(field.expected.discriminant)) {
+    throw new Error("repeated-cell phase field has the wrong discriminant");
+  }
+  return result;
 }
 
 async function diagnosePhases(sage, expectedClassNumber) {
@@ -179,7 +227,8 @@ async function diagnosePhases(sage, expectedClassNumber) {
 }
 
 async function main() {
-  const { samples, fields, phases } = parseArguments(process.argv.slice(2));
+  const { samples, fields, phases, repeatedPhases, receipt } =
+    parseArguments(process.argv.slice(2));
   const service = process.env.SAGEJS_CLASS_GROUP_SERVICE;
   if (!service || !path.isAbsolute(service) || !fs.existsSync(service)) {
     throw new Error("set SAGEJS_CLASS_GROUP_SERVICE to the built native service path");
@@ -212,6 +261,9 @@ async function main() {
       const phaseDiagnostic = phases
         ? await diagnosePhases(sage, field.expected.classNumber)
         : undefined;
+      const repeatedCellPhases = repeatedPhases
+        ? await diagnoseRepeatedCellPhases(sage, field, samples)
+        : undefined;
       results.push({
         fieldId: field.id,
         discriminant: field.expected.discriminant,
@@ -227,13 +279,14 @@ async function main() {
         rssAfterFieldBytes: process.memoryUsage().rss,
         ...(phaseDiagnostic === undefined ? {} : { phaseDiagnostic }),
         ...(evaluationBoundary === undefined ? {} : { evaluationBoundary }),
+        ...(repeatedCellPhases === undefined ? {} : { repeatedCellPhases }),
       });
       process.stderr.write(`${JSON.stringify(results[results.length - 1])}\n`);
     }
   } finally {
     await sage.close();
   }
-  process.stdout.write(`${JSON.stringify({
+  const output = `${JSON.stringify({
     schema: "sagejs.public-quadratic/public-sagejs-latency-diagnostic-v1",
     panelSchema: panel.schema,
     promotedPerformanceReceipt: false,
@@ -243,8 +296,24 @@ async function main() {
     platform: `${process.platform}-${process.arch}`,
     samplesPerField: samples,
     phaseDiagnosticEnabled: phases,
+    repeatedCellPhaseEnabled: repeatedPhases,
+    ...(repeatedPhases ? {
+      repeatedCellPhaseCaveat: "Each exact source is evaluated consecutively after one warmup. These separate medians are not additive, cannot isolate a causal speedup, and must not be substituted for the matched public Sage.js/PARI panel.",
+      runnerSha256: crypto.createHash("sha256").update(fs.readFileSync(__filename)).digest("hex"),
+      panelSha256: crypto.createHash("sha256").update(
+        fs.readFileSync(path.join(__dirname, "panel-v2.json")),
+      ).digest("hex"),
+      sageBuildReceiptSha256: crypto.createHash("sha256").update(
+        fs.readFileSync(path.join(root, "dist/build-receipt.json")),
+      ).digest("hex"),
+      serviceSha256: crypto.createHash("sha256").update(fs.readFileSync(service)).digest("hex"),
+      cpuModel: os.cpus()[0]?.model,
+      loadAverage1m5m15m: os.loadavg(),
+    } : {}),
     results,
-  }, null, 2)}\n`);
+  }, null, 2)}\n`;
+  if (receipt !== undefined) fs.writeFileSync(path.join(__dirname, receipt), output);
+  process.stdout.write(output);
 }
 
 if (require.main === module) {
@@ -255,4 +324,4 @@ if (require.main === module) {
 }
 
 module.exports = { parseArguments, expectedGroup, median, timedBoundary,
-  diagnosePhases, diagnoseEvaluationBoundary };
+  diagnosePhases, diagnoseEvaluationBoundary, diagnoseRepeatedCellPhases };
