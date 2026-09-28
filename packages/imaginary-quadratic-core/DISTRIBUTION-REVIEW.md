@@ -201,6 +201,28 @@ node packages/imaginary-quadratic-core/scripts/link-map-inventory.mjs \
   "$toolchain_dir/sdk/share/wasi-sysroot/lib/wasm32-wasip1/libc.a"
 ```
 
+On 2026-09-28, the development-injected Sage-mode browser evaluator ran the
+current `e28a3e01b0da2580f8bb4bcd8c654e6c98918ac1311e653f17e6b4950462cb91`
+reactor in Chromium 151.0.7922.34, Firefox 153.0, and WebKit 26.5. Each
+engine passed both the normal cross-origin-isolated test server and an
+unisolated mode that asserts `crossOriginIsolated === false` and the absence
+of `SharedArrayBuffer`. Both modes checked unconditional class numbers, small
+and large full groups, exact ideal-class coordinates, and forged-result
+rejection. The reproducible commands are:
+
+```sh
+SAGEJS_BROWSER_ENGINES=chromium,firefox,webkit \
+SAGEJS_REQUIRED_BROWSER_ENGINES=chromium,firefox,webkit \
+  node packages/flint-wasm/test/browser-quadratic-core-evaluator.mjs
+SAGEJS_BROWSER_UNISOLATED=1 SAGEJS_BROWSER_ENGINES=chromium,firefox,webkit \
+SAGEJS_REQUIRED_BROWSER_ENGINES=chromium,firefox,webkit \
+  node packages/flint-wasm/test/browser-quadratic-core-evaluator.mjs
+```
+
+These are isolated development-injection results. They do not put the
+reactor in the production Wasm layout or satisfy the independent distribution
+and safety decisions below.
+
 ## Required independent decisions
 
 1. Review `src/reactor.rs`, the host in `packages/flint-wasm`, and the compiled

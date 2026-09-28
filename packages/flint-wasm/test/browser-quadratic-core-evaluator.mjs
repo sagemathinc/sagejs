@@ -22,6 +22,11 @@ const receipt = {
   bytes: bytes.byteLength,
   sha256: createHash("sha256").update(bytes).digest("hex"),
 };
+const unisolated = process.env.SAGEJS_BROWSER_UNISOLATED === "1";
+const browserHeaders = unisolated
+  ? Object.fromEntries(Object.entries(securityHeaders).filter(([name]) =>
+    name !== "Cross-Origin-Opener-Policy" && name !== "Cross-Origin-Embedder-Policy"))
+  : securityHeaders;
 
 const types = new Map([
   [".js", "text/javascript"],
@@ -33,7 +38,7 @@ const server = http.createServer((request, response) => {
   const pathname = new URL(request.url, "http://localhost").pathname;
   if (pathname === "/") {
     response.writeHead(200, {
-      ...securityHeaders,
+      ...browserHeaders,
       "content-type": "text/html",
     }).end("<!doctype html><title>isolated quadratic core</title>");
     return;
@@ -42,18 +47,18 @@ const server = http.createServer((request, response) => {
   try {
     decoded = decodeURIComponent(pathname);
   } catch {
-    response.writeHead(400, securityHeaders).end("invalid path");
+    response.writeHead(400, browserHeaders).end("invalid path");
     return;
   }
   const filename = decoded === "/test-quadratic-core.wasm"
     ? artifact : path.resolve(packageRoot, `.${decoded}`);
   if ((filename !== artifact && !filename.startsWith(`${packageRoot}${path.sep}`)) ||
       !fs.existsSync(filename) || !fs.statSync(filename).isFile()) {
-    response.writeHead(404, securityHeaders).end("not found");
+    response.writeHead(404, browserHeaders).end("not found");
     return;
   }
   response.writeHead(200, {
-    ...securityHeaders,
+    ...browserHeaders,
     "content-type": types.get(path.extname(filename)) ?? "application/octet-stream",
   });
   fs.createReadStream(filename).pipe(response);
@@ -83,6 +88,16 @@ try {
     try {
       const page = await browser.newPage();
       await page.goto(origin);
+      if (unisolated) {
+        const environment = await page.evaluate(() => ({
+          crossOriginIsolated: globalThis.crossOriginIsolated,
+          sharedArrayBuffer: typeof SharedArrayBuffer,
+        }));
+        assert.deepEqual(environment, {
+          crossOriginIsolated: false,
+          sharedArrayBuffer: "undefined",
+        }, `${name} must exercise the unisolated baseline`);
+      }
       const result = await page.evaluate(async ({ origin, receipt }) => {
         const { instantiateSageEvaluator } = await import(`${origin}/evaluator.mjs`);
         const { SageSession } = await import(`${origin}/kernel.mjs`);
@@ -141,7 +156,8 @@ try {
       assert.equal(result.large,
         "[33768, (2, 16884), 'exact-unconditional', " +
         "(1, 0), (0, 1), (1, 1), (1, 0), 33768]", name);
-      console.log(`PASS ${name}: isolated quadratic reactor, exact ideal maps and tamper rejection`);
+      console.log(`PASS ${name} (${unisolated ? "unisolated" : "cross-origin isolated"}): ` +
+        "quadratic reactor, exact ideal maps and tamper rejection");
     } finally {
       await browser.close();
     }
