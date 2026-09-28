@@ -212,7 +212,6 @@ remains unproven. The Mac artifact passed `verify-wasm.mjs`
 (one defined memory, 256 initial and 4096 maximum pages) and all five focused
 Node Wasm product/evaluator tests on Linux, including exact ideal maps,
 forged/stale handles, and host cleanup after malformed exports and failed
-initialization. This is Mac-local reproducibility and cross-host functional
 initialization. The Mac artifact also passed the exact-ideal-map and tamper
 browser test in Chromium, Firefox, and WebKit on Linux, both with and without
 cross-origin isolation. This is Mac-local reproducibility and cross-host
