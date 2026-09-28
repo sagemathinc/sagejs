@@ -32,9 +32,12 @@ For native groups with at least 10,000 classes, Rust builds cyclic and
 reported available parallelism. Native reduced-form enumeration and scalar
 class-number counting also use up to eight workers when the candidate range
 has at least 20,000 entries.
-For large eligible cyclic fields, the native group route may instead count all
+For eligible cyclic fields, the native group route may instead count all
 reduced forms, prove a small prime form has full order, and collect its complete
-reduced-form orbit in parallel. Eligible odd three-prime-factor fields may
+reduced-form orbit. Medium fields with at least 1,000 classes try only two
+prime norms before falling back to the general enumerator; larger fields
+retain the broader generator search and may collect the orbit in parallel.
+Eligible odd three-prime-factor fields may
 similarly prove a `C2 x C(h/2)` basis from a full-order prime form and an
 independent divisor-boundary involution. In each case the count and distinct
 orbit prove completeness; fields without the required witnesses use the
@@ -960,3 +963,31 @@ The original faster `bnfinit` comparison remains the practical speed target;
 the two PARI modes answer different proof-standard questions. PARI also does
 not project a complete ideal-class map in either timed mode, whereas Sage.js
 retains exact maps on demand.
+
+### Bounded medium-field cyclic proof on the public boundary
+
+The clean `f1ace23d92bed27f7d48d6b2506fe97af045e110` checkout on `opt`
+rebuilt both Sage.js and the native class-group service, then ran 15 alternating
+warm-resident samples per arm on the unchanged 11-field panel. The runner
+rechecked the same private copy of the original pinned PARI 2.17.4 binary and
+library used by the `opt-head7a4` comparison, plus every exact answer. The
+host's shared `/home/user/upstream` link was not changed. These are unpromoted
+public-boundary diagnostics; PARI uses the faster
+uncertified `bnfinit(nf,0)` group mode. The receipt binds the rebuilt Sage.js
+and service by SHA-256 and records the raw samples.
+
+| Starting boundary | Sage.js/PARI geometric mean of field median ratios | Smallest–largest field ratio |
+| --- | ---: | ---: |
+| [Fresh polynomial](opt-headf1ace-matched-polynomial.json) | 4.256 | 2.184–9.831 |
+| [Prepared field](opt-headf1ace-matched-prepared.json) | 3.003 | 1.760–6.632 |
+
+For the 4,378-class `D=-8,173,415` row, the fresh-polynomial ratio was 3.933
+and the prepared-field ratio was 2.263; the earlier `7a4a1634` diagnostics
+reported 4.46 and 3.29 respectively. The 1,715-class row was 4.249 fresh and
+2.478 prepared. These separately run campaigns do not isolate a precise
+causal speedup; the full-panel geometric means remain near the previous
+4.183 fresh and 3.007 prepared. The bounded
+medium presentation preserves the same exact generator and deferred ideal
+coordinates as the complete-map route; noncyclic cases fall back to that route.
+The public default-PARI competitiveness target remains open, especially for
+small fields and fixed interpreter overhead.

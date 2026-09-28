@@ -180,6 +180,38 @@ test("certified PARI diagnostics bind the current runner and frozen panel", () =
   }
 });
 
+test("medium-presentation public diagnostics retain every matched sample", () => {
+  const receipts = ["polynomial", "prepared"].map((boundary) => {
+    const receipt = require(path.join(directory,
+      `opt-headf1ace-matched-${boundary}.json`));
+    assert.equal(receipt.promotedPerformanceReceipt, false);
+    assert.equal(receipt.operation, "group");
+    assert.equal(receipt.pariProof, "conditional");
+    assert.equal(receipt.boundary,
+      `warm-resident-${boundary}-to-public-class-group-and-projection-v1`);
+    assert.equal(receipt.panelSha256, sha256(panelPath));
+    assert.equal(receipt.runnerSha256, sha256(runner));
+    assert.equal(receipt.samplesPerArmPerField, 15);
+    assert.equal(receipt.pariGpSha256, pin.files["Olinux-x86_64/gp-dyn"]);
+    assert.equal(receipt.pariLibrarySha256, pin.files["Olinux-x86_64/libpari-gmp-tls.so.9"]);
+    assert.deepEqual(receipt.results.map((row) => row.fieldId),
+      panel.fields.map((field) => field.id));
+    receipt.results.forEach((row, index) => {
+      assert.deepEqual(row.expected, panel.fields[index].expected);
+      assert.equal(row.sageNanoseconds.length, 15);
+      assert.equal(row.pariNanoseconds.length, 15);
+      assert.equal(row.sageMedianNanoseconds, median(row.sageNanoseconds));
+      assert.equal(row.pariMedianNanoseconds, median(row.pariNanoseconds));
+      assert.equal(row.sageOverPariMedianRatio,
+        row.sageMedianNanoseconds / row.pariMedianNanoseconds);
+    });
+    return receipt;
+  });
+  assert.equal(receipts[0].serviceSha256, receipts[1].serviceSha256);
+  assert.equal(receipts[0].sageBuildReceiptSha256,
+    receipts[1].sageBuildReceiptSha256);
+});
+
 test("current native qualification is a clean source-frozen evidence step", () => {
   const receipt = require(path.join(directory, "receipt-v2-current-2026-09-28.json"));
   assert.equal(receipt.promotionEligible, true);
