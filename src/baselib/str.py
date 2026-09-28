@@ -1010,15 +1010,15 @@ def _str_replace(
     string: Any,
     old: _Str,
     replacement: _Str,
-    replacement_count: Any = runtime.undefined,
+    count: Any = runtime.undefined,
 ) -> _Str:
     string = _native_string(string)
     old = _str_require_string(old, "replace")
     replacement = _str_require_string(replacement, "replace")
-    if replacement_count is runtime.undefined:
+    if count is runtime.undefined:
         remaining = runtime.number.MAX_SAFE_INTEGER
     else:
-        remaining = int(replacement_count)
+        remaining = int(count)
         if remaining < 0:
             remaining = runtime.number.MAX_SAFE_INTEGER
     if remaining == 0:
@@ -1425,6 +1425,9 @@ def _define_string_method(
     name: _Str,
     implementation: Any,
 ) -> None:
+    if name == "replace":
+        # CPython: `(self, old, new, /, count=-1)`.
+        runtime.reflect.set(implementation, "__positional_only__", 3)
     native_method = runtime.native_method(implementation)
     # A function read from ``str`` is an unbound Python method: callers supply
     # the string explicitly (``str.rstrip(value, chars)``).  The separate
