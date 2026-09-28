@@ -183,6 +183,43 @@ between two Linux hosts for these exact source and toolchain inputs. It does
 not resolve the previously observed macOS byte difference, establish a
 complete source/license inventory, or approve production distribution.
 
+On 2026-09-28, `m1` rebuilt the **current** reactor source from clean detached
+commit `1aa8366a79f06a5c2c7b1fc861a4085ade14d4b9`. The isolated reactor
+source and lockfile are unchanged from the Linux candidate above; intervening
+changes in that package only update this review document. The official WASI
+SDK 33.0 arm64-macos archive matched its pinned SHA-256
+`85c997a2665ead91673b5bb88b7d0df3fc8900df3fba244f720d478187bbdc78`.
+Rust 1.98.1 and the SDK's `wasm-ld` (LLD 22.1.0, SHA-256
+`1682e0d83e144ce8e9b3d5f9dbb628ffdbe404c374c86b5757c00bce4a4d1f24`)
+built the locked crate offline with the exact `RUSTFLAGS` from `build-wasm.sh`
+in two independent Cargo target directories. Both produced the same 346,068-byte
+artifact, SHA-256
+`d4f2100e5f088dc1cf219de228c8a3bdd21e461aaab32adf17e5489b5aca87e6`.
+The Mac SDK's WASI `libc.a` matches the Linux-pinned archive byte for byte at
+SHA-256 `5d8ba34d8c6fd0ac59e0efe37241143887f8f232864bbeacc4181ae739f63371`.
+
+The Mac-built artifact is **not** byte-identical to the 346,136-byte Linux
+candidate. A section-by-section comparison found identical type, import,
+table, memory, global, export, producer, and target-feature sections, but
+different function, element, code, data, and name sections. The code and data
+sections have equal lengths across hosts; the Mac name section is 68 bytes
+shorter. Both code sections contain 503 functions and have the same multiset
+of body lengths; 379 function bodies match byte-for-byte as a multiset. This
+is compatible with changed function ordering or references but does not prove
+that explanation or semantic equivalence of the remaining bodies. Thus the
+68-byte whole-file difference is not merely custom metadata, and its cause
+remains unproven. The Mac artifact passed `verify-wasm.mjs`
+(one defined memory, 256 initial and 4096 maximum pages) and all five focused
+Node Wasm product/evaluator tests on Linux, including exact ideal maps,
+forged/stale handles, and host cleanup after malformed exports and failed
+initialization. This is Mac-local reproducibility and cross-host functional
+initialization. The Mac artifact also passed the exact-ideal-map and tamper
+browser test in Chromium, Firefox, and WebKit on Linux, both with and without
+cross-origin isolation. This is Mac-local reproducibility and cross-host
+functional evidence, **not** cross-host byte identity, independent safety
+review, or distribution approval. The Linux digest remains the sole candidate
+under review; do not silently substitute the Mac bytes.
+
 To reproduce the linked-object inventory for the current candidate after
 preparing the pinned Wasm toolchain, run from the repository root:
 
