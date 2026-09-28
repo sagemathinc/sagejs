@@ -6215,6 +6215,112 @@ def _cubic_publish_analytic_relation_presentation(
     return True
 
 
+def _cubic_map_linear_fiber(
+    workspace: NativeIntegerVector,
+    prime: int,
+    identity_zero: int,
+    identity_one: int,
+    identity_two: int,
+    identity_pivot: uint64,
+    identity_inverse: int,
+    first_free: uint64,
+    second_free: uint64,
+    first_value: int,
+) -> tuple[int, int]:
+    """Return a necessary half-open interval for the second free image.
+
+    The identity makes all three images affine in the remaining variable.
+    Any multiplication equation with zero quadratic coefficient is either
+    inconsistent, a uniquely soluble linear equation, or no constraint.
+    Retain exhaustive enumeration if none supplies a constraint. Every
+    candidate still passes the complete multiplicativity check.
+    """
+    a0 = 0
+    a1 = 0
+    a2 = 0
+    b0 = 0
+    b1 = 0
+    b2 = 0
+    if first_free == 0:
+        a0 = first_value
+    elif first_free == 1:
+        a1 = first_value
+    else:
+        a2 = first_value
+    if second_free == 0:
+        b0 = 1
+    elif second_free == 1:
+        b1 = 1
+    else:
+        b2 = 1
+    constant_image = _cubic_positive_mod(
+        (1 - identity_zero * a0 - identity_one * a1 - identity_two * a2)
+        * identity_inverse,
+        prime,
+    )
+    slope_image = _cubic_positive_mod(
+        -(identity_zero * b0 + identity_one * b1 + identity_two * b2)
+        * identity_inverse,
+        prime,
+    )
+    if identity_pivot == 0:
+        a0 = constant_image
+        b0 = slope_image
+    elif identity_pivot == 1:
+        a1 = constant_image
+        b1 = slope_image
+    else:
+        a2 = constant_image
+        b2 = slope_image
+    left: uint64 = 0
+    while left < 3:
+        al = a0
+        bl = b0
+        if left == 1:
+            al = a1
+            bl = b1
+        elif left == 2:
+            al = a2
+            bl = b2
+        right: uint64 = 0
+        while right < 3:
+            ar = a0
+            br = b0
+            if right == 1:
+                ar = a1
+                br = b1
+            elif right == 2:
+                ar = a2
+                br = b2
+            if _cubic_positive_mod(bl * br, prime) == 0:
+                offset: uint64 = (left * 3 + right) * 3
+                constant = _cubic_positive_mod(
+                    workspace[offset] * a0
+                    + workspace[offset + 1] * a1
+                    + workspace[offset + 2] * a2
+                    - al * ar,
+                    prime,
+                )
+                slope = _cubic_positive_mod(
+                    workspace[offset] * b0
+                    + workspace[offset + 1] * b1
+                    + workspace[offset + 2] * b2
+                    - al * br
+                    - bl * ar,
+                    prime,
+                )
+                if slope != 0:
+                    root = _cubic_positive_mod(
+                        -constant * _cubic_inverse_mod(slope, prime), prime
+                    )
+                    return root, root + 1
+                if constant != 0:
+                    return 0, 0
+            right += 1
+        left += 1
+    return 0, prime
+
+
 def _cubic_map_is_multiplicative(
     workspace: NativeIntegerVector,
     map_zero: int,
@@ -9066,8 +9172,19 @@ def certified_complex_cubic_class_group_v1(
                         second_free += 1
                     first_value = 0
                     while first_value < prime:
-                        second_value = 0
-                        while second_value < prime:
+                        second_value, second_limit = _cubic_map_linear_fiber(
+                            workspace,
+                            prime,
+                            identity_zero,
+                            identity_one,
+                            identity_two,
+                            identity_pivot,
+                            identity_inverse,
+                            first_free,
+                            second_free,
+                            first_value,
+                        )
+                        while second_value < second_limit:
                             map_zero = 0
                             map_one = 0
                             map_two = 0
