@@ -1,0 +1,432 @@
+{
+  "schema": "sagejs.imaginary-quadratic/development-distribution-inventory-v1",
+  "scope": "development-build-closure-inventory; not an artifact-derived SBOM or distribution approval",
+  "target": "wasm32-wasip1",
+  "artifact": {
+    "file": "packages/imaginary-quadratic-core/target/wasm32-wasip1/release/sagejs_imaginary_quadratic_core.wasm",
+    "bytes": 391454,
+    "sha256": "4dbf5a8f422e477ce78ff11d87b0cc4a0e4bac6b25b3c7a73ddc15412b735d12"
+  },
+  "wasm": {
+    "imports": [
+      {
+        "module": "wasi_snapshot_preview1",
+        "name": "environ_get",
+        "kind": "function"
+      },
+      {
+        "module": "wasi_snapshot_preview1",
+        "name": "environ_sizes_get",
+        "kind": "function"
+      },
+      {
+        "module": "wasi_snapshot_preview1",
+        "name": "fd_write",
+        "kind": "function"
+      },
+      {
+        "module": "wasi_snapshot_preview1",
+        "name": "proc_exit",
+        "kind": "function"
+      }
+    ],
+    "exports": [
+      {
+        "name": "memory",
+        "kind": "memory"
+      },
+      {
+        "name": "sagejs_class_group_abi_version",
+        "kind": "function"
+      },
+      {
+        "name": "sagejs_class_group_alloc",
+        "kind": "function"
+      },
+      {
+        "name": "sagejs_class_group_allocation_length",
+        "kind": "function"
+      },
+      {
+        "name": "sagejs_class_group_dealloc",
+        "kind": "function"
+      },
+      {
+        "name": "sagejs_class_group_run_json",
+        "kind": "function"
+      }
+    ],
+    "memories": [
+      {
+        "flags": 1,
+        "initial": 256,
+        "maximum": 4096
+      }
+    ]
+  },
+  "build": {
+    "rustc": "rustc 1.98.1 (48a229cea 2026-09-01)\nbinary: rustc\ncommit-hash: 48a229ceaefd4985c50990b14116b6d856af0985\ncommit-date: 2026-09-01\nhost: x86_64-unknown-linux-gnu\nrelease: 1.98.1\nLLVM version: 22.1.8",
+    "cargo": "cargo 1.98.1 (797e8a9bc 2026-08-05)",
+    "linkerSha256": "5c965a9e8525c7206aa583f9691f1a7a5e46bd4d793bf65f809b7124c670df26",
+    "rustflags": "-C target-feature=+simd128 -C link-arg=--export-memory -C link-arg=--initial-memory=16777216 -C link-arg=--max-memory=268435456"
+  },
+  "inputs": [
+    {
+      "file": "packages/imaginary-quadratic-core/Cargo.toml",
+      "sha256": "f078c71d499efa4ac1af3dbc5a0997bdf7819459b7f667201eec99a1555112fb"
+    },
+    {
+      "file": "packages/imaginary-quadratic-core/Cargo.lock",
+      "sha256": "c0b1e164c02886364ac8ffc6caac11f536421dbe497cc6d0a5e7f7d320434449"
+    },
+    {
+      "file": "packages/imaginary-quadratic-core/src/lib.rs",
+      "sha256": "121097659b9b53cb99d075c180c0b533c6b9316d409d2d7fad6ebe958f6a1ae3"
+    },
+    {
+      "file": "packages/imaginary-quadratic-core/src/service.rs",
+      "sha256": "e781f85cb0a77ffb22f3dbc12543ccf6259482ce96bf75d9e1df964c108e643f"
+    },
+    {
+      "file": "packages/imaginary-quadratic-core/src/reactor.rs",
+      "sha256": "6d1639deb34c9c42c48d7234ecd7a070abaa66cfd486866e86a1c7e833865eb7"
+    },
+    {
+      "file": "packages/imaginary-quadratic-core/scripts/build-wasm.sh",
+      "sha256": "759e03bb1f4f440a60948c2cfca03a02c4d7cf9b5626655beaa7dbe10dd1451d"
+    },
+    {
+      "file": "packages/imaginary-quadratic-core/scripts/audit-distribution.mjs",
+      "sha256": "04186a75cef262dd47e0b9247372fa6153e93768df0b6804377b400c3d7fb528"
+    },
+    {
+      "file": "packages/imaginary-quadratic-core/scripts/link-map-inventory.mjs",
+      "sha256": "0f3882e5298da1ffdf60e6fbbb7ce3c9c03f0420ecdd6417c5dfe6c9d7675e12"
+    },
+    {
+      "file": "packages/class-groups/src/imaginary.rs",
+      "sha256": "bd3784f119b1a8562124870aa93bcfdc78b2bcc75ff43c98a23e9cea230f5cfe"
+    },
+    {
+      "file": "packages/class-groups/scripts/verify-wasm.mjs",
+      "sha256": "9a2875fb9f580540f4ab685b9f6a67881b66226969270dba16deb49494b84e0e"
+    },
+    {
+      "file": "packages/wasm-toolchain/lock.json",
+      "sha256": "90d661c5eaa072e7b1e3fca5748f3c5e463fb7977cfc0b97ec1d43d3f6e2c06d"
+    },
+    {
+      "file": "packages/wasm-toolchain/scripts/toolchain.cjs",
+      "sha256": "7a8eb661fba49daea99c0bf57e5861d5a4e6c85967c7fbdf575cf55187db9688"
+    }
+  ],
+  "packages": [
+    {
+      "package": "itoa@1.0.18",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "declaredLicense": "MIT OR Apache-2.0",
+      "archiveSha256": "8f42a60cbdf9a97f5d2305f08a87dc4e09308d1276d28c869c684d7777685682",
+      "notices": [
+        {
+          "file": "LICENSE-APACHE",
+          "sha256": "62c7a1e35f56406896d7aa7ca52d0cc0d272ac022b5d2796e7d6905db8a3636a"
+        },
+        {
+          "file": "LICENSE-MIT",
+          "sha256": "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3"
+        }
+      ]
+    },
+    {
+      "package": "memchr@2.8.3",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "declaredLicense": "Unlicense OR MIT",
+      "archiveSha256": "cf8baf1c55e62ffcace7a9f06f4bd9cd3f0c4beb022d3b367256b91b87513d98",
+      "notices": [
+        {
+          "file": "COPYING",
+          "sha256": "01c266bced4a434da0051174d6bee16a4c82cf634e2679b6155d40d75012390f"
+        },
+        {
+          "file": "LICENSE-MIT",
+          "sha256": "0f96a83840e146e43c0ec96a22ec1f392e0680e6c1226e6f3ba87e0740af850f"
+        }
+      ]
+    },
+    {
+      "package": "proc-macro2@1.0.107",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "declaredLicense": "MIT OR Apache-2.0",
+      "archiveSha256": "985e7ec9bb745e6ce6535b544d84d6cd6f7ad8bd711c398938ae983b91a766d9",
+      "notices": [
+        {
+          "file": "LICENSE-APACHE",
+          "sha256": "62c7a1e35f56406896d7aa7ca52d0cc0d272ac022b5d2796e7d6905db8a3636a"
+        },
+        {
+          "file": "LICENSE-MIT",
+          "sha256": "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3"
+        }
+      ]
+    },
+    {
+      "package": "quote@1.0.47",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "declaredLicense": "MIT OR Apache-2.0",
+      "archiveSha256": "1fbf4db142a473a8d80c26bbf18454ed458bf8d26c8219c331daecfdbd079001",
+      "notices": [
+        {
+          "file": "LICENSE-APACHE",
+          "sha256": "62c7a1e35f56406896d7aa7ca52d0cc0d272ac022b5d2796e7d6905db8a3636a"
+        },
+        {
+          "file": "LICENSE-MIT",
+          "sha256": "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3"
+        }
+      ]
+    },
+    {
+      "package": "sagejs-imaginary-quadratic-core@0.1.0",
+      "source": "first-party",
+      "license": "GPL-2.0-or-later"
+    },
+    {
+      "package": "serde_core@1.0.229",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "declaredLicense": "MIT OR Apache-2.0",
+      "archiveSha256": "67dca2c9c51e58a4791a4b1ed58308b39c64224d349a935ab5039aa360942a48",
+      "notices": [
+        {
+          "file": "LICENSE-APACHE",
+          "sha256": "62c7a1e35f56406896d7aa7ca52d0cc0d272ac022b5d2796e7d6905db8a3636a"
+        },
+        {
+          "file": "LICENSE-MIT",
+          "sha256": "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3"
+        }
+      ]
+    },
+    {
+      "package": "serde_derive@1.0.229",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "declaredLicense": "MIT OR Apache-2.0",
+      "archiveSha256": "e7a5d71263a5a7d47b41f6b3f06ba276f10cc18b0931f1799f710578e2309348",
+      "notices": [
+        {
+          "file": "LICENSE-APACHE",
+          "sha256": "62c7a1e35f56406896d7aa7ca52d0cc0d272ac022b5d2796e7d6905db8a3636a"
+        },
+        {
+          "file": "LICENSE-MIT",
+          "sha256": "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3"
+        }
+      ]
+    },
+    {
+      "package": "serde_json@1.0.151",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "declaredLicense": "MIT OR Apache-2.0",
+      "archiveSha256": "c841b55ecdae098c80dcae9cf767f6f8a0c2cdb3416bbef72181df4d0fe73f14",
+      "notices": [
+        {
+          "file": "LICENSE-APACHE",
+          "sha256": "62c7a1e35f56406896d7aa7ca52d0cc0d272ac022b5d2796e7d6905db8a3636a"
+        },
+        {
+          "file": "LICENSE-MIT",
+          "sha256": "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3"
+        }
+      ]
+    },
+    {
+      "package": "serde@1.0.229",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "declaredLicense": "MIT OR Apache-2.0",
+      "archiveSha256": "4148590afebada386688f18773da617792bf2ef03ffc1e4cbd2b1d45b023e0ba",
+      "notices": [
+        {
+          "file": "LICENSE-APACHE",
+          "sha256": "62c7a1e35f56406896d7aa7ca52d0cc0d272ac022b5d2796e7d6905db8a3636a"
+        },
+        {
+          "file": "LICENSE-MIT",
+          "sha256": "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3"
+        }
+      ]
+    },
+    {
+      "package": "smallvec@1.16.2",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "declaredLicense": "MIT OR Apache-2.0",
+      "archiveSha256": "f9395f0f0eee849a9b707b2f06bb92a6a422090e2123bb2ef8e87a0e61892a8e",
+      "notices": [
+        {
+          "file": "LICENSE-APACHE",
+          "sha256": "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2"
+        },
+        {
+          "file": "LICENSE-MIT",
+          "sha256": "0b28172679e0009b655da42797c03fd163a3379d5cfa67ba1f1655e974a2a1a9"
+        }
+      ]
+    },
+    {
+      "package": "syn@3.0.6",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "declaredLicense": "MIT OR Apache-2.0",
+      "archiveSha256": "8593e8e72159ed2257d083c7a454a85cbf854f37a0966d8d483aff8c8a3ebcee",
+      "notices": [
+        {
+          "file": "LICENSE-APACHE",
+          "sha256": "62c7a1e35f56406896d7aa7ca52d0cc0d272ac022b5d2796e7d6905db8a3636a"
+        },
+        {
+          "file": "LICENSE-MIT",
+          "sha256": "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3"
+        }
+      ]
+    },
+    {
+      "package": "unicode-ident@1.0.26",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "declaredLicense": "(MIT OR Apache-2.0) AND Unicode-3.0",
+      "archiveSha256": "d245f478577f809a851594d02313b640fb437e0bb33866753cff937863096954",
+      "notices": [
+        {
+          "file": "LICENSE-APACHE",
+          "sha256": "62c7a1e35f56406896d7aa7ca52d0cc0d272ac022b5d2796e7d6905db8a3636a"
+        },
+        {
+          "file": "LICENSE-MIT",
+          "sha256": "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3"
+        },
+        {
+          "file": "LICENSE-UNICODE",
+          "sha256": "f7db81051789b729fea528a63ec4c938fdcb93d9d61d97dc8cc2e9df6d47f2a1"
+        }
+      ]
+    },
+    {
+      "package": "zmij@1.0.23",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "declaredLicense": "MIT",
+      "archiveSha256": "29666d0abbfad1e3dc4dcf6144730dd3a3ab225bbbdac83319345b1b44ccfc1b",
+      "notices": [
+        {
+          "file": "LICENSE-MIT",
+          "sha256": "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3"
+        }
+      ]
+    }
+  ],
+  "resolvedEdges": [
+    {
+      "from": "proc-macro2@1.0.107",
+      "to": "unicode-ident@1.0.26",
+      "kind": "normal",
+      "target": "all"
+    },
+    {
+      "from": "quote@1.0.47",
+      "to": "proc-macro2@1.0.107",
+      "kind": "normal",
+      "target": "all"
+    },
+    {
+      "from": "sagejs-imaginary-quadratic-core@0.1.0",
+      "to": "serde_json@1.0.151",
+      "kind": "normal",
+      "target": "all"
+    },
+    {
+      "from": "sagejs-imaginary-quadratic-core@0.1.0",
+      "to": "serde@1.0.229",
+      "kind": "normal",
+      "target": "all"
+    },
+    {
+      "from": "sagejs-imaginary-quadratic-core@0.1.0",
+      "to": "smallvec@1.16.2",
+      "kind": "normal",
+      "target": "all"
+    },
+    {
+      "from": "serde_derive@1.0.229",
+      "to": "proc-macro2@1.0.107",
+      "kind": "normal",
+      "target": "all"
+    },
+    {
+      "from": "serde_derive@1.0.229",
+      "to": "quote@1.0.47",
+      "kind": "normal",
+      "target": "all"
+    },
+    {
+      "from": "serde_derive@1.0.229",
+      "to": "syn@3.0.6",
+      "kind": "normal",
+      "target": "all"
+    },
+    {
+      "from": "serde_json@1.0.151",
+      "to": "itoa@1.0.18",
+      "kind": "normal",
+      "target": "all"
+    },
+    {
+      "from": "serde_json@1.0.151",
+      "to": "memchr@2.8.3",
+      "kind": "normal",
+      "target": "all"
+    },
+    {
+      "from": "serde_json@1.0.151",
+      "to": "serde_core@1.0.229",
+      "kind": "normal",
+      "target": "all"
+    },
+    {
+      "from": "serde_json@1.0.151",
+      "to": "zmij@1.0.23",
+      "kind": "normal",
+      "target": "all"
+    },
+    {
+      "from": "serde@1.0.229",
+      "to": "serde_core@1.0.229",
+      "kind": "normal",
+      "target": "all"
+    },
+    {
+      "from": "serde@1.0.229",
+      "to": "serde_derive@1.0.229",
+      "kind": "normal",
+      "target": "all"
+    },
+    {
+      "from": "smallvec@1.16.2",
+      "to": "serde@1.0.229",
+      "kind": "normal",
+      "target": "all"
+    },
+    {
+      "from": "syn@3.0.6",
+      "to": "proc-macro2@1.0.107",
+      "kind": "normal",
+      "target": "all"
+    },
+    {
+      "from": "syn@3.0.6",
+      "to": "quote@1.0.47",
+      "kind": "normal",
+      "target": "all"
+    },
+    {
+      "from": "syn@3.0.6",
+      "to": "unicode-ident@1.0.26",
+      "kind": "normal",
+      "target": "all"
+    }
+  ]
+}

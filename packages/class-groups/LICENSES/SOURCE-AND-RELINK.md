@@ -9,6 +9,14 @@ native imports and exports, statically linked archives, embedded source/runtime
 copies, toolchain, and build receipt. Reconcile it against `Cargo.lock`,
 `provenance.json`, and the native dependency declarations.
 
+`node scripts/release/class-group-artifact-inventory.cjs --elf PATH --wasm PATH`
+produces a byte-bound **pre-review** inventory for local Linux ELF and Wasm
+artifacts. It records hashes, sizes, ELF dynamic dependencies, and actual Wasm
+imports/exports. The current Git revision is expressly *not* proof that those
+artifact bytes came from that revision. This inventory omits static linked
+closures, other platforms, notices, and relink evidence; it is not the SBOM or
+review receipt required by the distribution gate.
+
 ## Source bundle inputs
 
 The reviewed bundle should contain the exact applicable versions of:

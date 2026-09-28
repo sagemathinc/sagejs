@@ -14,6 +14,39 @@ export interface ClassGroupCoreOptions {
 export class ClassGroupCoreInterruptedError extends Error {}
 export class ClassGroupCoreClosedError extends Error {}
 
+export type ImaginaryQuadraticPolynomial = readonly [number | bigint | string, number | bigint | string, number | bigint | string];
+
+export interface ImaginaryClassNumber {
+  discriminant: number;
+  classNumber: number;
+  proofStatus: "unconditional-complete";
+}
+
+export interface ImaginaryQuadraticForm { a: number; b: number; c: number }
+export interface ImaginaryIdealRepresentative { basisColumns: [[number, number], [number, number]]; norm: number }
+export interface ImaginaryClassMapEntry {
+  form: ImaginaryQuadraticForm;
+  inverseForm: ImaginaryQuadraticForm;
+  coordinates: number[];
+  representativeIdeal: ImaginaryIdealRepresentative;
+}
+export interface ImaginaryClassGenerator {
+  form: ImaginaryQuadraticForm;
+  coordinates: number[];
+  exactOrder: number;
+  representativeIdeal: ImaginaryIdealRepresentative;
+}
+export interface ImaginaryClassGroup extends ImaginaryClassNumber {
+  schema: string;
+  fieldId: string;
+  polynomialAscending: [number, number, number];
+  invariantFactors: number[];
+  generators: ImaginaryClassGenerator[];
+  completeClassMap: ImaginaryClassMapEntry[];
+  certificate: unknown;
+  runtimeUsesPariOrFixtureAnswers: false;
+}
+
 export class ClassGroupCoreSession {
   readonly handle: string;
   readonly openReceipt: unknown;
@@ -29,6 +62,8 @@ export class ClassGroupCoreService {
   ready(options?: { signal?: AbortSignal }): Promise<this>;
   invoke(request: unknown, options?: { signal?: AbortSignal }): Promise<unknown>;
   call(operation: string, payload?: Record<string, unknown>, options?: { signal?: AbortSignal }): Promise<unknown>;
+  imaginaryClassNumber(polynomialAscending: ImaginaryQuadraticPolynomial, options?: { signal?: AbortSignal }): Promise<ImaginaryClassNumber>;
+  imaginaryClassGroup(polynomialAscending: ImaginaryQuadraticPolynomial, options?: { signal?: AbortSignal }): Promise<ImaginaryClassGroup>;
   open(completionRequest: unknown, options?: { signal?: AbortSignal }): Promise<ClassGroupCoreSession | unknown>;
   diagnostics(): Promise<unknown>;
   interrupt(): Promise<void>;

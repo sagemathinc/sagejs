@@ -609,11 +609,7 @@ def _number_field_polynomial(value: Any) -> Any:
         raise TypeError("symbolic defining expression is not a rational polynomial")
     polynomial_ring = runtime.reflect.get(runtime.global_object, "PolynomialRing")
     ring = polynomial_ring(sage.QQ, variable)
-    generator = ring.gen()
-    polynomial = ring(0)
-    for coefficient in reversed(coefficients):
-        polynomial = polynomial * generator + coefficient
-    return polynomial
+    return ring(coefficients)
 
 
 def _integer_is_square(value: Any) -> bool:
@@ -941,6 +937,10 @@ class NumberFieldClassGroupElement(sage.Element):
     def form(self) -> Any:
         return self._element.form()
 
+    def coordinates(self) -> "tuple[Any, ...]":
+        """Coordinates in the class group's invariant-factor generators."""
+        return self._element.coordinates()
+
     def __repr__(self) -> str:
         if self.is_one():
             return "Trivial principal fractional ideal class"
@@ -964,8 +964,11 @@ class NumberFieldClassGroup:
         self._element_cache = runtime.map()
         self.proof_status = getattr(group, "proof_status", "exact-unconditional")
         self.algorithm = getattr(group, "algorithm", "quadratic-forms")
-        self.certificate = getattr(group, "certificate", None)
         self.routing_plan = getattr(group, "routing_plan", None)
+
+    @property
+    def certificate(self) -> Any:
+        return getattr(self._group, "certificate", None)
 
     def _wrap(self, element: Any) -> NumberFieldClassGroupElement:
         cached = self._element_cache.get(element)
@@ -1031,8 +1034,12 @@ class NumberFieldClassGroup:
             raise TypeError("the ideal belongs to a different maximal order")
         if value.is_zero():
             raise ValueError("the zero ideal has no ideal class")
-        if self.certificate is not None and getattr(
-            self.certificate, "proves_triviality", False
+        certificate = runtime.reflect.get(self._group, "_certificate")
+        if certificate is runtime.undefined:
+            certificate = self.certificate
+        if (
+            certificate is not None
+            and runtime.reflect.get(certificate, "proves_triviality") is True
         ):
             return self.one()
         coefficients = self._field._quadratic_ideal_form(value)
@@ -2053,6 +2060,19 @@ class _NumberFieldNumericalPlace:
     __str__ = __repr__
 
 
+class _ImaginaryQuadraticDiscriminantRequest:
+    """The exact field discriminant needed by a quadratic Rust request."""
+
+    def __init__(self, discriminant: Any) -> None:
+        self._discriminant = discriminant
+
+    def degree(self) -> int:
+        return 2
+
+    def discriminant(self) -> Any:
+        return self._discriminant
+
+
 @runtime.callable_instance_class
 class NumberFieldParent(sage.Parent):
     """A simple exact number field represented as `QQ[a]/(f)`."""
@@ -2062,7 +2082,13 @@ class NumberFieldParent(sage.Parent):
         coefficients = _trim_coefficients(coefficients)
         if len(coefficients) < 2:
             raise ValueError("a number field needs a nonconstant defining polynomial")
-        if not polynomial.is_irreducible():
+        # Over QQ, quadratic reducibility means square discriminant.
+        if len(coefficients) == 3:
+            a, b, c = coefficients
+            reducible = _rational_is_square(b * b - 4 * a * c)
+        else:
+            reducible = not polynomial.is_irreducible()
+        if reducible:
             raise ValueError(
                 "defining polynomial (" + str(polynomial) + ") must be irreducible"
             )
@@ -2089,6 +2115,7 @@ class NumberFieldParent(sage.Parent):
         self._integral_equation_scale_cache = None
         self._maximal_order_cache = runtime.undefined
         self._quadratic_backend_cache = runtime.undefined
+        self._quadratic_scalar_discriminant_cache = runtime.undefined
         self._real_quadratic_backend_cache = runtime.undefined
         self._real_quadratic_class_number_cache = runtime.undefined
         self._real_quadratic_narrow_class_number_cache = runtime.undefined
@@ -2097,6 +2124,7 @@ class NumberFieldParent(sage.Parent):
         # that boundary, so use an ordinary optional value here.
         self._bounded_cubic_class_number_artifact = None
         self._class_group_cache = runtime.undefined
+        self._imaginary_quadratic_class_number_cache = runtime.undefined
         self._narrow_class_group_cache = runtime.undefined
         self._zeta_function_cache = runtime.map()
         self._archimedean_data_cache = runtime.undefined
@@ -2534,6 +2562,13 @@ class NumberFieldParent(sage.Parent):
         )
 
     def discriminant(self) -> Any:
+        if self._degree == 2 and self._quadratic_backend_cache is not runtime.undefined:
+            # The already-constructed exact quadratic backend knows the field
+            # discriminant from its squarefree radicand. Reuse it rather than
+            # constructing a general maximal order just for this scalar.
+            return self._quadratic_backend_cache[0].discriminant()
+        if self._quadratic_scalar_discriminant_cache is not runtime.undefined:
+            return self._quadratic_scalar_discriminant_cache
         return self.maximal_order().discriminant()
 
     def _quadratic_backend(self) -> Any:
@@ -2869,6 +2904,30 @@ class NumberFieldParent(sage.Parent):
                 answer[name[len(prefix) :]] = runtime.reflect.get(limits, name)
         return answer
 
+    def _imaginary_rust_discriminant_request_field(
+        self, algorithm: str, limits: Any
+    ) -> Any:
+        if self._degree != 2 or algorithm not in ("auto", "rust") or len(limits) != 0:
+            return self
+        constant, linear = self._defining_coefficients[:2]
+        polynomial_discriminant = linear * linear - 4 * constant
+        if polynomial_discriminant >= 0:
+            return self
+        if self._quadratic_backend_cache is not runtime.undefined:
+            discriminant = self._quadratic_backend_cache[0].discriminant()
+        else:
+            if self._quadratic_scalar_discriminant_cache is runtime.undefined:
+                numerator = runtime.integer_bigint(polynomial_discriminant._numerator)
+                denominator = runtime.integer_bigint(
+                    polynomial_discriminant._denominator
+                )
+                squarefree, _scale = _quadratic_squarefree_data(numerator * denominator)
+                self._quadratic_scalar_discriminant_cache = runtime.normalize_integer(
+                    squarefree if squarefree % 4 == 1 else 4 * squarefree
+                )
+            discriminant = self._quadratic_scalar_discriminant_cache
+        return _ImaginaryQuadraticDiscriminantRequest(discriminant)
+
     def class_group(
         self,
         proof: Any = None,
@@ -2877,6 +2936,34 @@ class NumberFieldParent(sage.Parent):
         **limits: Any,
     ) -> Any:
         del names
+        use_cache = proof is None and algorithm == "auto" and len(limits) == 0
+        if (
+            use_cache
+            and self._class_group_cache is not runtime.undefined
+            and self.degree() == 2
+            and self.discriminant() < 0
+        ):
+            return self._class_group_cache
+        imaginary_rust_field = self._imaginary_rust_discriminant_request_field(
+            algorithm, limits
+        )
+        imaginary_rust = _nf_rust_class_group_runtime_module().rust_imaginary_result(
+            imaginary_rust_field,
+            operation="imaginary-class-group",
+            algorithm=algorithm,
+            options=limits,
+        )
+        if imaginary_rust is not None:
+            backend_group = (
+                _DeferredImaginaryQuadraticClassGroup(self, imaginary_rust)
+                if "_coordinateMap" in imaginary_rust
+                else QuadraticClassGroup(self._quadratic_backend()[0], imaginary_rust)
+            )
+            result = NumberFieldClassGroup(self, backend_group)
+            if use_cache:
+                self._class_group_cache = result
+                self._imaginary_quadratic_class_number_cache = result.order()
+            return result
         rust_group = _nf_rust_class_group_runtime_module().rust_class_group(
             self,
             proof=proof,
@@ -2926,7 +3013,6 @@ class NumberFieldParent(sage.Parent):
                 )
             if bounded.minkowski_factor_base_complete:
                 general_algorithm = "minkowski"
-        use_cache = proof is None and algorithm == "auto" and len(limits) == 0
         if use_cache and self._class_group_cache is not runtime.undefined:
             return self._class_group_cache
         if self._is_tutorial_cubic():
@@ -2965,7 +3051,9 @@ class NumberFieldParent(sage.Parent):
                             raise TypeError(
                                 "imaginary quadratic forms do not accept resource limits"
                             )
-                        backend = self._quadratic_backend()[0].class_group()
+                        backend = self._quadratic_backend()[0].class_group(
+                            algorithm="quadratic-forms"
+                        )
                 backend.routing_plan = routing
                 result = NumberFieldClassGroup(self, backend)
         else:
@@ -3035,6 +3123,26 @@ class NumberFieldParent(sage.Parent):
         algorithm: str = "auto",
         **limits: Any,
     ) -> int:
+        use_imaginary_cache = proof is None and algorithm == "auto" and len(limits) == 0
+        if (
+            use_imaginary_cache
+            and self._imaginary_quadratic_class_number_cache is not runtime.undefined
+        ):
+            return int(self._imaginary_quadratic_class_number_cache)
+        imaginary_rust_field = self._imaginary_rust_discriminant_request_field(
+            algorithm, limits
+        )
+        imaginary_rust = _nf_rust_class_group_runtime_module().rust_imaginary_result(
+            imaginary_rust_field,
+            operation="imaginary-class-number",
+            algorithm=algorithm,
+            options=limits,
+        )
+        if imaginary_rust is not None:
+            answer = int(_untyped(imaginary_rust.get("classNumber")))
+            if use_imaginary_cache and imaginary_rust_field is not self:
+                self._imaginary_quadratic_class_number_cache = answer
+            return answer
         rust_context = _nf_rust_class_group_runtime_module().rust_class_unit_context(
             self,
             proof=proof,
@@ -3108,7 +3216,9 @@ class NumberFieldParent(sage.Parent):
                 raise TypeError(
                     "imaginary quadratic forms do not accept resource limits"
                 )
-            return int(self._quadratic_backend()[0].class_number())
+            return int(
+                self._quadratic_backend()[0].class_number(algorithm="quadratic-forms")
+            )
         return _nf_class_unit_groups_module().class_number(
             self, proof=proof, algorithm=general_algorithm, **limits
         )
@@ -3768,6 +3878,17 @@ class QuadraticClassGroupElement(sage.Element):
     def form(self) -> QuadraticBinaryForm:
         return self._form
 
+    def coordinates(self) -> "tuple[Any, ...]":
+        """Coordinates in the published invariant-factor generators, if available."""
+        coordinates = self._parent._coordinate_map
+        if coordinates is None:
+            raise NotImplementedError(
+                "this quadratic backend has no class-coordinate map"
+            )
+        return runtime.math_tuple(
+            list(coordinates.get(_quadratic_form_key(self._form)))
+        )
+
     def __repr__(self) -> str:
         if self.is_one():
             return "Trivial principal fractional ideal class"
@@ -3787,12 +3908,22 @@ class QuadraticClassGroupElement(sage.Element):
 class QuadraticClassGroup:
     """The ideal class group of an imaginary quadratic maximal order."""
 
-    def __init__(self, field: QuadraticField_class) -> None:
+    def __init__(
+        self, field: QuadraticField_class, rust_result: dict[str, Any] | None = None
+    ) -> None:
         self._field = field
         self._discriminant = runtime.integer_bigint(field.discriminant())
         self._forms = runtime.undefined
         self._order = runtime.undefined
         self._native_cyclic_generator = runtime.undefined
+        self._coordinate_map = None
+        self._validated_form_data = None
+        self.proof_status = "exact-unconditional"
+        self.algorithm = "quadratic-forms"
+        self._certificate = None
+        if rust_result is not None:
+            self._load_rust_result(rust_result)
+            return
         native = _quadratic_native_method("qfbClassGroupData")
         if runtime.jstype(
             native
@@ -3823,9 +3954,87 @@ class QuadraticClassGroup:
         self._invariants = structure[0]
         self._generators = [self._from_form(form) for form in structure[1]]
 
+    def _load_rust_result(self, result: dict[str, Any]) -> None:
+        """Bind a complete Rust form map to the ordinary ideal-class API."""
+        coordinates = result.get("_coordinateMap")
+        if coordinates is None:
+            form_data, coordinates, generator_data = (
+                _nf_rust_class_group_runtime_module().validate_imaginary_group_result(
+                    result, int(self._discriminant), compact=True
+                )
+            )
+        else:
+            form_data = None
+            generator_data = coordinates.generator_forms
+        self._principal_form = _quadratic_principal_form(self._discriminant)
+        self._validated_form_data = form_data
+        self._forms = runtime.undefined
+        self._order = int(_untyped(result.get("classNumber")))
+        self._coordinate_map = coordinates
+        self._element_cache = runtime.map()
+        self._elements = runtime.undefined
+        self._invariants = list(_untyped(result.get("invariantFactors")))
+        self._generators = [
+            self._from_form(QuadraticBinaryForm(data[0], data[1], data[2]))
+            for data in generator_data
+        ]
+        if form_data is None:
+
+            def replay(vector: list[int]) -> str:
+                form = self._principal_form
+                for generator, exponent in zip(self._generators, vector, strict=True):
+                    form = _quadratic_compose(
+                        form,
+                        _quadratic_form_power(
+                            generator.form(), exponent, self._discriminant
+                        ),
+                        self._discriminant,
+                    )
+                return _quadratic_form_key(form)
+
+            coordinates.bind_replay(replay)
+        self.proof_status = "exact-unconditional"
+        self.algorithm = "rust"
+        self._certificate = result.get("certificate")
+        self._field._class_number = self._order
+
+    @property
+    def certificate(self) -> dict[str, Any] | None:
+        certificate = self._certificate
+        if (
+            certificate is not None
+            and certificate.get("reducedFormsFromExactCount") is True
+        ):
+            assert self._coordinate_map is not None
+            form_data, coordinates, _, certificate = self._coordinate_map.materialize()
+            self._validated_form_data = form_data
+            self._coordinate_map = coordinates
+            self._certificate = certificate
+        if certificate is not None and (
+            "reducedFormsPacked" in certificate
+            or certificate.get("reducedFormsFromCoreMap") is True
+        ):
+            self._certificate = (
+                _nf_class_group_maps_module().expand_imaginary_certificate(
+                    certificate, self._validated_form_data
+                )
+            )
+        return self._certificate
+
     def _all_forms(self) -> list[QuadraticBinaryForm]:
         if self._forms is runtime.undefined:
-            self._forms = _quadratic_reduced_forms(self._discriminant)
+            if (
+                self._certificate is not None
+                and self._certificate.get("reducedFormsFromExactCount") is True
+            ):
+                _ = self.certificate
+            if self._validated_form_data is not None:
+                self._forms = [
+                    QuadraticBinaryForm(data[0], data[1], data[2])
+                    for data in self._validated_form_data
+                ]
+            else:
+                self._forms = _quadratic_reduced_forms(self._discriminant)
             if len(self._forms) != self.order():
                 raise ArithmeticError(
                     "quadratic form enumeration changed the class number"
@@ -3837,6 +4046,10 @@ class QuadraticClassGroup:
         form: QuadraticBinaryForm,
     ) -> QuadraticClassGroupElement:
         key = _quadratic_form_key(form)
+        if self._coordinate_map is not None and key not in self._coordinate_map:
+            raise ArithmeticError(
+                "the reduced form is absent from the complete Rust class map"
+            )
         cached = self._element_cache.get(key)
         if cached is not runtime.undefined:
             return cached
@@ -3979,8 +4192,6 @@ class QuadraticClassGroup:
             raise ArithmeticError(
                 "quadratic class-group invariant generators do not span"
             )
-        invariants.reverse()
-        generators.reverse()
         return invariants, generators
 
     def __len__(self) -> int:
@@ -4038,6 +4249,56 @@ class QuadraticClassGroup:
     toString = __repr__
 
 
+class _DeferredImaginaryQuadraticClassGroup:
+    """Defer ideal-class maps while exposing the verified Rust summary."""
+
+    def __init__(self, field: NumberFieldParent, result: dict[str, Any]) -> None:
+        self._field = field
+        self._result = result
+        self._realized = None
+        self._certificate = result.get("certificate")
+        self._order = int(_untyped(result.get("classNumber")))
+        self._invariants = runtime.math_tuple(
+            list(_untyped(result.get("invariantFactors")))
+        )
+        self.proof_status = "exact-unconditional"
+        self.algorithm = "rust"
+        self.routing_plan = None
+
+    def _realize(self) -> QuadraticClassGroup:
+        if self._realized is None:
+            group = QuadraticClassGroup(
+                self._field._quadratic_backend()[0], self._result
+            )
+            if group.order() != self._order or group.invariants() != self._invariants:
+                raise ArithmeticError("the verified quadratic presentation changed")
+            self._realized = group
+        return self._realized
+
+    def order(self) -> int:
+        return self._order
+
+    cardinality = order
+
+    def invariants(self) -> Any:
+        return self._invariants
+
+    def list(self) -> Any:
+        return self._realize().list()
+
+    def one(self) -> QuadraticClassGroupElement:
+        return self._realize().one()
+
+    def gens(self) -> Any:
+        return self._realize().gens()
+
+    def _from_form(self, form: QuadraticBinaryForm) -> QuadraticClassGroupElement:
+        return self._realize()._from_form(form)
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self._realize(), name)
+
+
 @runtime.callable_instance_class
 class QuadraticIntegerRing(sage.Parent):
     """The maximal order of an imaginary quadratic number field."""
@@ -4090,11 +4351,11 @@ class QuadraticIntegerRing(sage.Parent):
     def discriminant(self) -> Any:
         return self._field.discriminant()
 
-    def class_group(self) -> QuadraticClassGroup:
-        return self._field.class_group()
+    def class_group(self, algorithm: str = "auto") -> QuadraticClassGroup:
+        return self._field.class_group(algorithm=algorithm)
 
-    def class_number(self) -> int:
-        return self._field.class_number()
+    def class_number(self, algorithm: str = "auto") -> int:
+        return self._field.class_number(algorithm=algorithm)
 
     def __repr__(self) -> str:
         return self._name
@@ -4207,27 +4468,52 @@ class QuadraticField_class(sage.Parent):
 
     maximal_order = ring_of_integers
 
-    def class_group(self) -> QuadraticClassGroup:
+    def class_group(self, algorithm: str = "auto") -> QuadraticClassGroup:
+        if algorithm == "auto" and self._class_group is not runtime.undefined:
+            return self._class_group
+        rust_result = _nf_rust_class_group_runtime_module().rust_imaginary_result(
+            self, operation="imaginary-class-group", algorithm=algorithm
+        )
+        if rust_result is not None:
+            group = QuadraticClassGroup(self, rust_result)
+            if algorithm == "auto":
+                self._class_group = group
+            return group
+        if algorithm not in ("auto", "quadratic-forms"):
+            raise ValueError("unknown imaginary quadratic class-group algorithm")
+        if algorithm == "quadratic-forms":
+            return QuadraticClassGroup(self)
         if self._class_group is runtime.undefined:
             self._class_group = QuadraticClassGroup(self)
         return self._class_group
 
-    def class_number(self) -> Any:
-        if self._class_number is runtime.undefined:
-            native = _quadratic_native_method("qfbClassNumber")
-            if runtime.jstype(
-                native
-            ) == "function" and _quadratic_native_enumeration_supported(
-                self._field_discriminant
-            ):
-                self._class_number = runtime.normalize_integer(
-                    native(self._field_discriminant)
-                )
-            else:
-                self._class_number = len(
-                    _quadratic_reduced_forms_reference(self._field_discriminant)
-                )
-        return self._class_number
+    def class_number(self, algorithm: str = "auto") -> Any:
+        if algorithm == "auto" and self._class_number is not runtime.undefined:
+            return self._class_number
+        rust_result = _nf_rust_class_group_runtime_module().rust_imaginary_result(
+            self, operation="imaginary-class-number", algorithm=algorithm
+        )
+        if rust_result is not None:
+            answer = rust_result.get("classNumber")
+            if algorithm == "auto":
+                self._class_number = answer
+            return answer
+        if algorithm not in ("auto", "quadratic-forms"):
+            raise ValueError("unknown imaginary quadratic class-number algorithm")
+        if algorithm == "auto" and self._class_number is not runtime.undefined:
+            return self._class_number
+        native = _quadratic_native_method("qfbClassNumber")
+        if runtime.jstype(
+            native
+        ) == "function" and _quadratic_native_enumeration_supported(
+            self._field_discriminant
+        ):
+            answer = runtime.normalize_integer(native(self._field_discriminant))
+        else:
+            answer = len(_quadratic_reduced_forms_reference(self._field_discriminant))
+        if algorithm == "auto":
+            self._class_number = answer
+        return answer
 
     def _ideal_second_generator(self, middle: Any) -> GaussianInteger:
         if self._squarefree_radicand % 4 == 1:

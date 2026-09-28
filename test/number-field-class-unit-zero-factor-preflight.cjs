@@ -3,7 +3,7 @@
 
 const assert = require("node:assert/strict");
 const { spawnSync } = require("node:child_process");
-const { mkdtempSync, rmSync, writeFileSync } = require("node:fs");
+const { existsSync, mkdtempSync, rmSync, writeFileSync } = require("node:fs");
 const { tmpdir } = require("node:os");
 const { join } = require("node:path");
 const test = require("node:test");
@@ -23,13 +23,21 @@ function runPublic(source, timeout = 240_000) {
       process.platform === "win32"
         ? [join(root, "bin", "sagejs-source.cjs"), "--python", filename]
         : ["--python", filename];
+    // The zero-factor preflight belongs to the bounded Python producer. A
+    // present optional Rust service would select its distinct cubic context.
+    const unavailableService = join(directory, "__absent_class_group_service__");
+    assert.equal(existsSync(unavailableService), false);
     const result = spawnSync(executable, arguments_, {
       cwd: root,
       encoding: "utf8",
       timeout,
       killSignal: "SIGKILL",
       maxBuffer: 16 * 1024 * 1024,
-      env: { ...process.env, SAGEJS_USE_SOURCE: "1" },
+      env: {
+        ...process.env,
+        SAGEJS_USE_SOURCE: "1",
+        SAGEJS_CLASS_GROUP_SERVICE: unavailableService,
+      },
     });
     assert.equal(
       result.status,

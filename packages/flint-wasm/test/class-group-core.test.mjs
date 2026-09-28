@@ -52,6 +52,7 @@ function fakeWorkers({ initialize = true } = {}) {
         return;
       }
       if (message.request?.hang) return;
+      this.lastRequest = message.request;
       let result = { echo: message.request, generation: this.generation };
       const serviceRequest = message.request?.schema ===
         "sagejs.class-groups/service-request-v1";
@@ -71,6 +72,28 @@ function fakeWorkers({ initialize = true } = {}) {
         };
       } else if (serviceRequest && message.request.operation === "close") {
         result = { outcome: "closed", handle: "7" };
+      } else if (serviceRequest && message.request.operation === "imaginary-class-number") {
+        result = {
+          schema: "sagejs.class-groups/service-response-v1",
+          outcome: "complete",
+          operation: "imaginary-class-number",
+          result: { discriminant: -23, classNumber: 3, proofStatus: "unconditional-complete" },
+        };
+      } else if (serviceRequest && message.request.operation === "imaginary-class-group") {
+        result = {
+          schema: "sagejs.class-groups/service-response-v1",
+          outcome: "complete",
+          operation: "imaginary-class-group",
+          result: {
+            discriminant: -23,
+            classNumber: 3,
+            proofStatus: "unconditional-complete",
+            polynomialAscending: [6, -1, 1],
+            invariantFactors: [3],
+            completeClassMap: [{}, {}, {}],
+            runtimeUsesPariOrFixtureAnswers: false,
+          },
+        };
       }
       if (serviceRequest) {
         result = {
@@ -119,6 +142,24 @@ test("the service authenticates configuration and exposes diagnostics", async ()
     await service.close();
   }
   assert.equal(workers[0].terminated, true);
+});
+
+test("imaginary quadratic methods validate exact inputs and return typed results", async () => {
+  const { FakeWorker, workers } = fakeWorkers();
+  const service = new ClassGroupCoreService({ receipt, WorkerConstructor: FakeWorker });
+  try {
+    const scalar = await service.imaginaryClassNumber([6n, -1, "1"]);
+    assert.equal(scalar.classNumber, 3);
+    assert.deepEqual(workers[0].lastRequest.polynomialAscending, ["6", "-1", "1"]);
+    const group = await service.imaginaryClassGroup([6, -1, 1]);
+    assert.deepEqual(group.invariantFactors, [3]);
+    assert.equal(group.completeClassMap.length, 3);
+    await assert.rejects(service.imaginaryClassNumber([5, 0, 1]), /malformed imaginary quadratic result/);
+    await assert.rejects(service.imaginaryClassNumber([1.5, 0, 1]), /safe integers/);
+    await assert.rejects(service.imaginaryClassNumber([2n ** 60n, 0, 1]), /exact JSON integer range/);
+  } finally {
+    await service.close();
+  }
 });
 
 test("abort terminates the synchronous worker and invalidates resident handles", async () => {
@@ -173,6 +214,28 @@ test("session close is idempotent and service close rejects later work", async (
   await assert.rejects(service.invoke({}), ClassGroupCoreClosedError);
 });
 
+test("service close terminates a worker even if its close message throws", async () => {
+  const { FakeWorker, workers } = fakeWorkers();
+  class FailedCloseWorker extends FakeWorker {
+    postMessage(message) {
+      if (message.type === "close") throw new Error("worker is unavailable");
+      super.postMessage(message);
+    }
+  }
+  const service = new ClassGroupCoreService({
+    receipt,
+    WorkerConstructor: FailedCloseWorker,
+  });
+  await service.ready();
+  const inFlight = service.invoke({ hang: true });
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  await service.close();
+  await assert.rejects(inFlight, ClassGroupCoreClosedError);
+  assert.equal(workers[0].terminated, true);
+  await service.close();
+  await assert.rejects(service.invoke({}), ClassGroupCoreClosedError);
+});
+
 test("invalid artifact receipts fail before a worker is created", () => {
   const { FakeWorker, workers } = fakeWorkers();
   assert.throws(
@@ -220,6 +283,76 @@ test("a post-ready worker crash rejects work and starts a fresh generation", asy
   assert.equal(workers[0].terminated, true);
   assert.equal((await service.invoke({ value: 9 })).echo.value, 9);
   await service.close();
+});
+
+test("a crash between readiness and invocation retries on the ready generation", async () => {
+  const workers = [];
+  class RacyWorker {
+    constructor() {
+      this.generation = workers.length + 1;
+      this.ready = false;
+      workers.push(this);
+    }
+
+    postMessage(message) {
+      if (message.type === "initialize") {
+        const publishReady = () => {
+          this.ready = true;
+          this.onmessage({ data: { type: "ready", protocol: 1, diagnostics: {} } });
+          if (this.generation === 1) {
+            queueMicrotask(() => this.onerror({ error: new Error("worker crashed") }));
+          }
+        };
+        if (this.generation === 1) queueMicrotask(publishReady);
+        else setTimeout(publishReady, 10);
+        return;
+      }
+      if (message.type !== "invoke" || !this.ready) return;
+      queueMicrotask(() => this.onmessage({
+        data: { type: "result", id: message.id, ok: true, result: message.request },
+      }));
+    }
+
+    terminate() {
+      this.terminated = true;
+    }
+  }
+
+  const service = new ClassGroupCoreService({ receipt, WorkerConstructor: RacyWorker });
+  let timeout;
+  try {
+    const answer = await Promise.race([
+      service.invoke({ value: 42 }),
+      new Promise((_, reject) => {
+        timeout = setTimeout(() => reject(new Error("invocation hung after worker restart")), 1000);
+      }),
+    ]);
+    assert.equal(answer.value, 42);
+    assert.equal(service.generation, 2);
+    assert.equal(service.pending.size, 0);
+    assert.equal(workers[0].terminated, true);
+  } finally {
+    clearTimeout(timeout);
+    await service.close();
+  }
+});
+
+test("a failed worker post does not retain a pending request", async () => {
+  const { FakeWorker } = fakeWorkers();
+  class ThrowingWorker extends FakeWorker {
+    postMessage(message) {
+      if (message.type === "invoke") throw new Error("worker post failed");
+      super.postMessage(message);
+    }
+  }
+  const service = new ClassGroupCoreService({ receipt, WorkerConstructor: ThrowingWorker });
+  try {
+    await assert.rejects(service.invoke({ value: 1 }), /worker post failed/);
+    assert.equal(service.pending.size, 0);
+    assert.equal(service.workerState, "ready");
+  } finally {
+    await service.close();
+  }
 });
 
 test("the factory defaults to packaged authenticated artifact URLs", async () => {

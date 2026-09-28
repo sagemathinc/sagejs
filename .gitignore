@@ -3,6 +3,7 @@ node_modules
 .native-integer-cache/
 dist
 packages/class-groups/target/
+packages/imaginary-quadratic-core/target/
 *.tgz
 *.tsbuildinfo
 *.term

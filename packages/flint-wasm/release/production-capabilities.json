@@ -509,6 +509,7 @@
         "kernel:number-field-cubic-relation-sieve-production",
         "kernel:number-field-discriminant-prefactor-production",
         "kernel:number-field-element-valuations-production",
+        "kernel:number-field-imaginary-map-production",
         "kernel:number-field-om-proof-production",
         "kernel:packed-combinatorial-integer-rational-production",
         "kernel:packed-gf-p2-affine-production",

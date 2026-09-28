@@ -1,0 +1,546 @@
+{
+  "schema": "sagejs.public-quadratic/public-sagejs-pari-diagnostic-v1",
+  "promotedPerformanceReceipt": false,
+  "panelSchema": "sagejs.public-quadratic/benchmark-panel-v2",
+  "panelSha256": "3e5bf27142c382e4a1dd31f32656554ada0e20f586b7058f83df8cbf096a8825",
+  "boundary": "warm-resident-polynomial-to-public-class-group-and-projection-v1",
+  "caveat": "Both arms include interpreter evaluation and exact result projection. Sage.js additionally authenticates and retains a complete ideal-class map; PARI computes rank-zero units and regulator but does not project a complete map. Resident Node/Sage.js and GP have different IPC costs. This diagnostic is not the promoted matched native receipt.",
+  "samplesPerArmPerField": 15,
+  "runnerSha256": "f6ef08a07803c826d98c611da04c9b9f6abb207752ad4f9d5a689ef521262c6a",
+  "sageBuildReceiptSha256": "ef6f693c32e71e95c00812686d544985152e2c53734ee98e3a3c5b5587081363",
+  "node": "v26.10.0",
+  "platform": "linux-x64",
+  "cpuModel": "AMD EPYC 7B13",
+  "loadAverage1m5m15m": [
+    4.49,
+    4.9,
+    4.59
+  ],
+  "serviceSha256": "5ae70b8efa13bc18d2d8f0491b3f4718170063c827e1039862bdb1592e32d300",
+  "pariGpSha256": "915f8085d7eace9f9778edcbc657083a234cdea657dfcc677a26003fde4232c4",
+  "pariLibrarySha256": "fdc8f2d7ff050c8e8c6cb8994b0f9dc971267ac763eaf5cd927454937d37357f",
+  "pariPrecisionBits": 192,
+  "pariThreads": 1,
+  "results": [
+    {
+      "fieldId": "tiny-trivial-d3",
+      "expected": {
+        "discriminant": -3,
+        "classNumber": 1,
+        "invariantFactors": []
+      },
+      "sageNanoseconds": [
+        79961376,
+        13378340,
+        12505489,
+        12233119,
+        12527559,
+        11917769,
+        12394769,
+        12438959,
+        12257499,
+        11217259,
+        11178129,
+        11354909,
+        10772210,
+        11613979,
+        10559500
+      ],
+      "pariNanoseconds": [
+        885509,
+        688270,
+        804800,
+        547500,
+        796011,
+        572240,
+        893950,
+        542030,
+        754949,
+        511840,
+        746660,
+        526760,
+        753230,
+        496510,
+        843829
+      ],
+      "sageMedianNanoseconds": 12233119,
+      "pariMedianNanoseconds": 746660,
+      "sageOverPariMedianRatio": 16.3837878016768
+    },
+    {
+      "fieldId": "tiny-cyclic-d47",
+      "expected": {
+        "discriminant": -47,
+        "classNumber": 5,
+        "invariantFactors": [
+          5
+        ]
+      },
+      "sageNanoseconds": [
+        31640948,
+        12674219,
+        12238010,
+        12384180,
+        13300309,
+        11990509,
+        11797199,
+        12119109,
+        11623789,
+        11736349,
+        12972140,
+        10441649,
+        10164229,
+        10238230,
+        10108949
+      ],
+      "pariNanoseconds": [
+        972780,
+        671640,
+        861520,
+        641820,
+        794240,
+        670000,
+        803631,
+        681349,
+        851860,
+        524890,
+        926779,
+        725929,
+        671030,
+        662390,
+        711880
+      ],
+      "sageMedianNanoseconds": 11990509,
+      "pariMedianNanoseconds": 711880,
+      "sageOverPariMedianRatio": 16.8434413103332
+    },
+    {
+      "fieldId": "tiny-noncyclic-d231",
+      "expected": {
+        "discriminant": -231,
+        "classNumber": 12,
+        "invariantFactors": [
+          2,
+          6
+        ]
+      },
+      "sageNanoseconds": [
+        24921928,
+        10745689,
+        10601770,
+        10724319,
+        10610730,
+        10812930,
+        10302669,
+        10183130,
+        10642749,
+        10260389,
+        10140650,
+        10591679,
+        10208189,
+        10494880,
+        10515669
+      ],
+      "pariNanoseconds": [
+        873750,
+        760770,
+        955800,
+        756490,
+        1107551,
+        820080,
+        1023740,
+        725890,
+        839580,
+        712740,
+        760080,
+        713990,
+        970591,
+        805069,
+        1108680
+      ],
+      "sageMedianNanoseconds": 10591679,
+      "pariMedianNanoseconds": 820080,
+      "sageOverPariMedianRatio": 12.91542166617891
+    },
+    {
+      "fieldId": "rank4-d15015",
+      "expected": {
+        "discriminant": -15015,
+        "classNumber": 96,
+        "invariantFactors": [
+          2,
+          2,
+          2,
+          12
+        ]
+      },
+      "sageNanoseconds": [
+        28227549,
+        11975439,
+        11510130,
+        11395959,
+        11172139,
+        11223499,
+        10956590,
+        11632100,
+        11188469,
+        11403129,
+        11452100,
+        11594330,
+        11029059,
+        11371859,
+        11431049
+      ],
+      "pariNanoseconds": [
+        1852370,
+        1315180,
+        1733979,
+        1246000,
+        1581090,
+        1267380,
+        1363770,
+        1182030,
+        1542740,
+        1350000,
+        1737851,
+        1275860,
+        1762510,
+        1264880,
+        1936400
+      ],
+      "sageMedianNanoseconds": 11403129,
+      "pariMedianNanoseconds": 1363770,
+      "sageOverPariMedianRatio": 8.361475175432808
+    },
+    {
+      "fieldId": "near-limit-h1715-d9999991",
+      "expected": {
+        "discriminant": -9999991,
+        "classNumber": 1715,
+        "invariantFactors": [
+          1715
+        ]
+      },
+      "sageNanoseconds": [
+        24598989,
+        10527209,
+        10609289,
+        11322900,
+        11275029,
+        12072349,
+        11057659,
+        12171010,
+        11097939,
+        11160319,
+        11227800,
+        12854009,
+        11406369,
+        11258880,
+        14467069
+      ],
+      "pariNanoseconds": [
+        2176469,
+        1430729,
+        1600870,
+        1707410,
+        1912900,
+        1633310,
+        1795200,
+        1613960,
+        1732730,
+        1498840,
+        2187760,
+        1567610,
+        1784760,
+        1824210,
+        1867870
+      ],
+      "sageMedianNanoseconds": 11275029,
+      "pariMedianNanoseconds": 1732730,
+      "sageOverPariMedianRatio": 6.5070893907302345
+    },
+    {
+      "fieldId": "near-limit-h4378-d8173415",
+      "expected": {
+        "discriminant": -8173415,
+        "classNumber": 4378,
+        "invariantFactors": [
+          4378
+        ]
+      },
+      "sageNanoseconds": [
+        24662288,
+        12689749,
+        12695739,
+        14108520,
+        13656329,
+        12459190,
+        13639709,
+        13062559,
+        15244019,
+        12246629,
+        13228719,
+        13063960,
+        12704100,
+        12527599,
+        12747749
+      ],
+      "pariNanoseconds": [
+        1839800,
+        1460370,
+        1682920,
+        1699310,
+        1639670,
+        1355730,
+        2342260,
+        1710160,
+        1888730,
+        2171840,
+        2025440,
+        1929479,
+        1669560,
+        1623160,
+        2041600
+      ],
+      "sageMedianNanoseconds": 13062559,
+      "pariMedianNanoseconds": 1710160,
+      "sageOverPariMedianRatio": 7.6382087056181875
+    },
+    {
+      "fieldId": "larger-odd-prime-d20000000179",
+      "expected": {
+        "discriminant": -20000000179,
+        "classNumber": 27325,
+        "invariantFactors": [
+          27325
+        ]
+      },
+      "sageNanoseconds": [
+        33830438,
+        18829159,
+        22147989,
+        18870029,
+        18724499,
+        18584079,
+        18578548,
+        19544429,
+        20063489,
+        20609159,
+        18410109,
+        20293039,
+        18134909,
+        20187808,
+        18426099
+      ],
+      "pariNanoseconds": [
+        5824710,
+        4896510,
+        5245760,
+        5091930,
+        5042040,
+        4970359,
+        5250680,
+        5447460,
+        5328739,
+        4897060,
+        4889989,
+        4850909,
+        6319960,
+        4782109,
+        5214970
+      ],
+      "sageMedianNanoseconds": 18870029,
+      "pariMedianNanoseconds": 5091930,
+      "sageOverPariMedianRatio": 3.7058696800623734
+    },
+    {
+      "fieldId": "larger-odd-prime-d40000000003",
+      "expected": {
+        "discriminant": -40000000003,
+        "classNumber": 29199,
+        "invariantFactors": [
+          29199
+        ]
+      },
+      "sageNanoseconds": [
+        31119298,
+        20009899,
+        19343779,
+        19468469,
+        17914999,
+        18192039,
+        17867959,
+        20372029,
+        18724769,
+        19007449,
+        19004899,
+        19786129,
+        18646769,
+        20133229,
+        19327979
+      ],
+      "pariNanoseconds": [
+        6540170,
+        6146059,
+        6651340,
+        6311249,
+        6533610,
+        6417189,
+        6659680,
+        5212420,
+        6977329,
+        5864020,
+        7251880,
+        5253359,
+        6240680,
+        5715270,
+        6029820
+      ],
+      "sageMedianNanoseconds": 19327979,
+      "pariMedianNanoseconds": 6311249,
+      "sageOverPariMedianRatio": 3.0624649732564824
+    },
+    {
+      "fieldId": "larger-odd-prime-d60000000091",
+      "expected": {
+        "discriminant": -60000000091,
+        "classNumber": 42885,
+        "invariantFactors": [
+          42885
+        ]
+      },
+      "sageNanoseconds": [
+        36107538,
+        23205168,
+        23434479,
+        22014588,
+        23760079,
+        22213849,
+        21593169,
+        22484249,
+        22093699,
+        24589729,
+        22804778,
+        22705928,
+        22372829,
+        22699898,
+        23514099
+      ],
+      "pariNanoseconds": [
+        5993500,
+        5084859,
+        5070420,
+        5226969,
+        4790380,
+        4750510,
+        5490400,
+        5514479,
+        5169769,
+        4870230,
+        5978550,
+        5728590,
+        5373010,
+        5372730,
+        6014740
+      ],
+      "sageMedianNanoseconds": 22705928,
+      "pariMedianNanoseconds": 5372730,
+      "sageOverPariMedianRatio": 4.2261435061877295
+    },
+    {
+      "fieldId": "larger-even-d20000001124",
+      "expected": {
+        "discriminant": -20000001124,
+        "classNumber": 44488,
+        "invariantFactors": [
+          44488
+        ]
+      },
+      "sageNanoseconds": [
+        33423689,
+        23830709,
+        20866729,
+        22106988,
+        20853208,
+        21697508,
+        21869868,
+        21727669,
+        20658290,
+        22166739,
+        21138429,
+        20955049,
+        20625969,
+        21221539,
+        20915738
+      ],
+      "pariNanoseconds": [
+        5649419,
+        4884620,
+        4997460,
+        5071320,
+        5937369,
+        7042870,
+        4778490,
+        3822960,
+        5063099,
+        4282960,
+        5313000,
+        5711920,
+        4641069,
+        4671510,
+        6233070
+      ],
+      "sageMedianNanoseconds": 21221539,
+      "pariMedianNanoseconds": 5063099,
+      "sageOverPariMedianRatio": 4.1914130061450505
+    },
+    {
+      "fieldId": "larger-composite-d15000000315",
+      "expected": {
+        "discriminant": -15000000315,
+        "classNumber": 33768,
+        "invariantFactors": [
+          2,
+          16884
+        ]
+      },
+      "sageNanoseconds": [
+        32417998,
+        22717119,
+        20423269,
+        21100309,
+        21018238,
+        21401099,
+        21013809,
+        21257649,
+        21460728,
+        21728239,
+        21466279,
+        21609489,
+        21730579,
+        21280269,
+        20814379
+      ],
+      "pariNanoseconds": [
+        4156760,
+        4782600,
+        4253550,
+        4652840,
+        5778490,
+        3965790,
+        4998079,
+        4954560,
+        3891059,
+        4133310,
+        5255460,
+        4265540,
+        5644049,
+        4906450,
+        4014800
+      ],
+      "sageMedianNanoseconds": 21401099,
+      "pariMedianNanoseconds": 4652840,
+      "sageOverPariMedianRatio": 4.599577677289569
+    }
+  ]
+}

@@ -87,7 +87,7 @@ def warn(message, category=None, stacklevel=1, source=None):
             WarningMessage(warning, category, "<sagejs>", 0, source=source)
         )
         return None
-    process.emitWarning(text, {"type": category.__name__})
+    runtime.console_object.warn(category.__name__ + ": " + text)
     return None
 
 
@@ -129,7 +129,7 @@ def showwarning(
     if file is not None and hasattr(file, "write"):
         file.write(text)
     else:
-        process.emitWarning(str(message), {"type": category.__name__})
+        runtime.console_object.warn(category.__name__ + ": " + str(message))
 
 
 class catch_warnings:

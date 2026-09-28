@@ -40,7 +40,7 @@ test("the development class-group reactor is excluded from the production layout
 
 const artifact = productionArtifact();
 test(
-  "the extracted production reactor instantiates and completes a small cubic through the worker",
+  "the development reactor completes cubic and exact imaginary-quadratic groups in Wasm",
   { skip: artifact ? false : "requires the class-group-rust-core lane to build packages/class-groups/dist/class-group-core.wasm" },
   async () => {
     const bytes = new Uint8Array(await readFile(artifact));
@@ -81,6 +81,84 @@ test(
       assert.deepEqual(result.completion.invariantFactors, ["6"]);
       assert.equal((await service.diagnostics()).maximumMemoryPages, 4096);
       await session.close();
+
+      const scalar = await service.imaginaryClassNumber([6, -1, 1]);
+      assert.equal(scalar.classNumber, 3);
+      assert.equal(scalar.proofStatus, "unconditional-complete");
+      const group = await service.imaginaryClassGroup([6, -1, 1]);
+      assert.deepEqual(group.invariantFactors, [3]);
+      assert.equal(group.completeClassMap.length, 3);
+      assert.equal(group.proofStatus, "unconditional-complete");
+      const capability = await service.call("capability");
+      assert.deepEqual(capability.imaginaryQuadratic.transports, ["core-v3", "core-v2"]);
+      const compact = (await service.call("imaginary-class-group", {
+        polynomialAscending: ["6", "-1", "1"], transport: "core-v3",
+      })).result;
+      assert.equal(compact.completeClassMapLength, 3);
+      assert.deepEqual(compact.completeClassMapCorePacked, [1, 1, 0, 2, -1, 1, 2, 1, 2]);
+      assert.equal(compact.certificate.reducedFormsFromCoreMap, true);
+      assert.equal("reducedFormsPacked" in compact.certificate, false);
+
+      const summary = (await service.call("imaginary-class-group-summary", {
+        polynomialAscending: ["6", "-1", "1"],
+      })).result;
+      assert.equal(summary.classNumber, 3);
+      assert.deepEqual(summary.invariantFactors, [3]);
+      assert.equal("completeClassMap" in summary, false);
+      const verified = await service.call("imaginary-verify-presentation", {
+        polynomialAscending: ["6", "-1", "1"],
+        classNumber: 3,
+        invariantFactors: [3],
+        generatorForms: summary.generators.map(({ form }) =>
+          [form.a, form.b, form.c].map(String)),
+      });
+      assert.equal(verified.outcome, "verified");
+      const coordinate = await service.call("imaginary-class-coordinate", {
+        polynomialAscending: ["6", "-1", "1"],
+        formCoefficients: ["2", "1", "3"],
+      });
+      assert.deepEqual(coordinate.coordinates, [2]);
+      assert.deepEqual(coordinate.presentation, summary);
+
+      const noncyclic = await service.imaginaryClassGroup([21, 0, 1]);
+      assert.equal(noncyclic.discriminant, -84);
+      assert.equal(noncyclic.classNumber, 4);
+      assert.deepEqual(noncyclic.invariantFactors, [2, 2]);
+      assert.equal(noncyclic.completeClassMap.length, 4);
+      assert.deepEqual(
+        new Set(noncyclic.completeClassMap.map(({ coordinates }) => coordinates.join(","))),
+        new Set(["0,0", "0,1", "1,0", "1,1"]),
+      );
+      assert.deepEqual(
+        new Set(noncyclic.generators.map(({ coordinates }) => coordinates.join(","))),
+        new Set(["0,1", "1,0"]),
+      );
+
+      for (const [polynomial, classNumber, invariants] of [
+        [[2043354, -1, 1], 4378, [4378]],
+        [[25000000001, -1, 1], 31057, [31057]],
+        [[3750000079, -1, 1], 33768, [2, 16884]],
+      ]) {
+        const complete = await service.imaginaryClassGroup(polynomial);
+        assert.equal(complete.classNumber, classNumber);
+        assert.deepEqual(complete.invariantFactors, invariants);
+        assert.equal(complete.proofStatus, "unconditional-complete");
+        assert.equal(complete.completeClassMap.length, classNumber);
+        assert.equal(
+          new Set(complete.completeClassMap.map(({ coordinates }) =>
+            coordinates.join(","))).size,
+          classNumber,
+        );
+        assert.deepEqual(
+          complete.generators.map(({ coordinates }) => coordinates),
+          invariants.map((_, index) =>
+            invariants.map((__, coordinate) => Number(index === coordinate))),
+        );
+      }
+      await assert.rejects(
+        service.imaginaryClassNumber([9, 0, 1]),
+        (error) => error.category === "invalid-request",
+      );
     } finally {
       await service.close();
     }

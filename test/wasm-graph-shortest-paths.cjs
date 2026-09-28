@@ -408,7 +408,9 @@ test("real Wasm executes direct and public Node/browser shortest paths", {
   timeout: 360_000,
 }, async (context) => {
   const temporary = mkdtempSync(join(tmpdir(), "sagejs-wasm-graph-shortest-"));
-  const browserOutput = mkdtempSync(join(packageRoot, ".graph-shortest-wasm-"));
+  // Keep generated C/headers under ignored build output: the portable test
+  // tier runs native-source classification concurrently with this browser test.
+  const browserOutput = mkdtempSync(join(packageRoot, "dist", ".graph-shortest-wasm-"));
   try {
     const manifestPath = syntheticManifest(temporary);
     const manifest = await buildWasmProductionPacks({

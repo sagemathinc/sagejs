@@ -49,6 +49,55 @@ function normalizedReceipt(receipt) {
   return validateSpecialistReceipt(receipt);
 }
 
+function imaginaryPolynomial(coefficients) {
+  if (!Array.isArray(coefficients) || coefficients.length !== 3) {
+    throw new TypeError("an imaginary quadratic polynomial needs three ascending coefficients");
+  }
+  // The service currently serializes mathematical i64 values as JSON numbers.
+  // Stay inside JavaScript's exact integer range until the wire schema uses
+  // decimal strings for every such result field.
+  const minimum = -BigInt(Number.MAX_SAFE_INTEGER);
+  const maximum = BigInt(Number.MAX_SAFE_INTEGER);
+  return coefficients.map((coefficient) => {
+    if (typeof coefficient === "number" && !Number.isSafeInteger(coefficient)) {
+      throw new RangeError("quadratic polynomial numbers must be safe integers");
+    }
+    if (typeof coefficient !== "number" && typeof coefficient !== "bigint" &&
+        (typeof coefficient !== "string" || !/^(0|-?[1-9][0-9]*)$/.test(coefficient))) {
+      throw new TypeError("quadratic polynomial coefficients must be exact integers");
+    }
+    const exact = BigInt(coefficient);
+    if (exact < minimum || exact > maximum) {
+      throw new RangeError("quadratic polynomial coefficient exceeds exact JSON integer range");
+    }
+    return exact.toString();
+  });
+}
+
+function imaginaryResult(receipt, operation, coefficients) {
+  const result = receipt?.result;
+  const expectedDiscriminant = BigInt(coefficients[1]) ** 2n -
+    4n * BigInt(coefficients[0]) * BigInt(coefficients[2]);
+  if (receipt?.schema !== serviceResponseSchema || receipt?.outcome !== "complete" ||
+      receipt?.operation !== operation || result?.proofStatus !== "unconditional-complete" ||
+      !Number.isSafeInteger(result?.classNumber) || result.classNumber < 1 ||
+      !Number.isSafeInteger(result?.discriminant) || result.discriminant >= 0 ||
+      BigInt(result.discriminant) !== expectedDiscriminant) {
+    throw new Error("class-group service returned a malformed imaginary quadratic result");
+  }
+  if (operation === "imaginary-class-group" &&
+      (!Array.isArray(result.invariantFactors) || !Array.isArray(result.completeClassMap) ||
+       result.completeClassMap.length !== result.classNumber ||
+       !Array.isArray(result.polynomialAscending) ||
+       result.polynomialAscending.length !== 3 ||
+       result.polynomialAscending.some((value, index) =>
+         !Number.isSafeInteger(value) || BigInt(value) !== BigInt(coefficients[index])) ||
+       result.runtimeUsesPariOrFixtureAnswers !== false)) {
+    throw new Error("class-group service returned an incomplete imaginary quadratic class map");
+  }
+  return result;
+}
+
 /**
  * Receipt-gated Rust class-group service.
  *
@@ -188,8 +237,16 @@ export class ClassGroupCoreService {
   async request(type, fields, { signal } = {}) {
     if (this.closed) throw new ClassGroupCoreClosedError();
     if (signal?.aborted) throw abortError();
-    await this.ready({ signal });
-    if (signal?.aborted) throw abortError();
+    for (;;) {
+      const generation = this.generation;
+      await this.ready({ signal });
+      if (signal?.aborted) throw abortError();
+      if (generation !== this.generation) continue;
+      if (this.workerState !== "ready" || this.worker === undefined) {
+        throw new ClassGroupCoreInterruptedError("class-group worker became unavailable");
+      }
+      break;
+    }
     const id = ++this.nextId;
     const generation = this.generation;
     return new Promise((resolve, reject) => {
@@ -199,7 +256,13 @@ export class ClassGroupCoreService {
       };
       this.pending.set(id, { resolve, reject, signal, onAbort });
       signal?.addEventListener("abort", onAbort, { once: true });
-      this.worker.postMessage({ type, id, ...fields });
+      try {
+        this.worker.postMessage({ type, id, ...fields });
+      } catch (error) {
+        this.pending.delete(id);
+        signal?.removeEventListener("abort", onAbort);
+        reject(error);
+      }
     });
   }
 
@@ -228,6 +291,24 @@ export class ClassGroupCoreService {
       throw error;
     }
     return response.result;
+  }
+
+  /** Compute an unconditional scalar class number without constructing a group map. */
+  async imaginaryClassNumber(polynomialAscending, options) {
+    const coefficients = imaginaryPolynomial(polynomialAscending);
+    const receipt = await this.call("imaginary-class-number", {
+      polynomialAscending: coefficients,
+    }, options);
+    return imaginaryResult(receipt, "imaginary-class-number", coefficients);
+  }
+
+  /** Compute a complete group with exact coordinates and representative ideals. */
+  async imaginaryClassGroup(polynomialAscending, options) {
+    const coefficients = imaginaryPolynomial(polynomialAscending);
+    const receipt = await this.call("imaginary-class-group", {
+      polynomialAscending: coefficients,
+    }, options);
+    return imaginaryResult(receipt, "imaginary-class-group", coefficients);
   }
 
   async open(completionRequest, options) {
@@ -284,8 +365,13 @@ export class ClassGroupCoreService {
     this.rejectPending(error);
     const worker = this.worker;
     this.worker = undefined;
-    worker?.postMessage({ type: "close" });
-    worker?.terminate();
+    try {
+      worker?.postMessage({ type: "close" });
+    } catch {
+      // A worker that has already failed may reject even the courtesy close
+      // message.  Its termination is still required to release the reactor.
+    }
+    await worker?.terminate();
   }
 }
 

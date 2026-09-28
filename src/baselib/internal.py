@@ -970,9 +970,20 @@ def ρσ_interpolate_kwargs_legacy(
                 call_args[index] = supplied_args[index]
         return runtime.reflect.apply(target_function, receiver, call_args)
 
+    positional_only = _internal_get_member(target_function, "__positional_only__")
+    if positional_only is True:
+        positional_only = argnames.length
+    elif not isinstance(positional_only, int):
+        positional_only = 0
     for index in range(argnames.length):
         property_name = argnames[index]
         if _internal_has_own(keyword_object, property_name):
+            if index < positional_only:
+                raise TypeError(
+                    "positional-only argument passed as keyword: '"
+                    + property_name
+                    + "'"
+                )
             supplied_args[index] = keyword_object[property_name]
     return runtime.reflect.apply(target_function, receiver, supplied_args)
 

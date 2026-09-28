@@ -7,19 +7,26 @@
 //! data, or expected field answers.  All mathematical state starts with the
 //! four public polynomial coefficients.
 
+use crate::imaginary::MAXIMUM_COMPACT_HIGH_RANK_CLASSES;
 use crate::{
-    ArbitraryIdealReductionLimits, CompactPresentationContinuationCache, CompactPresentationLimits,
+    ArbitraryIdealReductionLimits, BinaryQuadraticForm, CompactImaginaryPresentation,
+    CompactPresentationContinuationCache, CompactPresentationLimits, CompleteImaginaryClassGroup,
     CubicAnalyticEvidence, CubicCompletionProofMode, CubicConditionalCompletionError,
     CubicConditionalCompletionOptions, CubicPresentationCandidateLimits,
-    GrhConditionalCompleteCubicClassGroup, MaximalOrderEvidenceStatus, NormalFormLimits,
-    PreparedContinuationLimits, PreparedCubicRelationCollector, PreparedIdealWorkspace,
-    PresentationZeroState, PrincipalElementWitnessState, PublicCubicPreparationLimits,
-    VerifiedCompactPresentation, authenticate_compact_cubic_presentation_candidate_with_cache,
+    GrhConditionalCompleteCubicClassGroup, ImaginaryClassGroupError, ImaginaryFormClassMapEntry,
+    MaximalOrderEvidenceStatus, NormalFormLimits, PreparedContinuationLimits,
+    PreparedCubicRelationCollector, PreparedIdealWorkspace, PresentationZeroState,
+    PrincipalElementWitnessState, PublicCubicPreparationLimits, VerifiedCompactPresentation,
+    authenticate_compact_cubic_presentation_candidate_with_cache,
     authenticate_compact_presentation, authenticate_cubic_presentation_candidate,
     complete_cubic_class_group_conditionally_with_context,
-    prepare_cubic_conditional_completion_context, prepare_monic_cubic,
+    compute_imaginary_class_group_from_coefficients,
+    compute_imaginary_class_number_from_coefficients, prepare_cubic_conditional_completion_context,
+    prepare_monic_cubic, try_compute_imaginary_presentation_from_coefficients,
+    verify_imaginary_generator_presentation,
 };
 use rug::Integer;
+use serde::ser::SerializeSeq;
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use std::sync::OnceLock;
@@ -32,6 +39,8 @@ pub const IDEAL_QUERY_REQUEST_SCHEMA: &str =
 pub const IDEAL_QUERY_RECEIPT_SCHEMA: &str =
     "sagejs.rust-class-group/public-cubic-arbitrary-ideal-query-receipt-v1";
 pub const COMPACT_SUMMARY_SCHEMA: &str = "sagejs.class-groups/compact-summary-v1";
+pub const IMAGINARY_PRESENTATION_SCHEMA: &str =
+    "sagejs.class-groups/imaginary-generator-presentation-v1";
 
 #[derive(Clone, Copy, Debug, Deserialize, Serialize, Eq, PartialEq)]
 #[serde(rename_all = "kebab-case")]
@@ -610,9 +619,10 @@ impl QualifiedCubic {
         let generator_orders = presentation
             .generator_orders()
             .iter()
-            .map(|evidence| {
+            .enumerate()
+            .map(|(coordinate, evidence)| {
                 json!({
-                    "coordinateZeroBased": evidence.smith_position,
+                    "coordinateZeroBased": coordinate,
                     "invariantFactor": evidence.invariant_factor.to_string(),
                     "factorBaseLift": sparse_integer_vector(&evidence.factor_base_exponents),
                     "orderRelationCombination": sparse_integer_vector(
@@ -1626,6 +1636,154 @@ struct ComputeServiceRequest {
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct ImaginaryServiceRequest {
+    schema: String,
+    abi: u32,
+    id: String,
+    operation: String,
+    polynomial_ascending: [String; 3],
+    #[serde(default)]
+    transport: Option<String>,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct ImaginaryCoordinateServiceRequest {
+    schema: String,
+    abi: u32,
+    id: String,
+    operation: String,
+    polynomial_ascending: [String; 3],
+    form_coefficients: [String; 3],
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct ImaginaryPresentationServiceRequest {
+    schema: String,
+    abi: u32,
+    id: String,
+    operation: String,
+    polynomial_ascending: [String; 3],
+    class_number: u64,
+    invariant_factors: Vec<u64>,
+    generator_forms: Vec<[String; 3]>,
+}
+
+/// Flat transport is an internal representation choice, never proof authority.
+/// The detached verifier and the public Python wrapper check every emitted row.
+struct PackedImaginaryCoreRows<'a>(&'a [ImaginaryFormClassMapEntry]);
+
+impl Serialize for PackedImaginaryCoreRows<'_> {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        let rank = self.0.first().map_or(0, |entry| entry.coordinates.len());
+        let mut output = serializer.serialize_seq(Some(self.0.len() * (2 + rank)))?;
+        for entry in self.0 {
+            let form = &entry.form;
+            for value in [form.a, form.b] {
+                output.serialize_element(&value)?;
+            }
+            for value in &entry.coordinates {
+                output.serialize_element(value)?;
+            }
+        }
+        output.end()
+    }
+}
+
+struct PackedImaginaryForms<'a>(&'a [BinaryQuadraticForm]);
+
+impl Serialize for PackedImaginaryForms<'_> {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        let mut output = serializer.serialize_seq(Some(self.0.len() * 3))?;
+        for form in self.0 {
+            output.serialize_element(&form.a)?;
+            output.serialize_element(&form.b)?;
+            output.serialize_element(&form.c)?;
+        }
+        output.end()
+    }
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct PackedImaginaryCertificate<'a> {
+    discriminant: i64,
+    fundamental_squarefree_core: i64,
+    squarefree_core_prime_factors: &'a [u64],
+    reduction_bound_a: i64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    reduced_forms_packed: Option<PackedImaginaryForms<'a>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    reduced_forms_from_core_map: Option<bool>,
+    theorem: &'static str,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct PackedImaginaryGroup<'a> {
+    schema: &'static str,
+    field_id: &'static str,
+    polynomial_ascending: &'a [i64; 3],
+    discriminant: i64,
+    class_number: usize,
+    invariant_factors: &'a [u64],
+    generators: &'a [crate::ImaginaryClassGenerator],
+    complete_class_map_core_packed: PackedImaginaryCoreRows<'a>,
+    complete_class_map_length: usize,
+    certificate: PackedImaginaryCertificate<'a>,
+    proof_status: &'static str,
+    runtime_uses_pari_or_fixture_answers: bool,
+}
+
+impl<'a> PackedImaginaryGroup<'a> {
+    fn from_group(group: &'a CompleteImaginaryClassGroup, derived_certificate: bool) -> Self {
+        let certificate = &group.certificate;
+        Self {
+            schema: group.schema,
+            field_id: group.field_id,
+            polynomial_ascending: &group.polynomial_ascending,
+            discriminant: group.discriminant,
+            class_number: group.class_number,
+            invariant_factors: &group.invariant_factors,
+            generators: &group.generators,
+            complete_class_map_core_packed: PackedImaginaryCoreRows(&group.complete_class_map),
+            complete_class_map_length: group.complete_class_map.len(),
+            certificate: PackedImaginaryCertificate {
+                discriminant: certificate.discriminant,
+                fundamental_squarefree_core: certificate.fundamental_squarefree_core,
+                squarefree_core_prime_factors: &certificate.squarefree_core_prime_factors,
+                reduction_bound_a: certificate.reduction_bound_a,
+                reduced_forms_packed: (!derived_certificate)
+                    .then(|| PackedImaginaryForms(&certificate.reduced_forms)),
+                reduced_forms_from_core_map: derived_certificate.then_some(true),
+                theorem: certificate.theorem,
+            },
+            proof_status: group.proof_status,
+            runtime_uses_pari_or_fixture_answers: group.runtime_uses_pari_or_fixture_answers,
+        }
+    }
+}
+
+#[derive(Serialize)]
+struct PackedImaginaryOperationResult<'a> {
+    schema: &'static str,
+    outcome: &'static str,
+    operation: &'static str,
+    result: PackedImaginaryGroup<'a>,
+}
+
+#[derive(Serialize)]
+struct PackedImaginaryServiceResponse<'a> {
+    schema: &'static str,
+    abi: u32,
+    id: &'a str,
+    ok: bool,
+    result: PackedImaginaryOperationResult<'a>,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 struct HandleServiceRequest {
     schema: String,
     abi: u32,
@@ -1896,8 +2054,253 @@ impl ProductService {
             "mathematicalScope": "absolute-monic-cubic-conditional-grh",
             "maximumResidentSessions": MAXIMUM_RESIDENT_SESSIONS as u32,
             "proofModes": ["conditional-grh"],
-            "operations": ["capability", "open", "summary", "query", "publication", "close"],
+            "imaginaryQuadratic": {
+                "proofMode": "unconditional",
+                "maximumAbsoluteDiscriminant": 200_000_000_000_u64,
+                "operations": ["imaginary-class-number", "imaginary-class-group", "imaginary-class-group-summary", "imaginary-class-coordinate", "imaginary-verify-presentation"],
+                "transports": ["core-v3", "core-v2"],
+            },
+            "operations": ["capability", "open", "summary", "query", "publication", "close", "imaginary-class-number", "imaginary-class-group", "imaginary-class-group-summary", "imaginary-class-coordinate", "imaginary-verify-presentation"],
         })
+    }
+
+    fn imaginary_coefficients(
+        operation: &str,
+        polynomial_ascending: [String; 3],
+    ) -> Result<[i64; 3], ServiceError> {
+        let coefficients = polynomial_ascending.map(|value| {
+            value.parse::<i64>().map_err(|_| {
+                ServiceError::new(
+                    ServiceErrorCategory::InvalidRequest,
+                    operation,
+                    "polynomial coefficients must be decimal signed 64-bit integers",
+                )
+            })
+        });
+        let coefficients = coefficients.into_iter().collect::<Result<Vec<_>, _>>()?;
+        Ok(coefficients.try_into().expect("fixed coefficient count"))
+    }
+
+    fn imaginary_compute(
+        operation: &str,
+        request: ImaginaryServiceRequest,
+    ) -> Result<Value, ServiceError> {
+        if request.transport.is_some() {
+            return Err(ServiceError::new(
+                ServiceErrorCategory::InvalidRequest,
+                operation,
+                "unsupported imaginary class-group transport",
+            ));
+        }
+        let coefficients = Self::imaginary_coefficients(operation, request.polynomial_ascending)?;
+        let result = match operation {
+            "imaginary-class-number" => json!(
+                compute_imaginary_class_number_from_coefficients(coefficients)
+                    .map_err(|error| Self::imaginary_error(operation, error))?
+            ),
+            "imaginary-class-group" => json!(
+                compute_imaginary_class_group_from_coefficients(coefficients)
+                    .map_err(|error| Self::imaginary_error(operation, error))?
+            ),
+            _ => unreachable!("validated imaginary operation"),
+        };
+        Ok(json!({
+            "schema": SERVICE_RESPONSE_SCHEMA,
+            "outcome": "complete",
+            "operation": operation,
+            "result": result,
+        }))
+    }
+
+    fn imaginary_compute_packed(
+        request: ImaginaryServiceRequest,
+    ) -> Result<CompleteImaginaryClassGroup, ServiceError> {
+        let operation = "imaginary-class-group";
+        if !matches!(request.transport.as_deref(), Some("core-v2" | "core-v3")) {
+            return Err(ServiceError::new(
+                ServiceErrorCategory::InvalidRequest,
+                operation,
+                "unsupported imaginary class-group transport",
+            ));
+        }
+        let coefficients = Self::imaginary_coefficients(operation, request.polynomial_ascending)?;
+        compute_imaginary_class_group_from_coefficients(coefficients)
+            .map_err(|error| Self::imaginary_error(operation, error))
+    }
+
+    fn imaginary_presentation(
+        operation: &str,
+        polynomial_ascending: [String; 3],
+    ) -> Result<CompleteImaginaryClassGroup, ServiceError> {
+        let coefficients = Self::imaginary_coefficients(operation, polynomial_ascending)?;
+        let group = compute_imaginary_class_group_from_coefficients(coefficients)
+            .map_err(|error| Self::imaginary_error(operation, error))?;
+        if (group.invariant_factors.len() > 2
+            && group.class_number > MAXIMUM_COMPACT_HIGH_RANK_CLASSES)
+            || group
+                .invariant_factors
+                .first()
+                .is_some_and(|&n| group.invariant_factors.len() == 2 && n != 2)
+        {
+            return Err(ServiceError::new(
+                ServiceErrorCategory::CapabilityDeclined,
+                operation,
+                "the map-free presentation does not cover this group structure",
+            ));
+        }
+        // The producer already authenticates the complete map. Recounting
+        // forms here would duplicate its exact proof; the detached map-free
+        // verifier is for consumers of the small summary across a boundary.
+        Ok(group)
+    }
+
+    fn imaginary_presentation_value(group: &CompactImaginaryPresentation) -> Value {
+        json!({
+            "schema": IMAGINARY_PRESENTATION_SCHEMA,
+            "polynomialAscending": group.polynomial_ascending,
+            "discriminant": group.discriminant,
+            "classNumber": group.class_number,
+            "invariantFactors": group.invariant_factors,
+            "generators": group.generators,
+            "certificate": {
+                "discriminant": group.discriminant,
+                "fundamentalSquarefreeCore": group.fundamental_squarefree_core,
+                "squarefreeCorePrimeFactors": group.squarefree_core_prime_factors,
+                "reductionBoundA": group.reduction_bound_a,
+                "theorem": "primitive reduced positive-definite forms uniquely enumerate proper ideal classes of a negative fundamental discriminant",
+                "reducedFormsFromExactCount": true,
+            },
+            "proofStatus": "unconditional-complete",
+            "runtimeUsesPariOrFixtureAnswers": false,
+        })
+    }
+
+    fn imaginary_group_summary(request: ImaginaryServiceRequest) -> Result<Value, ServiceError> {
+        let operation = "imaginary-class-group-summary";
+        if request.transport.is_some() {
+            return Err(ServiceError::new(
+                ServiceErrorCategory::InvalidRequest,
+                operation,
+                "summary does not accept a map transport",
+            ));
+        }
+        let coefficients = Self::imaginary_coefficients(operation, request.polynomial_ascending)?;
+        let group = match try_compute_imaginary_presentation_from_coefficients(coefficients)
+            .map_err(|error| Self::imaginary_error(operation, error))?
+        {
+            Some(group) => group,
+            None => CompactImaginaryPresentation::from_complete(&Self::imaginary_presentation(
+                operation,
+                coefficients.map(|value| value.to_string()),
+            )?),
+        };
+        Ok(json!({
+            "schema": SERVICE_RESPONSE_SCHEMA,
+            "outcome": "complete",
+            "operation": operation,
+            "result": Self::imaginary_presentation_value(&group),
+        }))
+    }
+
+    fn imaginary_coordinate(
+        request: ImaginaryCoordinateServiceRequest,
+    ) -> Result<Value, ServiceError> {
+        let operation = "imaginary-class-coordinate";
+        let group = Self::imaginary_presentation(operation, request.polynomial_ascending)?;
+        let coefficients = Self::imaginary_coefficients(operation, request.form_coefficients)?;
+        let form = BinaryQuadraticForm {
+            a: coefficients[0],
+            b: coefficients[1],
+            c: coefficients[2],
+        };
+        let entry = group
+            .complete_class_map
+            .binary_search_by_key(&form, |candidate| candidate.form)
+            .ok()
+            .map(|index| &group.complete_class_map[index])
+            .ok_or_else(|| {
+                ServiceError::new(
+                    ServiceErrorCategory::InvalidRequest,
+                    operation,
+                    "form is not a reduced class representative",
+                )
+            })?;
+        Ok(json!({
+            "schema": SERVICE_RESPONSE_SCHEMA,
+            "outcome": "complete",
+            "operation": operation,
+            "presentation": Self::imaginary_presentation_value(&CompactImaginaryPresentation::from_complete(&group)),
+            "form": entry.form,
+            "coordinates": entry.coordinates,
+            "representativeIdeal": entry.representative_ideal,
+        }))
+    }
+
+    fn imaginary_verify_presentation(
+        request: ImaginaryPresentationServiceRequest,
+    ) -> Result<Value, ServiceError> {
+        let operation = "imaginary-verify-presentation";
+        if (request.invariant_factors.len() > 2
+            && request.class_number > MAXIMUM_COMPACT_HIGH_RANK_CLASSES as u64)
+            || request.generator_forms.len() != request.invariant_factors.len()
+        {
+            return Err(ServiceError::new(
+                ServiceErrorCategory::InvalidRequest,
+                operation,
+                "the generator presentation has unsupported rank",
+            ));
+        }
+        let polynomial = Self::imaginary_coefficients(operation, request.polynomial_ascending)?;
+        let class_number = usize::try_from(request.class_number).map_err(|_| {
+            ServiceError::new(
+                ServiceErrorCategory::InvalidRequest,
+                operation,
+                "class number is outside the service integer range",
+            )
+        })?;
+        let mut forms = Vec::with_capacity(request.generator_forms.len());
+        for values in request.generator_forms {
+            let [a, b, c] = Self::imaginary_coefficients(operation, values)?;
+            forms.push(BinaryQuadraticForm { a, b, c });
+        }
+        verify_imaginary_generator_presentation(
+            polynomial,
+            class_number,
+            &request.invariant_factors,
+            &forms,
+        )
+        .map_err(|error| {
+            ServiceError::new(
+                ServiceErrorCategory::InvalidRequest,
+                operation,
+                error.to_string(),
+            )
+        })?;
+        Ok(json!({
+            "schema": SERVICE_RESPONSE_SCHEMA,
+            "outcome": "verified",
+            "operation": operation,
+            "presentationSchema": IMAGINARY_PRESENTATION_SCHEMA,
+            "polynomialAscending": polynomial,
+            "classNumber": class_number,
+        }))
+    }
+
+    fn imaginary_error(operation: &str, error: ImaginaryClassGroupError) -> ServiceError {
+        let category = match error {
+            ImaginaryClassGroupError::DiscriminantResourceLimit { .. }
+            | ImaginaryClassGroupError::ReducedFormResourceLimit { .. } => {
+                ServiceErrorCategory::ResourceExhausted
+            }
+            ImaginaryClassGroupError::NonMonic
+            | ImaginaryClassGroupError::DiscriminantOutsideI64
+            | ImaginaryClassGroupError::NotImaginary
+            | ImaginaryClassGroupError::NotFundamentalDiscriminant => {
+                ServiceErrorCategory::InvalidRequest
+            }
+            _ => ServiceErrorCategory::ComputationFailed,
+        };
+        ServiceError::new(category, operation, error.to_string())
     }
 
     fn execute_value(&mut self, value: Value) -> Result<Value, ServiceError> {
@@ -1964,6 +2367,66 @@ impl ProductService {
                 debug_assert_eq!(request.id, id);
                 debug_assert_eq!(request.operation, operation);
                 self.open(request.request)
+            }
+            "imaginary-class-number" | "imaginary-class-group" => {
+                let request: ImaginaryServiceRequest =
+                    serde_json::from_value(value).map_err(|error| {
+                        ServiceError::new(
+                            ServiceErrorCategory::InvalidRequest,
+                            &operation,
+                            error.to_string(),
+                        )
+                    })?;
+                debug_assert_eq!(request.schema, SERVICE_REQUEST_SCHEMA);
+                debug_assert_eq!(request.abi, SERVICE_ABI_VERSION);
+                debug_assert_eq!(request.id, id);
+                debug_assert_eq!(request.operation, operation);
+                Self::imaginary_compute(&operation, request)
+            }
+            "imaginary-class-group-summary" => {
+                let request: ImaginaryServiceRequest =
+                    serde_json::from_value(value).map_err(|error| {
+                        ServiceError::new(
+                            ServiceErrorCategory::InvalidRequest,
+                            &operation,
+                            error.to_string(),
+                        )
+                    })?;
+                debug_assert_eq!(request.schema, SERVICE_REQUEST_SCHEMA);
+                debug_assert_eq!(request.abi, SERVICE_ABI_VERSION);
+                debug_assert_eq!(request.id, id);
+                debug_assert_eq!(request.operation, operation);
+                Self::imaginary_group_summary(request)
+            }
+            "imaginary-class-coordinate" => {
+                let request: ImaginaryCoordinateServiceRequest = serde_json::from_value(value)
+                    .map_err(|error| {
+                        ServiceError::new(
+                            ServiceErrorCategory::InvalidRequest,
+                            &operation,
+                            error.to_string(),
+                        )
+                    })?;
+                debug_assert_eq!(request.schema, SERVICE_REQUEST_SCHEMA);
+                debug_assert_eq!(request.abi, SERVICE_ABI_VERSION);
+                debug_assert_eq!(request.id, id);
+                debug_assert_eq!(request.operation, operation);
+                Self::imaginary_coordinate(request)
+            }
+            "imaginary-verify-presentation" => {
+                let request: ImaginaryPresentationServiceRequest = serde_json::from_value(value)
+                    .map_err(|error| {
+                        ServiceError::new(
+                            ServiceErrorCategory::InvalidRequest,
+                            &operation,
+                            error.to_string(),
+                        )
+                    })?;
+                debug_assert_eq!(request.schema, SERVICE_REQUEST_SCHEMA);
+                debug_assert_eq!(request.abi, SERVICE_ABI_VERSION);
+                debug_assert_eq!(request.id, id);
+                debug_assert_eq!(request.operation, operation);
+                Self::imaginary_verify_presentation(request)
             }
             "query" => {
                 let request: QueryServiceRequest =
@@ -2046,7 +2509,73 @@ impl ProductService {
             .filter(|id| !id.is_empty() && id.len() <= 128)
             .unwrap_or("unknown")
             .to_owned();
+        if value.get("schema").and_then(Value::as_str) == Some(SERVICE_REQUEST_SCHEMA)
+            && value.get("abi").and_then(Value::as_u64) == Some(u64::from(SERVICE_ABI_VERSION))
+            && value
+                .get("id")
+                .and_then(Value::as_str)
+                .is_some_and(|id| !id.is_empty() && id.len() <= 128)
+            && value.get("operation").and_then(Value::as_str) == Some("imaginary-class-group")
+            && matches!(
+                value.get("transport").and_then(Value::as_str),
+                Some("core-v2" | "core-v3")
+            )
+        {
+            let derived_certificate =
+                value.get("transport").and_then(Value::as_str) == Some("core-v3");
+            let result = serde_json::from_value::<ImaginaryServiceRequest>(value)
+                .map_err(|error| {
+                    ServiceError::new(
+                        ServiceErrorCategory::InvalidRequest,
+                        "imaginary-class-group",
+                        error.to_string(),
+                    )
+                })
+                .and_then(Self::imaginary_compute_packed);
+            return match result {
+                Ok(group) => serialize_packed_imaginary_result(&id, &group, derived_certificate),
+                Err(error) => serialize_service_result(&id, Err(error)),
+            };
+        }
         serialize_service_result(&id, self.execute_value(value))
+    }
+}
+
+fn serialize_packed_imaginary_result(
+    id: &str,
+    group: &CompleteImaginaryClassGroup,
+    derived_certificate: bool,
+) -> Vec<u8> {
+    let response = PackedImaginaryServiceResponse {
+        schema: SERVICE_RESPONSE_SCHEMA,
+        abi: SERVICE_ABI_VERSION,
+        id,
+        ok: true,
+        result: PackedImaginaryOperationResult {
+            schema: SERVICE_RESPONSE_SCHEMA,
+            outcome: "complete",
+            operation: "imaginary-class-group",
+            result: PackedImaginaryGroup::from_group(group, derived_certificate),
+        },
+    };
+    match serde_json::to_vec(&response) {
+        Ok(bytes) if bytes.len() <= MAXIMUM_RESPONSE_BYTES => bytes,
+        Ok(_) => serialize_service_result(
+            id,
+            Err(ServiceError::new(
+                ServiceErrorCategory::ResourceExhausted,
+                "imaginary-class-group",
+                "response exceeds the service byte limit",
+            )),
+        ),
+        Err(_) => serialize_service_result(
+            id,
+            Err(ServiceError::new(
+                ServiceErrorCategory::ComputationFailed,
+                "imaginary-class-group",
+                "could not serialize packed class-group response",
+            )),
+        ),
     }
 }
 
@@ -2093,6 +2622,48 @@ fn serialize_service_result(id: &str, result: Result<Value, ServiceError>) -> Ve
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn large_imaginary_summary_is_exact_and_does_not_publish_a_map() {
+        let polynomial = ["3750000079".to_owned(), "-1".to_owned(), "1".to_owned()];
+        let summary = ProductService::imaginary_group_summary(ImaginaryServiceRequest {
+            schema: SERVICE_REQUEST_SCHEMA.to_owned(),
+            abi: SERVICE_ABI_VERSION,
+            id: "large-summary".to_owned(),
+            operation: "imaginary-class-group-summary".to_owned(),
+            polynomial_ascending: polynomial.clone(),
+            transport: None,
+        })
+        .unwrap();
+        let result = &summary["result"];
+        assert_eq!(result["classNumber"], 33_768);
+        assert_eq!(result["invariantFactors"], json!([2, 16_884]));
+        assert_eq!(result["proofStatus"], "unconditional-complete");
+        assert_eq!(result["certificate"]["reducedFormsFromExactCount"], true);
+        assert!(result.get("completeClassMap").is_none());
+        let generator_forms = result["generators"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|generator| {
+                let form = &generator["form"];
+                ["a", "b", "c"].map(|key| form[key].as_i64().unwrap().to_string())
+            })
+            .collect::<Vec<_>>();
+        let verification =
+            ProductService::imaginary_verify_presentation(ImaginaryPresentationServiceRequest {
+                schema: SERVICE_REQUEST_SCHEMA.to_owned(),
+                abi: SERVICE_ABI_VERSION,
+                id: "large-summary-verification".to_owned(),
+                operation: "imaginary-verify-presentation".to_owned(),
+                polynomial_ascending: polynomial,
+                class_number: 33_768,
+                invariant_factors: vec![2, 16_884],
+                generator_forms,
+            })
+            .unwrap();
+        assert_eq!(verification["outcome"], "verified");
+    }
 
     fn request(maximum_candidates: usize) -> Request {
         Request {
@@ -2147,6 +2718,10 @@ mod tests {
         assert_eq!(
             publication["presentation"]["invariantFactors"],
             json!(["2"])
+        );
+        assert_eq!(
+            publication["presentation"]["generatorOrders"][0]["coordinateZeroBased"],
+            0
         );
         let summary = qualified.compact_summary().unwrap();
         assert_eq!(summary["schema"], COMPACT_SUMMARY_SCHEMA);
@@ -2274,6 +2849,22 @@ mod tests {
                 .certificate
                 .quotient_factor_base_exponents
                 .is_empty()
+        );
+    }
+
+    #[test]
+    fn publication_uses_class_coordinates_not_raw_smith_positions() {
+        let mut completion_request = request(100_000);
+        completion_request.polynomial_ascending = ["-1".into(), "4".into(), "0".into(), "1".into()];
+        let qualified = qualify_with_state(completion_request).unwrap();
+        assert_eq!(qualified.completed.invariant_factors(), &[Integer::from(2)]);
+        let orders = qualified.completed.presentation().generator_orders();
+        assert_eq!(orders.len(), 1);
+        assert_ne!(orders[0].smith_position, 0);
+        let publication = qualified.publication_bundle().unwrap();
+        assert_eq!(
+            publication["presentation"]["generatorOrders"][0]["coordinateZeroBased"],
+            0
         );
     }
 

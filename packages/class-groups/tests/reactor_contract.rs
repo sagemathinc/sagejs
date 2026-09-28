@@ -21,3 +21,20 @@ fn reactor_uses_the_same_product_service_protocol_and_state() {
     assert_eq!(first["ok"], true);
     assert_eq!(first["result"]["abi"], SERVICE_ABI_VERSION);
 }
+
+#[test]
+fn reactor_exposes_exact_imaginary_quadratic_group() {
+    let mut service = ProductService::new();
+    let request = serde_json::to_vec(&json!({
+        "schema": SERVICE_REQUEST_SCHEMA,
+        "abi": SERVICE_ABI_VERSION,
+        "id": "reactor-imaginary-group",
+        "operation": "imaginary-class-group",
+        "polynomialAscending": ["6", "-1", "1"],
+    }))
+    .unwrap();
+    let result: Value = serde_json::from_slice(&execute_for_test(&mut service, &request)).unwrap();
+    assert_eq!(result["ok"], true, "{result}");
+    assert_eq!(result["result"]["result"]["invariantFactors"], json!([3]));
+    assert_eq!(result["result"]["result"]["proofStatus"], "unconditional-complete");
+}

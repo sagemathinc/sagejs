@@ -59,7 +59,7 @@
     "sha256": "48cea749dfbe0c9a767450a9edefe9f5629c35d5922876fe31a4357c86d04a98"
   },
   "toolchain": {
-    "identity": "1e306620de0571d34f6fc1bf0010aaf164e9b328d304bcd3cfd0d86f945634ba",
+    "identity": "cf0d77f0da1a0c8f4197b55f4b9d711c19a0affa8d3f62ee8dc2074daec13140",
     "target": "wasm32-wasip1",
     "floating_point_contract": "off"
   },
@@ -84,35 +84,12 @@
   },
   "selection": "explicit-only",
   "qualification": {
-    "status": "qualified",
-    "candidate_commit": "e62ee9ae82bea4ecbc8bf0c2e750e66629efb0f4",
-    "summary_sha256": "36c58448b4f2da8382522cc6909c6b452113e07e3669d70be5c9cc389fb413c1",
-    "summary_bytes": 121690,
+    "status": "pending_source_current_requalification",
+    "reason": "The integrated class-group Wasm toolchain identity differs from the four-host NLopt qualification; the historical receipts do not qualify this combined source.",
     "public_semantics_bundle_sha256": "484bc0a57b6ffe71ab9fdfa4696be2c2bff88ccce21a05f9545cbba66c4ec1bc",
     "qualification_tooling_bundle_sha256": "48cea749dfbe0c9a767450a9edefe9f5629c35d5922876fe31a4357c86d04a98",
     "selection_sha256": "1c1300fe4ca979619b37e05208acfc7541c69bacace67e4d8cf5dab3cef36e1d",
-    "corpus_sha256": "151aab999ac1114770503050b3bb1d57f04af940b30468db3430254485f3521f",
     "oracle_sha256": "9a95b55caaa709fd2d26c38c771091b26b125996511d879ef3794e7e5584f9aa",
-    "source_closure_sha256": "ec28311770601dc8b7e36c679dde82def61c8d46440e0cf63c17698df9f1e00e",
-    "artifact_sha256": "8abe4760d3be541fa9d86ad3af6c33eb3241d3e423fd20e4fc85393c141678eb",
-    "artifact_bytes": 72592,
-    "case_execution_sha256": "b3dff723758e9bdc2201a0565454703c3a15156d2a50b1cc66d50586257011d7",
-    "campaign_challenge": "25f0e5c0d329591b828d050c96bb3c51129acadab671958d56236e144da7b5c3",
-    "evidence_receipts_sha256": {
-      "sanitizer": "a480c3ca86e9b34aef04ed976217c450d27862bd05eb56f7fe847bdea4deaa98",
-      "destructive-wasm": "ea88b43face768066419a6a40a53f38107d8e398e565cbb2b0f5acf5bf032792",
-      "browser-lifecycle": "af95bd31a7242b12483fc23e90538396c2f77b42a169e2ceedabf49bf46686fd",
-      "public-integration": "0910e40b0916dfbe4833962fcddfc8a340095aa7a8550adc005e0b102357c9d9",
-      "resource-corruption": "7233c0661c53a06510dab64db29a8a2b06dcd78afce9f539d973dfa7e87e2ef1",
-      "relocation": "fcea3cc37e312819ae63bed4ff3a21721c77602db150786036147cffa041c532",
-      "sea": "b1368706e4ef227b76a984ea306a96f2c534a8854185464628cabfabceaec3c9"
-    },
-    "portable_receipts_sha256": {
-      "linux-x64": "b3dff723758e9bdc2201a0565454703c3a15156d2a50b1cc66d50586257011d7",
-      "linux-arm64": "1f49a266ddd2004543c700e76e6b0bf588386e84710e4d3b4f97e97490371fe8",
-      "macos-arm64": "906214366685596ea801108ff49b03e30f64f0baf6013f68e3112153ac6a8f49",
-      "windows-x64": "afc78db7d27f009450e1026be86f726c02ae939d0749cead0b570b6b62e56070"
-    },
-    "historical_cobyla_status": "excluded-not-qualified"
+    "invalidated_summary": "qualification-v1.json"
   }
 }

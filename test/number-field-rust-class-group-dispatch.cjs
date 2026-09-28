@@ -110,6 +110,22 @@ const fixture = [
   "        raise AssertionError('unexpected operation ' + operation)",
 ];
 
+test("unit-lattice basis index uses the unit-rank denominator power", async () => {
+  const result = await evaluate([
+    "from sagejs.number_fields import rust_class_group_presentation as presentation",
+    "from sagejs.number_fields.class_group_matrix import RelationMatrixError",
+    "accepted = presentation._unit_lattice_index_metadata({'commonDenominator': '4', 'selectedBasisIndex': '8'}, 2)",
+    "rejected = []",
+    "for index, rank in ((8, 1), (6, 2), (17, 2)):",
+    "    try:",
+    "        presentation._unit_lattice_index_metadata({'commonDenominator': '4', 'selectedBasisIndex': str(index)}, rank)",
+    "    except RelationMatrixError:",
+    "        rejected.append((index, rank))",
+    "[accepted, rejected]",
+  ]);
+  assert.equal(result.repr, "[(4, 8), [(8, 1), (6, 2), (17, 2)]]");
+});
+
 test("compact Rust class-group dispatch authenticates and caches the real adapter", async () => {
   const result = await evaluate([
     ...fixture,
@@ -147,40 +163,31 @@ test("compact class groups and class-unit projections retain separate coarse cac
   );
 });
 
-test("default proof runs the authenticated unconditional suffix without relabeling", async () => {
+test("proof-required cubic Rust dispatch declines before opening a session", async () => {
   const result = await evaluate([
     ...fixture,
     "backend = Backend()",
     "setattr(runtime, 'class_group_backend', lambda: backend)",
-    "upgrade_calls = []",
-    "def upgrade(field, source, algorithm, limits, seed):",
-    "    upgrade_calls.append((source.proof_status, algorithm, seed))",
-    "    return fake_result(field, class_units.EXACT_UNCONDITIONAL)",
-    "class_units._upgrade_cached_conditional_result = upgrade",
     "K.<a> = NumberField(x^3 - x - 1)",
-    "conditional = K.class_unit_group(proof=False, algorithm='rust')",
-    "unconditional = K.class_unit_group(algorithm='rust')",
-    "answer = [conditional.proof_status, unconditional.proof_status, upgrade_calls, [name for name, request in backend.calls], conditional is K.class_unit_group(proof=False, algorithm='rust'), unconditional is K.class_unit_group(proof=True, algorithm='rust')]",
+    "auto = rust_runtime.rust_class_unit_context(K, proof=True, algorithm='auto')",
+    "try:",
+    "    K.class_unit_group(algorithm='rust')",
+    "except rust_runtime.RustClassGroupCapabilityDecline as error:",
+    "    explicit_message = str(error)",
+    "unconditional = K.unit_group()",
+    "answer = [auto is None, explicit_message, unconditional.complete, unconditional.proof_status, [name for name, request in backend.calls]]",
     "answer",
   ]);
   assert.equal(
     result.repr,
-    "['exact-relations-conditional-grh', 'exact-unconditional', [('exact-relations-conditional-grh', 'auto', 0)], ['capability', 'open', 'publication'], True, True]",
+    "[True, 'the Rust cubic class-unit context supports conditional proof only', True, 'exact-unconditional', []]",
   );
 });
 
-test("a missing unconditional suffix and corrupt successes fail closed", async () => {
+test("corrupt conditional publications fail closed", async () => {
   const result = await evaluate([
     ...fixture,
-    "backend = Backend()",
-    "setattr(runtime, 'class_group_backend', lambda: backend)",
-    "class_units._upgrade_cached_conditional_result = lambda field, source, algorithm, limits, seed: None",
-    "K.<a> = NumberField(x^3 - x - 1)",
     "messages = []",
-    "try:",
-    "    K.class_group(algorithm='rust')",
-    "except Exception as error:",
-    "    messages.append((type(error).__name__, str(error)))",
   "class CorruptBackend(Backend):",
   "    def call(self, operation, request):",
   "        answer = super().call(operation, request)",
@@ -210,7 +217,6 @@ test("a missing unconditional suffix and corrupt successes fail closed", async (
     "[messages, [name for name, request in corrupt.calls], [name for name, request in late.calls]]",
   ]);
   assert.match(result.repr, /RustClassGroupPublicationError/);
-  assert.match(result.repr, /unconditional Minkowski suffix/);
   assert.match(result.repr, /changed resident identity/);
   assert.match(result.repr, /declined after publishing a resident result/);
   assert.match(result.repr, /'close'/);
@@ -275,5 +281,27 @@ test(
       "[G.order(), G.invariants(), G.proof_status]",
     ]);
     assert.equal(result.repr, "[1, (), 'exact-relations-conditional-grh']");
+  },
+);
+
+test(
+  "real cubic rank-two Rust units replay and proof-required auto still complete",
+  {
+    skip: process.env.SAGEJS_CLASS_GROUP_SERVICE
+      ? false
+      : "production class-group service is absent",
+  },
+  async () => {
+    const result = await evaluate([
+      "R.<x> = QQ[]",
+      "K.<a> = NumberField(x^3 - x^2 - 2*x + 1)",
+      "conditional = K.class_unit_group(proof=False, algorithm='rust')",
+      "unconditional = K.unit_group()",
+      "[conditional.complete, conditional.class_number(), conditional.unit_group().unit_rank, conditional.proof_status, unconditional.complete, unconditional.proof_status]",
+    ]);
+    assert.equal(
+      result.repr,
+      "[True, 1, 2, 'exact-relations-conditional-grh', True, 'exact-unconditional']",
+    );
   },
 );

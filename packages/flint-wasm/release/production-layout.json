@@ -169,7 +169,7 @@
         ],
         "maximumCompressedDelta": {
           "gzipBytes": 17600000,
-          "brotliBytes": 9800000
+          "brotliBytes": 9808000
         }
       },
       {

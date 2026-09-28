@@ -3,6 +3,7 @@
 
 const assert = require("node:assert/strict");
 const { spawnSync } = require("node:child_process");
+const { existsSync } = require("node:fs");
 const { join } = require("node:path");
 const test = require("node:test");
 
@@ -24,9 +25,15 @@ test("exact cubic and direct-Minkowski projections are isolated zero-algebra vie
           "--python",
           join(root, "test", "number-field-class-unit-exact-public-projection.py"),
         ];
+  // This fixture deliberately tests the legacy engine's retained projection.
+  // Native cubic auto dispatch has a distinct result context without
+  // _live_artifacts, so make the optional service unavailable in this child.
+  const unavailableService = join(root, "test", "__absent_class_group_service__");
+  assert.equal(existsSync(unavailableService), false);
   const result = spawnSync(executable, arguments_, {
     cwd: root,
     encoding: "utf8",
+    env: { ...process.env, SAGEJS_CLASS_GROUP_SERVICE: unavailableService },
     timeout: 900_000,
   });
   assert.equal(result.status, 0, result.stderr || result.stdout);

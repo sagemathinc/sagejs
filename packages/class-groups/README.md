@@ -1,8 +1,9 @@
 # Sage.js class-group core
 
 This package contains the production Rust mathematical core for bounded cubic
-class and unit groups. It is extracted from the qualified Sage.js/PARI 2.17.4
-campaign and preserves the source provenance and GPL notices of that work.
+class and unit groups and unconditional imaginary-quadratic class groups. The
+cubic core is extracted from the qualified Sage.js/PARI 2.17.4 campaign and
+preserves the source provenance and GPL notices of that work.
 
 The current supported mathematical boundary is deliberately narrow:
 
@@ -14,6 +15,9 @@ The current supported mathematical boundary is deliberately narrow:
   enclosures;
 - bounded class coordinates for arbitrary integral ideals against a retained
   completed result.
+- negative fundamental quadratic discriminants with `|D| <= 2*10^11` and at most
+  50,000 reduced classes; exact reduced forms, invariant factors, generators,
+  representative ideals, and a complete coordinate map for every class.
 
 FLINT 3.6, its integrated Arb implementation, GMP, and MPFR are required
 capabilities. The mathematical API is host-independent and contains no Node,
@@ -59,9 +63,55 @@ an initial 16 MiB and maximum 256 MiB; the product loader independently
 revalidates those limits before instantiation.
 
 The service protocol is ABI 1 and uses one JSON document per native line or
-Wasm call. Requests and responses carry bounded caller IDs. The operations are
-`capability`, `open`, `summary`, `query`, `publication`, and `close`; all
+Wasm call. Requests and responses carry bounded caller IDs. Cubic operations
+are `capability`, `open`, `summary`, `query`, `publication`, and `close`; all
 operations after `open` bind both its generation and opaque decimal handle.
+The independent one-shot operations `imaginary-class-number` and
+`imaginary-class-group` take `polynomialAscending` as three decimal coefficient
+strings of a monic polynomial defining a negative fundamental discriminant.
+They return unconditional results without allocating a resident handle. The
+full-group result includes the exact representative-ideal map and a detached
+reduced-form completeness certificate. Inputs outside the stated domain fail
+with a typed error rather than silently changing proof mode.
+The internal `core-v3` group transport sends the sorted `(a, b, coordinates...)`
+map once and derives the reduced-form certificate from that verified map.
+`core-v2` retains its separately packed form list for older hosts; the ordinary
+response retains its full public structure. These encodings change neither
+the mathematical proof nor the exact ideal-class map.
+
+For cyclic and `C2 × Cn` groups, `imaginary-class-group-summary` returns the
+invariants, exact generator forms and ideals, and an exact reduced-form count
+without serializing the full map. The independent
+`imaginary-verify-presentation` operation recounts forms and checks generator
+orders and independence without trusting that map. Public Sage.js replays
+this proof before constructing the group. `imaginary-class-coordinate` obtains
+an arbitrary form's exact coordinates from the same complete Rust computation;
+Sage.js independently recomposes the generators before accepting a query.
+The query is stateless and currently recomputes the group, so it favors cheap
+construction over repeated uncached lookups. Requesting the full certificate
+or enumerating all classes materializes and validates the existing complete
+map. Higher-rank groups keep the complete-map route.
+
+The public Sage.js interface selects this backend automatically when its
+capability is present, and also allows an explicit request:
+
+```python
+R.<x> = QQ[]
+K.<a> = NumberField(x^2 + 23)
+G = K.class_group(algorithm="rust")
+G.invariants()                         # (3,)
+G.gen().coordinates()                  # (1,)
+G(G.gen().ideal()).coordinates()       # (1,)
+K.class_number(algorithm="rust")      # 3
+```
+
+`QuadraticField(-23)` and its maximal order accept the same `algorithm="rust"`
+selection. The Rust route uses the maximal-order field discriminant, even
+when the defining polynomial has a nonfundamental discriminant. It is
+unconditional on its admitted `|D| <= 2*10^11` domain. The existing automatic
+quadratic route remains in place until the full public performance panel and
+Wasm integration are qualified.
+
 `summary` returns only the sealed field/class-group binding, invariants, and
 canonical exact generator-ideal lattices, avoiding the detached relation graph
 carried by `publication`. An invalid, closed, or stale handle fails with the

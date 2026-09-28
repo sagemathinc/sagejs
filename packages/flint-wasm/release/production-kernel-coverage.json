@@ -2,9 +2,9 @@
   "schema": "sagejs.wasm-production-kernel-coverage/v1",
   "source_registry": "architecture/native-kernels.json",
   "totals": {
-    "registered_kernels": 55,
-    "production_kernels": 47,
-    "compiled_functions": 287,
+    "registered_kernels": 56,
+    "production_kernels": 48,
+    "compiled_functions": 288,
     "unsupported_production_functions": 0,
     "non_production_functions": 54,
     "same_source_fallback_functions": 54
@@ -281,6 +281,15 @@
     },
     {
       "id": "number-field-element-valuations-production",
+      "production": true,
+      "status": "available",
+      "compiled_functions": 1,
+      "fallback_functions": 0,
+      "total_functions": 1,
+      "fallback_reasons": []
+    },
+    {
+      "id": "number-field-imaginary-map-production",
       "production": true,
       "status": "available",
       "compiled_functions": 1,

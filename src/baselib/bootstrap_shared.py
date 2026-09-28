@@ -78,6 +78,9 @@ def ρσ_native_method_adapter(target_function):
             method.__argnames__ = target_function.__argnames__.slice(1);
         }
         ρσ_copy_method_metadata(method, target_function);
+        if (typeof method.__positional_only__ === "number") {
+            method.__positional_only__ = Math.max(0, method.__positional_only__ - 1);
+        }
         method.__sagejs_native_method__ = true;
         return method;
     })()"""

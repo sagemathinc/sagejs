@@ -3,7 +3,7 @@
 
 const assert = require("node:assert/strict");
 const { spawnSync } = require("node:child_process");
-const { mkdtempSync, readFileSync, rmSync, writeFileSync } = require("node:fs");
+const { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } = require("node:fs");
 const { tmpdir } = require("node:os");
 const { join } = require("node:path");
 const test = require("node:test");
@@ -49,17 +49,21 @@ function runPublic(source, timeout) {
     // pipeline and its resumable caches.  PR #100 adds a separate scalar-only
     // resident fast path for supported complex cubics; its receipts and public
     // dispatch are covered by number-field-cubic-native-class-number.cjs.
-    // Make the native accelerator decline here so these fallback contracts do
-    // not accidentally depend on whether a native pack was built beforehand.
+    // Make both native accelerators decline here so these fallback contracts
+    // do not accidentally depend on whether a native pack or Rust service was
+    // built beforehand.
     const fallbackOnly = `
 import sagejs.number_fields.cubic_class_number_native_runtime as _native_cubic_runtime
 _native_cubic_runtime.certified_complex_cubic_class_number = lambda field: None
 `;
     writeFileSync(filename, `${fallbackOnly}\n${source}`, "utf8");
     const [executable, arguments_] = sagejsInvocation(["--python", filename]);
+    const unavailableService = join(directory, "__absent_class_group_service__");
+    assert.equal(existsSync(unavailableService), false);
     const result = spawnSync(executable, arguments_, {
       cwd: root,
       encoding: "utf8",
+      env: { ...process.env, SAGEJS_CLASS_GROUP_SERVICE: unavailableService },
       timeout,
       killSignal: "SIGKILL",
       maxBuffer: 16 * 1024 * 1024,

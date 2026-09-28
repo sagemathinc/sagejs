@@ -1,8 +1,11 @@
 # Native public-quadratic benchmark
 
 This is an isolated, reproducible performance qualification of the complete
-imaginary-quadratic route. `panel.json` is the frozen public-input panel;
-`run.py` builds the release adapter, runs 15 fresh-process samples per arm and
+imaginary-quadratic route. `panel.json` is the original frozen public-input
+panel; `panel-v2.json` retains its six structurally selected fields, excludes
+the old timing-nominated candidate, and adds five larger, structurally diverse
+fields selected without timing-based exclusions. `run.py` builds the release
+adapter, runs 15 fresh-process samples per arm and
 field, alternates arm order within each pair, checks every exact output, and
 writes `receipt.json` with raw clocks, medians, ratios, and build identities.
 When run from a dirty integration worktree, the generated receipt is explicitly
@@ -24,24 +27,777 @@ Both clocks exclude process startup and JSON projection. A new process
 reconstructs the result on every sample; there is no cached-result reuse. PARI
 and the frozen answers are absent from the Rust executable.
 
+For native groups with at least 10,000 classes, Rust builds cyclic and
+`C2 x C(h/2)` maps with up to eight OS threads, bounded by the process's
+reported available parallelism. Native reduced-form enumeration and scalar
+class-number counting also use up to eight workers when the candidate range
+has at least 20,000 entries.
+For eligible cyclic fields, the native group route may instead count all
+reduced forms, prove a small prime form has full order, and collect its complete
+reduced-form orbit. Medium fields with at least 1,000 classes try only two
+prime norms before falling back to the general enumerator; larger fields
+retain the broader generator search and may collect the orbit in parallel.
+Eligible odd three-prime-factor fields may
+similarly prove a `C2 x C(h/2)` basis from a full-order prime form and an
+independent divisor-boundary involution. In each case the count and distinct
+orbit prove completeness; fields without the required witnesses use the
+general enumerator.
+Smaller Rust cases and the Wasm target use one thread. PARI's matched call is
+not assigned an equivalent worker pool, so the comparison is wall time, not
+equal total CPU work; the receipt records the host's process affinity.
+
 The runner also builds the retained Rust executable twice with `--locked`,
 incremental compilation disabled, a fixed `SOURCE_DATE_EPOCH`, and independent
 target directories. It refuses to proceed unless both binary SHA-256 hashes
 match. Its source-closure digest includes `run.py`, the panel, both Cargo
 manifests and lockfiles, all qualification Rust sources, and every reachable
-root-crate Rust/C source plus its build script. The receipt records the CPU
+root-crate Rust/C source plus its build script, as well as the shared product
+imaginary-quadratic Rust source compiled by the qualification adapter. The receipt records the CPU
 model, process affinity, thread-control environment, available governor/power
 policy data, and before/after load averages. This host was not externally
 isolated, which is disclosed rather than described as quiet.
 
-Run it from this crate with:
+Run the original panel from this crate with:
 
 ```sh
 python3 benchmark/run.py
 ```
 
+Run the extended panel with a separate receipt:
+
+```sh
+python3 benchmark/run.py --panel panel-v2.json --receipt receipt-v2.json
+```
+
+The v2 selection takes the first primes in fixed residue classes above
+specified decimal thresholds. Its even and three-prime-factor branches also
+require class number at most 50,000, the Rust engine's predeclared resource
+cap. The independent PARI control supplied only class numbers and invariant
+factors for selection; no clock was used to choose or exclude a field. The
+selection rule, selected primes, and expected exact outputs are recorded in
+`panel-v2.json`. The earlier profiled `D=-100000000003` is also excluded.
+
 The authenticated PARI 2.17.4 control must already exist at
 `../pari-control/build/pari-control`.
+
+## Public Sage.js latency diagnostic
+
+The promoted comparison above does **not** time `K.class_group()` in the
+Python/Sage.js host. For that separate user-facing boundary, build Sage.js and
+the native class-group service, then run:
+
+```sh
+SAGEJS_CLASS_GROUP_SERVICE="$PWD/packages/class-groups/target/release/class-group-service" \
+  node bench/pari-class-group-rust/qualification/public-quadratic-boundary/benchmark/run-public-sagejs.cjs
+```
+
+This diagnostic uses the frozen v2 field panel and checks every public answer.
+It separately reports the first default call, repeated cached default calls,
+fresh explicit Rust-backed groups, and explicit scalar class numbers. Timings
+include `sage.evaluate` and public host dispatch but exclude kernel startup and
+field construction. Its JSON is **not** a promoted performance receipt and must
+not be divided by the PARI timings above: the boundaries and warmup policies
+differ. Pass a sample count and field ID to narrow a local investigation, for
+example `run-public-sagejs.cjs 3 near-limit-h4378-d8173415`.
+Append `--phases` to measure one additional complete Rust-service/host-conversion
+call, materialized Python-side validation, and compact Python-side validation
+of the same field's map. The diagnostic runs after the public samples, verifies
+both form and coordinate counts, and reports the elapsed times separately. It also replays the
+checked native packing, isolated kernel, and Python form/coordinate
+materialization as separate diagnostic phases. It does not isolate
+public group-object binding, alter the frozen matched comparison, or constitute
+a release performance receipt.
+For the native resident route it additionally measures a second, independent
+compact host call and the subsequent parsed-JSON-to-Python conversion
+separately. These are diagnostic calls under different warmup conditions, not
+additive parts of one public sample.
+The same optional mode also records separate parent-observed wall and
+worker-reported execution medians for an empty cell, a fresh explicit group,
+and an explicit scalar. The difference includes compilation, worker messaging,
+and result handling; it is not attributed to any single component, and these
+extra calls are outside the standard public samples.
+
+An exploratory three-sample replay on 2026-09-26 covered all 11 frozen v2
+fields with this extra probe. For `D=-47` and `D=-231`, a fresh explicit group
+had 7.8--7.9 ms parent-observed medians and 2.4--2.7 ms worker execution
+medians; an empty cell cost about 2.6 ms at the parent boundary. For the five
+fields with 27,325--44,488 classes, fresh group medians ranged from 20.8 to
+31.6 ms at the parent boundary and 15.7 to 26.6 ms in worker execution.
+These short, unpaired phase probes do not establish a speedup or replace the
+15-pair PARI diagnostic. They show that small fields have substantial fixed
+evaluation overhead, while large-field work is dominated by computation and
+transport inside the execution boundary. Neither finding permits omitting
+complete-map verification.
+
+On 2026-09-25, `larger-composite-d15000000315` (33,768 classes) exposed a
+public-path bottleneck: a fresh full group took roughly 7 seconds, while a
+cached group took about 8 milliseconds and the explicit scalar call about
+14 milliseconds. A phase diagnostic measured about 1.2 seconds for the Rust
+service and transport and 6.3 seconds for independent Python-side validation
+of the complete JSON map. Extracting all 540,288 numeric fields into one flat
+list took about 2.1 seconds; exact type checks over that list took about
+1.0 second; native buffer packing and an isolated source-transparent
+arithmetic validator took about 0.5 seconds. A production-packed `@native`
+prototype still measured a 7.20-second median fresh public call over two
+samples, slightly worse than the preceding roughly 6.9-second call, so it was
+removed. These are exploratory timings, not a promoted PARI comparison.
+They rule out merely compiling the per-row arithmetic as the next speed step:
+the public representation must avoid repeated dynamic traversal of the
+redundant object graph, or expose a compact/lazy exact map with equally strong
+malformed-publication rejection.
+
+A follow-up Node-host transport projects each checked-structure map entry into
+one flat integer row before the Sage.js Python container conversion. The same
+Python validator checks packed and ordinary responses, while direct host
+callers and browser/Wasm retain the original full response. On the same field,
+three fresh public calls measured 5.41, 5.67, and 5.60 seconds (5.60-second
+median), with exact group and ideal-class checks still enabled. The reduction
+is meaningful but leaves a large public-path gap; this diagnostic is not a
+matched PARI timing or a promotion receipt.
+One-sample public replay across all 11 frozen v2 fields checked every expected
+class number and invariant-factor vector. Its single long-lived Node process
+ended at about 1.42 GB RSS, so peak memory and repeated-field residency remain
+open optimization questions; this is not a Wasm memory claim.
+
+The Node-only compact transport now also packs the independently checked
+reduced-form certificate instead of converting its duplicate object list into
+Python. The public wrapper exposes ordinary certificate records on demand;
+direct host callers and Wasm still receive the full certificate. On this final
+version, the same 33,768-class diagnostic measured 5.51, 5.76, and 5.67 seconds
+for fresh calls (5.67-second median), too close to the preceding 5.60 seconds
+to claim a reliable speedup. A one-sample replay of all 11 frozen fields again
+matched every answer and ended near 1.12 GB RSS in the long-lived Node process;
+the earlier 1.42 GB observation was from a separate run and does not establish
+a controlled memory comparison. Peak Wasm memory remains unmeasured here.
+
+On 2026-09-26, a fresh process measuring the 33,768-class
+`larger-composite-d15000000315` row reported 5.58 seconds for one fresh
+explicit public group call. An in-process phase probe on that row measured
+0.906 seconds for the Rust service plus host conversion, followed by 5.356
+seconds in `validate_imaginary_group_result`. A separate three-sample public
+run had a 5.46-second fresh-call median after a prototype that emitted flat
+rows from Rust, compared with 5.62 seconds after deferring construction of
+public form objects. Those are different short runs, not a controlled speedup:
+both prototypes were removed because neither addressed the dominant validator
+cost. A diagnostic that bypassed only the per-form gcd checks reduced one
+validation from 5.347 to 5.046 seconds; the bypass was not retained. The next
+public-path optimization must handle independent complete-map validation and
+compact exact coordinate lookup together, while preserving forged-publication
+rejection, detached certificates, native and Wasm behavior, and arbitrary
+ideal-class queries. Merely changing the JSON row shape or delaying public
+form objects does not establish PARI competitiveness.
+The retained `--phases` mode, run after one public sample of that large field,
+reported 0.387 seconds for the warm service/conversion phase and 5.026 seconds
+for independent validation. Its boundary differs from the first-call probe,
+but confirms which phase dominates after warmup.
+
+A source-transparent packed-map verifier now checks the sorted reduced forms,
+certificate, inverse forms, integral ideal representatives, and coordinate
+bijection in one isolated native pass. Its ordinary CPython body and emitted
+JavaScript path are differential oracles; the prior Python validator remains
+the fallback if the compiled kernel is unavailable. On the same large field,
+three warm fresh explicit public calls measured 2.650, 2.691, and 2.609
+seconds (2.650-second median), versus the preceding source-matched 5.613-second
+single fresh call. The phase diagnostic measured 0.355 seconds for service and
+conversion and 2.210 seconds for validation including buffer packing and map
+materialization. One-sample replay across all 11 frozen v2 fields still
+matched every class number and invariant-factor vector; focused counterfeit
+and exact ideal-coordinate tests also passed. This is a substantial public-path
+improvement, not yet a matched PARI comparison or public PARI competitiveness.
+The remaining Python coordinate-dictionary/form materialization and bulk
+transport warrant a compact exact lookup design rather than weakened checks.
+
+A subsequent checked signed-64-bit ingress fuses exact-element validation and
+buffer packing in the native-kernel host adapter. This is sound for the
+quadratic service's bounded discriminant domain; nonintegers, Boolean and
+string coercions, and signed-64-bit overflow are rejected before the isolated
+kernel receives a row. The compiler's ordinary Python fallback remains
+available. On the same 33,768-class field, three warm fresh public calls
+measured 1.159, 1.127, and 1.192 seconds (1.159-second median). One phase
+probe measured 0.361 seconds for service/conversion and 0.742 seconds for
+independent validation; the separate replay measured 0.013 seconds for
+checked packing and 0.003 seconds for the isolated kernel. These short runs
+show a substantial improvement over the prior 2.650-second three-sample
+median, but still do not establish public PARI parity. The remaining
+materialization of Python forms and coordinate strings is the next measured
+public-boundary target.
+
+The packed verifier can now retain an immutable snapshot of its verified rows
+and expose exact read-only form iteration and binary-search coordinate lookup
+without constructing one Python form tuple and dictionary entry per class.
+Public group construction defers full form-object materialization until a
+caller iterates the group; direct validator callers retain the original
+materialized result by default, and a host without the compiled verifier uses
+the established Python validation fallback. On 2026-09-26, the same 33,768-class
+field took 0.411, 0.405, and 0.393 seconds in three warm fresh public calls
+(0.405-second median), versus the preceding 1.159-second three-sample median.
+The separate phase probe measured 0.354 seconds for warm service/conversion,
+0.813 seconds for materialized validation, and 0.037 seconds for compact
+validation. All 11 frozen v2 fields returned their expected class numbers and
+invariant factors in a one-sample public replay. These are exploratory,
+different-run timings, not a promoted matched PARI comparison. The large
+fresh-call latency is still much higher than PARI's native coefficient-only
+boundary, so public PARI competitiveness remains open.
+
+A previous private `packed-v1` service transport streamed the same authenticated
+class-group map and reduced-form certificate as flat integer arrays directly
+from Rust. The ordinary service response remains unchanged; the Node public
+route independently validates every packed row before publishing the group.
+For `larger-composite-d15000000315`, three warm fresh explicit public calls
+measured 0.0933, 0.0947, and 0.0914 seconds (0.0933-second median). The
+preceding short run's median was 0.405 seconds, so these exploratory runs
+suggest a large transport improvement, not a controlled release comparison.
+The separate warm service/conversion probe measured 0.050 seconds; compact
+validation measured 0.033 seconds. A one-sample public replay across all 11
+frozen v2 fields again returned the expected class numbers and invariant
+factors. Exact native ideal-map and counterfeit-publication tests passed.
+The matched Rust/PARI coefficient boundary and the public Sage.js boundary
+remain different, and public PARI competitiveness is still unproven.
+
+The resident Node worker can now copy its already envelope-validated packed
+service response directly into shared memory, avoiding a second JSON
+serialization of the full map. On the same large composite field, a fresh
+five-sample public baseline before this change measured 0.0924 seconds median;
+the source-current 15-sample run measured 0.0844 seconds median. A separate
+five-sample phase run measured 0.0479 seconds for warm service/conversion.
+These are exploratory different-run observations, not a controlled PARI
+comparison or a claim that all of the approximately 8 ms difference is due to
+the worker change. The 11-field public answer panel and exact native-map
+regressions still pass.
+
+The 2026-09-27 compact-presentation implementation defers transfer and
+validation of the complete map while independently recounting forms and
+checking the published generators. A fresh prepared-field public call for
+`D=-15000000315` now has a 9.28 ms median in the 15-pair
+[`lazy-presentation diagnostic`](public-api-prepared-lazy-presentation-diagnostic.json),
+versus 24.75 ms in the earlier derived-certificate diagnostic and 4.51 ms for
+PARI in the new run. The full frozen-panel public ratios range from 1.53 to
+6.31; tiny fields still pay substantial fixed evaluator overhead, and the
+rank-four field retains the eager map route. These are public-boundary
+diagnostics, not a promotion of the matched native receipt or a claim of
+public PARI parity. Exact coordinate queries and full certificates remain
+available on demand; the Wasm public evaluator exercises both paths.
+
+## Matched resident public-call diagnostic
+
+`run-public-sagejs-pari.cjs` adds a separate end-to-end diagnostic against the
+authenticated PARI 2.17.4 GP executable. It uses the same frozen 11-field v2
+panel, a resident Sage.js process and a resident GP process, one untimed warmup
+per arm and field, and 15 alternating samples per arm. GP is pinned to PARI
+2.17.4, 192-bit precision, and one thread, matching the authenticated native
+control's policy. Both arms start either
+from the public polynomial or from a prepared field, include interpreter
+evaluation and result projection in the clock, and check the expected field
+discriminant, class number, and invariant factors on every sample. Sage.js also checks its
+unconditional proof status and Rust route. The Sage.js call verifies a compact
+presentation and retains exact on-demand ideal-class coordinates for supported
+ranks; other ranks authenticate and retain the complete map. PARI additionally
+computes rank-zero unit/regulator data but does not project an entire ideal-class map. Different
+Node/Sage.js and GP IPC costs remain part of this user-facing diagnostic, so
+these are not symmetric algorithmic-kernel timings or a promoted performance
+receipt.
+
+Before timing full groups, the runner verifies that Sage.js actually loaded
+the compiled packed imaginary-map verifier. A build with the optional native
+kernel pack absent still gives correct answers through the dynamic fallback,
+but measures a different and potentially orders-of-magnitude slower path; the
+runner now refuses to call that an optimized public-group comparison. Scalar
+class-number diagnostics do not require the map verifier.
+
+```sh
+SAGEJS_CLASS_GROUP_SERVICE="$PWD/packages/class-groups/target/release/class-group-service" \
+  node bench/pari-class-group-rust/qualification/public-quadratic-boundary/benchmark/run-public-sagejs-pari.cjs \
+  --samples 15 --boundary polynomial --receipt public-api-polynomial-diagnostic.json
+```
+
+The two source-current 2026-09-26 receipts are
+[`public-api-polynomial-diagnostic.json`](public-api-polynomial-diagnostic.json)
+and [`public-api-prepared-diagnostic.json`](public-api-prepared-diagnostic.json).
+For the polynomial-to-public-group boundary, the geometric-mean ratio of
+per-field medians was 22.81 Sage.js/PARI, with a nearest-rank p90 of 43.15 and
+every field between 12.86 and 49.36. The prepared-field boundary measured
+16.85 geometric mean, 24.33 p90, and an 11.03--36.74 field range. These raw
+receipts retain all 15 paired timings per field and the pinned panel, runner,
+Sage.js build, service, GP, and libpari hashes. They demonstrate that the
+public end-to-end route is **not yet PARI-competitive** under this stricter
+resident-process comparison, even though the distinct matched native
+coefficient-to-group target passes. No threshold or panel member was changed
+in response to these measurements.
+
+The later checked compact-map and resident-capability paths are recorded in
+[`public-api-prepared-frozen-map-diagnostic.json`](public-api-prepared-frozen-map-diagnostic.json)
+and
+[`public-api-prepared-capability-diagnostic.json`](public-api-prepared-capability-diagnostic.json).
+On the unchanged prepared-field panel, the geometric mean of per-field
+Sage.js/PARI medians fell from 13.68 to 11.13; for the tiny `D=-3` field,
+Sage.js fell from 19.57 to 11.16 milliseconds. These are separate 15-pair
+runs, so they show progress but do not isolate every millisecond saved by the
+capability change. The public end-to-end route remains far from parity.
+
+An exploratory same-process profile of `D=-15,000,000,315` (33,768 classes)
+put a fresh public `K.class_group(algorithm='rust')` near 58 milliseconds,
+versus about 1.5 milliseconds for `D=-3`. In separate nine-sample warm probes
+of the large field, its 2.84 MB packed service response took about 19
+milliseconds through the service and pipe, 12 milliseconds to parse as JSON,
+13 milliseconds to pack the map rows into exact signed-64-bit storage, and 21
+milliseconds for the full compact-map validation. These phases overlap across
+probes and must not be added as one call latency. They locate the remaining
+large-field cost in transport and exact map verification, not just in the
+Sage.js cell compiler. They are diagnostic observations, not a new frozen
+performance receipt or permission to omit independent malformed-map checks.
+
+The internal `core-v2` transport now sends only each reduced form's `a`, `b`,
+and exact class coordinates. The Node host reconstructs the derivable `c`,
+inverse form, and ideal basis before the unchanged independent exact map
+verifier checks the complete group. The ordinary service response remains
+available. For the 33,768-class field, the serialized
+service response shrank from 2.84 MB to 1.27 MB; separate nine-sample warm
+probes measured about 13.8 ms for service/pipe and 5.3 ms for JSON parsing,
+versus 18.9 ms and 12.0 ms respectively for `packed-v1`. On the frozen
+15-pair prepared-field public diagnostic, the geometric mean of per-field
+Sage.js/PARI median ratios fell from 11.13 to 9.75. The composite field's
+public median fell from 60.2 to 45.6 ms. The raw result is in
+[`public-api-prepared-core-diagnostic.json`](public-api-prepared-core-diagnostic.json).
+This is a different-run diagnostic, not a promoted matched performance receipt;
+public PARI competitiveness remains open.
+
+The next diagnostic passes the compact `core-v2` rows directly to the same
+source-transparent exact map verifier; Python derives the omitted form and
+ideal data after verification. This removes the host's full-row expansion
+without changing the public group or Wasm path. On the same frozen 11-field,
+15-pair prepared-field panel, the geometric mean of Sage.js/PARI median ratios
+is 8.44 (previous diagnostic: 9.75), ranging from 4.59 to 22.87. The
+33,768-class composite field's public median is 31.7 ms versus PARI's 4.5 ms.
+The raw diagnostic is
+[`public-api-prepared-direct-core-diagnostic.json`](public-api-prepared-direct-core-diagnostic.json).
+This remains a different-run diagnostic, not a promoted matched performance
+receipt. Public PARI competitiveness remains open.
+
+The parsed service arrays can be decorated as checked Python lists in place,
+avoiding a second allocation and element-by-element copy before exact map
+verification. A subsequent frozen 15-pair diagnostic measured an 8.23
+geometric-mean Sage.js/PARI ratio (8.44 in the preceding diagnostic); the
+33,768-class composite median was 29.0 ms (previously 31.7 ms). See
+[`public-api-prepared-inplace-conversion-diagnostic.json`](public-api-prepared-inplace-conversion-diagnostic.json).
+These are separate-run diagnostics, not a promoted matched speedup claim, and
+the public competitiveness target remains open.
+
+The Rust service now advertises `core-v2` in its imaginary-quadratic capability.
+The public Python dispatcher requests it for class groups only when advertised,
+including through the Wasm host; older services continue to use their ordinary
+response. The same exact map verifier handles the compact result. A direct warm
+Wasm reactor diagnostic on the 33,768-class field measured about 12.3 ms for
+`core-v2` versus 162.9 ms for the ordinary JSON response, with serialized
+responses of 1.27 MB and 7.33 MB respectively. These are reactor timings, not
+public Sage.js API timings or a frozen PARI comparison.
+
+The checked signed-64-bit map ingress now writes safe JavaScript integers into
+the exact typed buffer as two's-complement words, avoiding a `BigInt` allocation
+for each entry; full-range `BigInt` values retain their explicit range check.
+The compiled verifier and Python fallback are unchanged. On the frozen
+15-pair prepared-field public diagnostic, the geometric mean of Sage.js/PARI
+median ratios was 7.51, versus 8.22 in the preceding separate-run diagnostic.
+The 33,768-class composite field measured 24.5 ms for Sage.js and 4.52 ms
+for PARI (previous Sage.js median: 29.0 ms). See
+[`public-api-prepared-wordpack-diagnostic.json`](public-api-prepared-wordpack-diagnostic.json).
+This is a different-run diagnostic, not a controlled attribution or a promoted
+matched receipt; the public PARI-competitiveness target remains open.
+
+After the resident capability cache at commit `f593eaea5`, three more frozen
+15-pair public diagnostics checked all exact answers against the same panel and
+pinned PARI control. The seven fields with unconditional PARI `qfbclassno(D,0)`
+comparators had Sage.js/PARI geometric-mean median ratios of 11.04 from fresh
+polynomials and 6.72 from prepared fields for scalar class numbers; the raw
+receipts are
+[`public-api-polynomial-class-number-capability-epoch-diagnostic.json`](public-api-polynomial-class-number-capability-epoch-diagnostic.json)
+and
+[`public-api-prepared-class-number-capability-epoch-diagnostic.json`](public-api-prepared-class-number-capability-epoch-diagnostic.json).
+The prepared full-group ratio across all eleven fields was 3.52; its receipt is
+[`public-api-prepared-group-capability-epoch-diagnostic.json`](public-api-prepared-group-capability-epoch-diagnostic.json).
+Earlier separate runs measured 13.95, 7.71, and 3.41 respectively. These are
+different-run diagnostics under different load, not controlled attribution of
+a speedup to the cache or promoted performance evidence. The four large-field
+PARI full-group comparators retain their GRH-conditional status. Public class
+numbers and groups remain short of the PARI-competitive goal.
+
+### Development-only Wasm evaluator diagnostic
+
+The standalone imaginary-quadratic reactor can be injected into a local
+Sage-mode evaluator without adding it to the production Wasm layout. After
+building the candidate reactor and complete Wasm evaluator assets, run the
+same frozen-panel, alternating-arm comparison against pinned PARI 2.17.4:
+
+```sh
+sh packages/imaginary-quadratic-core/scripts/build-wasm.sh
+pnpm build:wasm
+node bench/pari-class-group-rust/qualification/public-quadratic-boundary/benchmark/run-development-wasm-pari.mjs \
+  --samples 15 --boundary prepared \
+  --receipt public-api-prepared-development-wasm-ingress-diagnostic.json
+```
+
+The runner records artifact and build hashes, load, raw clocks, and exact
+answers. It deliberately labels this as development-only: the ordinary public
+Wasm kernel still declines the unreviewed reactor, and this direct evaluator
+omits the outer kernel-worker IPC. Thus even a favorable result would not
+establish public release eligibility or a promoted performance claim.
+
+The 2026-09-26 15-pair prepared-field run after checked Wasm signed-buffer
+ingress is in
+[`public-api-prepared-development-wasm-ingress-diagnostic.json`](public-api-prepared-development-wasm-ingress-diagnostic.json).
+All 11 frozen fields returned their expected exact groups. The geometric mean
+of per-field Sage.js/PARI median ratios was 7.78, the nearest-rank p90 was
+10.66, and the range was 4.87--18.30. On the 33,768-class composite field,
+the Sage-mode Wasm median was 36.6 ms versus PARI's 4.52 ms. The host's
+one-minute load average was about 4.5 during this run, so these paired raw
+clocks should not be mistaken for quiet-machine release measurements. More
+importantly, the injected reactor and missing outer worker boundary make this
+a development diagnostic, not a claim of public Wasm availability or PARI
+competitiveness.
+
+The compact `core-v2` response now serializes the already verified Rust group
+directly into its bounded service envelope instead of first materializing a
+large intermediate JSON value. A contract test compares the direct and former
+JSON-value shapes. In separate 31-call direct reactor probes of the
+33,768-class field, the medians were 21.5 ms before and 17.4 ms after this
+change. The frozen 15-pair development evaluator comparison is recorded in
+[`public-api-prepared-development-wasm-direct-serialization-diagnostic.json`](public-api-prepared-development-wasm-direct-serialization-diagnostic.json):
+all 11 exact answers matched, and the geometric-mean Sage.js/PARI median ratio
+was 7.39 (7.78 in the preceding diagnostic). The composite-field median was
+32.5 ms versus PARI's 4.52 ms. Host load and separate-run effects preclude
+attributing every difference to serialization. This is still a non-promoted
+development-Wasm result, not public PARI competitiveness.
+
+The subsequent owned-allocation reactor removes unchecked guest-pointer
+dereferences and deallocation. Its raw-ABI test rejects forged, wrong-length,
+wrong-kind, and stale pointers, including after deallocation; the full exact
+Wasm group and ideal-map tests still pass. The unchanged 15-pair development
+evaluator benchmark is in
+[`public-api-prepared-development-wasm-owned-abi-diagnostic.json`](public-api-prepared-development-wasm-owned-abi-diagnostic.json).
+All 11 fields again matched exactly, with a 7.27 geometric-mean Sage.js/PARI
+median ratio and a 33.1 ms versus 4.56 ms composite-field median. The
+preceding separate run measured 7.39 and 32.5 ms versus 4.52 ms, so this is
+evidence against a large performance regression, not a controlled speedup.
+The reactor remains outside the production Wasm layout pending independent
+safety and distribution review.
+
+The development-only `core-v3` transport removes the second wire copy of the
+reduced forms. Its certificate names the sorted, complete core map as its
+source; the source-transparent validator still checks each reduced primitive
+form, coordinate bijection, and generator, and the ordinary certificate is
+expanded only when requested. On the 33,768-class field the JSON response
+shrunk from 1,271,260 to 647,564 bytes. An alternating 50-call-per-arm direct
+Wasm probe gave 16.13 ms for `core-v2` and 12.49 ms for `core-v3` medians. The
+separate frozen 15-pair Sage-mode/PARI run is recorded in
+[`public-api-prepared-development-wasm-derived-certificate-diagnostic.json`](public-api-prepared-development-wasm-derived-certificate-diagnostic.json).
+All 11 answers matched; its geometric-mean median ratio was 6.87, versus 7.27
+in the preceding run. The composite-field median was 27.5 ms versus PARI's
+4.55 ms; the preceding run was 33.1 ms versus 4.56 ms. The direct probe is
+paired, but the two Sage-mode receipts were recorded separately under
+different conditions. Neither is a public Wasm release or a PARI-competitive
+result. The production distribution review remains pending.
+
+The standalone reactor now uses generation-tagged allocation handles (reactor
+ABI 2) so a stale handle cannot address a newer allocation at the same Wasm
+pointer. The host still accepts the existing class-group reactor ABI 1, and
+the JSON service-envelope ABI remains 1. A raw-ABI regression observes actual
+address reuse and checks that stale execution and deallocation fail without
+disturbing the new request. The frozen 11-field, 15-pair prepared-field
+development diagnostic is
+[`public-api-prepared-development-wasm-generation-handles-diagnostic.json`](public-api-prepared-development-wasm-generation-handles-diagnostic.json).
+All exact answers matched; the geometric-mean Sage-mode Wasm/PARI median ratio
+was 6.77, versus 6.87 in the earlier separate-run derived-certificate
+diagnostic. The composite field took 28.60 ms versus PARI's 4.55 ms. This
+does not establish a performance improvement, public Wasm availability, or
+distribution safety; the independent review gates still apply.
+
+The reactor now also exposes compact authenticated presentations and exact
+on-demand ideal coordinates, matching the native group protocol without
+discarding the complete-map operation. The frozen 11-field, 15-pair prepared
+development-evaluator diagnostic is
+[`public-api-prepared-development-wasm-compact-presentation-diagnostic.json`](public-api-prepared-development-wasm-compact-presentation-diagnostic.json).
+All exact groups matched; the geometric-mean Sage-mode Wasm/PARI median ratio
+was 5.27. The tiny `D=-47` row took 6.89 ms versus 0.63 ms, and the 33,768-class
+composite row took 15.24 ms versus 4.64 ms. This is a separate run, so its
+difference from the earlier 6.77 ratio cannot be assigned solely to compact
+transport. The ordinary public Wasm kernel still declines the reactor, and
+even this development evaluator is not competitive with PARI on the panel.
+
+The native product service now advertises the same `core-v3` transport, while
+retaining `core-v2` and the ordinary response. A 30-pair alternating direct
+service probe on the 33,768-class composite field measured 10.91 ms for
+`core-v2` and 8.60 ms for `core-v3`; the response shrank from 1,271,257 to
+647,561 bytes. That is a service/pipe result, not a public-call result. The
+earlier frozen 11-field, 15-pair prepared-field public comparison is in
+[`public-api-prepared-native-derived-certificate-diagnostic.json`](public-api-prepared-native-derived-certificate-diagnostic.json).
+Despite that receipt's filename, its native host adapter unconditionally
+overrode the request to `core-v2`. Its geometric-mean Sage.js/PARI median ratio
+was 7.63, versus 7.51 in an earlier separate-run `core-v2` diagnostic; the
+composite field was 24.75 ms versus PARI's 4.52 ms. This receipt therefore
+does not measure the `core-v3` public path and cannot support a public-path
+speedup claim. Exact ideal coordinates and forged-publication rejection remain
+covered by the native dispatch tests; public PARI competitiveness remains open.
+
+The native host now requests `core-v3` for the public imaginary-group route and
+falls back to `core-v2` only when an older service explicitly rejects the new
+transport. The corrected frozen 11-field, 15-pair prepared-field run is in
+[`public-api-prepared-native-v3-host-diagnostic.json`](public-api-prepared-native-v3-host-diagnostic.json).
+All answers match, and the native-route regression test checks that the real
+service returns the derived certificate. The geometric-mean Sage.js/PARI
+median ratio is 6.45; the 33,768-class composite field takes 18.65 ms versus
+PARI's 4.51 ms. The historical host-v2 run measured 7.63 and 24.75 ms versus
+4.52 ms, respectively. These are separate runs, not a controlled paired
+speedup measurement, and Sage.js remains slower than PARI on this panel.
+
+After the rank-two orbit began constructing its checked ideal-class map in
+one pass, a source-current 15-pair prepared-field diagnostic on the unchanged
+11-field panel measured a 6.49 geometric-mean Sage.js/PARI ratio, with a
+nearest-rank p90 of 14.71. The composite field measured 19.48 ms versus
+PARI's 4.53 ms; the tiny trivial field was still 22.14 times PARI. The raw
+clocks and executable hashes are in
+[`public-api-prepared-rank-two-map-diagnostic.json`](public-api-prepared-rank-two-map-diagnostic.json).
+This is a different-run, unpromoted public-boundary diagnostic, not a measured
+attribution to the orbit change or evidence of PARI competitiveness. The
+tiny-field gap is primarily a public evaluation-boundary issue, whereas the
+large composite path still spends substantial time in service transport and
+independent exact-map verification.
+
+Repeated ordinary Sage cells now reuse compiled JavaScript only after two
+successive compilations produce identical code and optimizer reports in a
+stable compiler context. Each call still executes the code and constructs a
+fresh result. The 15-pair diagnostics on the unchanged panel are
+[`public-api-prepared-repeat-cell-diagnostic.json`](public-api-prepared-repeat-cell-diagnostic.json)
+and
+[`public-api-polynomial-repeat-cell-diagnostic.json`](public-api-polynomial-repeat-cell-diagnostic.json).
+All 11 exact answers matched in both runs. The prepared-field geometric-mean
+Sage.js/PARI ratio was 3.39, with a 2.00--6.57 field range; the composite
+field took 14.39 ms versus 4.54 ms for PARI. The full polynomial-to-group
+ratio was 12.40, with a 4.68--50.25 field range. These are separate-run,
+unpromoted diagnostics; the difference from earlier receipts cannot all be
+assigned to the compiler cache. In particular, repeated construction of the
+number field remains expensive, and neither public boundary is yet
+PARI-competitive.
+
+The compiler can now reuse those stable cells even when its numeric-literal
+pool is present: it gives each execution a fresh pool namespace while still
+constructing the field and the group anew. The unchanged 11-field, 15-pair
+diagnostics are
+[`public-api-polynomial-pooled-repeat-diagnostic.json`](public-api-polynomial-pooled-repeat-diagnostic.json)
+and
+[`public-api-prepared-pooled-repeat-diagnostic.json`](public-api-prepared-pooled-repeat-diagnostic.json).
+All exact answers matched. The polynomial-to-group geometric-mean ratio was
+7.70 Sage.js/PARI (3.27--23.65 across fields), versus 12.40 in the preceding
+separate run. The prepared-field ratio was 3.32, versus 3.39 previously. The
+33,768-class composite field took 22.63 ms versus PARI's 4.60 ms at the full
+boundary. The receipts are unpromoted, and these different-run figures do not
+isolate a causal speedup. Public PARI competitiveness remains open.
+
+Quadratic `NumberField` construction now applies the exact rational
+discriminant-square irreducibility criterion instead of general polynomial
+factorization. A local 21-sample warm construction probe for the composite
+field measured a 4.55 ms median, versus 6.04 ms in an earlier separate run.
+The unchanged frozen 11-field, 15-pair polynomial-to-group diagnostic is
+[`public-api-polynomial-quadratic-construction-diagnostic.json`](public-api-polynomial-quadratic-construction-diagnostic.json):
+all answers matched, and the geometric-mean Sage.js/PARI median ratio was
+6.82, versus 7.70 in the preceding separate run. The composite field took
+21.39 ms versus PARI's 4.64 ms. These diagnostics do not isolate a causal
+speedup, and neither the public path nor the frozen performance target is yet
+PARI-competitive.
+
+A 2026-09-27 source-current 15-pair rerun after the later Wasm-review and
+reference-data commits is in
+[`public-api-polynomial-current-2026-09-27-diagnostic.json`](public-api-polynomial-current-2026-09-27-diagnostic.json).
+It uses the unchanged frozen panel and the same native service digest as the
+preceding diagnostic, but a fresh Sage.js build receipt. All 11 exact answers
+matched. The polynomial-to-public-group geometric-mean Sage.js/PARI median
+ratio was 6.77, with a nearest-rank p90 of 16.38 and a 3.06--16.84 range.
+The host's one-minute load average was 4.49. This is another unpromoted,
+separate-run diagnostic: the small numerical difference from 6.82 is not an
+attributed speedup, and public PARI competitiveness remains open.
+
+The public `NumberField` group route now reuses its exact imaginary-quadratic
+backend before requesting the Rust result, avoiding construction of a generic
+maximal order solely to obtain the field discriminant. That same backend
+supplies the subsequent exact public discriminant. The final-build, 15-pair
+receipts on the unchanged eleven-field panel are
+[`public-api-polynomial-quadratic-backend-diagnostic.json`](public-api-polynomial-quadratic-backend-diagnostic.json)
+and
+[`public-api-prepared-quadratic-backend-diagnostic.json`](public-api-prepared-quadratic-backend-diagnostic.json).
+Every projected answer matched. The polynomial-to-public-group geometric-mean
+Sage.js/PARI median ratio was 5.64, versus 6.77 in the earlier separate run;
+the prepared-field ratio was 3.41, versus 3.32 in its earlier separate run.
+These diagnostics do not isolate a causal speedup or establish public PARI
+competitiveness, and neither is a promoted performance receipt.
+
+The previous public scalar `NumberField.class_number()` route reused that
+exact quadratic backend before requesting the Rust result. This avoided
+forcing a generic maximal order on a fresh imaginary-quadratic field, but
+constructed a full `QuadraticField` even though a scalar request only needs
+the exact field discriminant. The separate 11-field, 15-pair resident
+public-call diagnostics for that route are
+[`public-api-polynomial-class-number-exact-backend-diagnostic.json`](public-api-polynomial-class-number-exact-backend-diagnostic.json)
+and
+[`public-api-prepared-class-number-exact-backend-diagnostic.json`](public-api-prepared-class-number-exact-backend-diagnostic.json).
+All answers matched. Among the seven fields below `2*10^10`, where PARI uses
+its documented-unconditional `qfbclassno(D,0)`, the geometric-mean
+Sage.js/PARI median ratios were 18.89 for fresh-polynomial calls and 8.06 for
+prepared-field calls. Among the four larger fields, PARI's `bnfinit(nf,0)`
+class-number projection is GRH-conditional and computes a full group; the
+ratios were 1.44 and 0.66, respectively. These distinct PARI methods should
+not be pooled into a parity claim. Both receipts are unpromoted, include
+resident interpreter/IPC costs, and show that the public scalar path is not
+yet competitive with PARI's small-discriminant scalar path.
+
+The scalar route now computes and caches only the exact quadratic field
+discriminant for its Rust request. It does not construct a `QuadraticField` or
+general maximal order; a later full-group call still builds the ordinary
+quadratic backend and retains its complete ideal-class map. The independent
+order discriminant and nonmonic rational inputs are checked in regression
+tests. The new 11-field, 15-pair diagnostics are
+[`public-api-polynomial-class-number-scalar-only-discriminant-diagnostic.json`](public-api-polynomial-class-number-scalar-only-discriminant-diagnostic.json)
+and
+[`public-api-prepared-class-number-scalar-only-discriminant-diagnostic.json`](public-api-prepared-class-number-scalar-only-discriminant-diagnostic.json).
+Every answer matched. The seven unconditional `qfbclassno` rows have
+Sage.js/PARI median-ratio geometric means of 13.95 from fresh polynomials
+and 7.71 from prepared fields, versus 18.89 and 8.06 in the preceding
+separate run. On the four larger, conditional PARI `bnfinit` projection rows,
+the ratios are 1.17 and 0.67, versus 1.44 and 0.66. These unpromoted
+different-run diagnostics do not isolate a causal speedup or establish PARI
+competitiveness; the scalar and full-group PARI methods remain distinct.
+
+The same scalar operation was measured through an injected development-only
+Wasm evaluator in
+[`public-api-polynomial-development-wasm-class-number-diagnostic.json`](public-api-polynomial-development-wasm-class-number-diagnostic.json)
+and
+[`public-api-prepared-development-wasm-class-number-diagnostic.json`](public-api-prepared-development-wasm-class-number-diagnostic.json).
+All 11 fields again returned their expected class numbers. The seven
+unconditional `qfbclassno` rows have Sage.js/PARI geometric-mean median ratios
+of 51.11 from a fresh polynomial and 14.22 from a prepared field. The four
+larger, conditional `bnfinit` projection rows have ratios of 4.65 and 1.67.
+These are separate-run, mixed-method diagnostics: the production Wasm kernel
+still declines this unreviewed reactor, and the development harness omits the
+public kernel's outer worker IPC. They neither qualify a Wasm release nor
+establish scalar PARI competitiveness.
+
+## Current map-free public full-group diagnostic
+
+After the large cyclic and rank-two presentation producer stopped eagerly
+building a complete class map, the unchanged 11-field v2 panel was rerun with
+15 alternating warm-resident Sage.js/PARI 2.17.4 samples per arm on this Linux
+host. Both arms checked the exact class number and invariant factors. The
+[fresh-polynomial](public-api-polynomial-mapfree-current-diagnostic.json) and
+[prepared-field](public-api-prepared-mapfree-current-diagnostic.json) receipts
+pin the production native service bytes, authenticated PARI executable and
+library, panel, runner, and Sage.js build receipt. The fresh-polynomial
+geometric mean of per-field Sage.js/PARI median ratios is **4.71** (nearest-rank
+p90 **12.83**); the prepared-field ratio is **2.57** (p90 **6.08**). Across the
+five large fields alone the ratios are **2.22** and **1.34**, respectively.
+For the composite `D=-15,000,000,315` case, fresh-polynomial medians are 10.43
+ms versus 4.57 ms; prepared-field medians are 6.55 ms versus 4.54 ms. The
+tiny trivial case is 8.84 ms versus 0.55 ms from a polynomial and 3.32 ms
+versus 0.46 ms prepared.
+
+These are unpromoted public-boundary diagnostics, not a source-frozen native
+qualification or proof of public PARI competitiveness. The arms include
+different resident evaluator/GP overhead; PARI's full `bnfinit` computes
+units and a regulator but does not project an exact ideal-class map. This
+run does not isolate a causal speedup against a same-host, interleaved
+pre-change Sage.js arm. The separate quiet-host Sage.js-only before/after
+diagnostic is recorded in
+[`compact-summary-quiet-host-diagnostic-2026-09-28.md`](compact-summary-quiet-host-diagnostic-2026-09-28.md).
+
+## Deferred quadratic-backend public diagnostic
+
+The public `NumberField` Rust group route now projects a verified class number
+and invariant factors without eagerly constructing a second quadratic field.
+The ordinary exact backend is constructed on first ideal-class, certificate,
+or coordinate access; focused native-service tests check that this deferred
+path retains the exact ideal map and detects a forged on-demand coordinate.
+The unchanged 11-field, 15-sample matched panel produced new
+[fresh-polynomial](public-api-polynomial-deferred-backend-diagnostic.json) and
+[prepared-field](public-api-prepared-deferred-backend-diagnostic.json) receipts.
+Their Sage.js/PARI geometric-mean median ratios are **3.81** (p90 **10.56**)
+and **2.44** (p90 **5.87**), respectively. The five larger fields alone are
+**1.83** and **1.28**. For the composite `D=-15,000,000,315` case, the
+fresh-polynomial medians are 9.22 ms versus 4.67 ms; prepared-field medians
+are 5.89 ms versus 4.48 ms. The tiny trivial field remains 6.25 ms versus
+0.51 ms fresh and 3.02 ms versus 0.43 ms prepared. All exact outputs match.
+
+These are unpromoted public-boundary diagnostics, not an isolated causal
+comparison or a PARI-competitive public result. The previously recorded
+map-free run was not interleaved with this run, and the two programs still
+have different evaluator/IPC costs.
+
+The separate [repeated-cell breakdown](repeated-cell-breakdown-2026-09-28.json)
+uses the same frozen 11 fields and 15 samples per phase. `run-public-sagejs.cjs
+15 --repeated-phases` evaluates each exact source consecutively after one
+warmup, recording both parent-observed wall time and the evaluator's reported
+execution time. It checks the public group order, invariant factors, proof
+status, and algorithm on every group sample. These phase medians are **not
+additive** and were not alternated with PARI; they diagnose the Sage.js side
+only. On the tiny cyclic `D=-47` field, evaluator-execution medians are
+0.37 ms for a cached empty cell, 2.11 ms for `x^2-x+12`, 1.06 ms for
+`NumberField(P)` with an already-built polynomial, 2.27 ms for the prepared
+verified Rust group, and 5.92 ms for the complete fresh-polynomial group cell.
+The fresh cell's parent-observed wall median is 6.43 ms. The four smallest
+fields' polynomial-expression medians all lie between 1.90 and 2.11 ms;
+their prepared-group medians are 1.93--4.36 ms, with the rank-four field on
+the complete-map route. Thus, in this warmed repeated-source diagnostic,
+polynomial expression construction and verified group work both materially
+contribute to the tiny-field gap; attributing it solely to worker transport
+would be incorrect. The five larger fields' prepared-group execution medians
+are 6.07--8.38 ms. None of these independent phase measurements changes the
+matched public Sage.js/PARI result above.
+
+## Matched scalar class-number comparison
+
+`run_class_number.py` separately compares the exact scalar Rust count, the
+current source-matched Sage.js FLINT `qfbClassNumber` addon, and PARI 2.17.4.
+On the original seven-field panel, PARI uses `qfbclassno(D,0)` throughout;
+its pinned documentation explicitly guarantees that Shanks routine for
+`|D| < 2*10^10`, and every original-panel field is below `10^7`. The Rust
+arm starts with the public monic polynomial and repeats validation; PARI and
+FLINT start with its equivalent discriminant. All clocks exclude process
+startup and JSON serialization, but FLINT's clock includes the Node/N-API
+boundary.
+
+The v2 scalar campaign uses the already-frozen, diverse `panel-v2.json`.
+Below `2*10^10`, PARI still uses its documented-unconditional Shanks routine.
+Above that bound, the PARI arm projects the class number from the same
+`nfinit0` plus `bnfinit0(...,0)` public call as the full-group campaign.
+That call also computes the full group and, **without `bnfcertify`, is
+GRH-conditional**; the Rust scalar count remains unconditional throughout.
+Consequently the v2 rows are not a single uniform scalar-to-scalar comparison.
+The receipt records the PARI method and computation count for each row. Its
+purpose is to expose both the fast Shanks challenge below the threshold and
+the public full-group baseline above it, without mislabeling either as an
+unconditional PARI oracle.
+
+Build the worktree's FLINT native dependencies and direct addon with
+`pnpm --dir packages/flint build:deps` and `pnpm --dir packages/flint build:addon`.
+Then run `python3 benchmark/run_class_number.py` for the original panel or
+`python3 benchmark/run_class_number.py --panel panel-v2.json --receipt class-number-receipt-v2.json`
+for v2. It authenticates the pinned
+PARI source and current FLINT addon, builds the Rust and PARI executables,
+rotates three arms over 15 samples per field,
+checks each class number, and writes `class-number-receipt.json`. That receipt
+is diagnostic and explicitly unpromoted; it does not supersede the full-group
+receipt or establish a release speed claim. The scalar Rust path now sieves
+the candidate norms together, using exact modular square roots to visit only
+prime-divisible residue classes and compact linked factor storage to avoid one
+factor-vector allocation per candidate. It counts only canonical reduced divisors and uses
+the fundamental-discriminant precondition to eliminate redundant primitivity
+checks. The retained original enumerator independently agrees on every
+fundamental discriminant through 10,000 and a deterministic spread up to the
+frozen panel's old `10^7` boundary. On the current host, the diagnostic panel has Rust
+faster than PARI on six of seven fields and 1.35 times PARI on the remaining
+4,378-class field. This is a substantial scalar improvement, but the receipt
+must still be frozen and promoted before making a release speed claim. The
+current v2 diagnostic also exposes a substantial slow case at the large
+three-prime-factor field: Rust's unconditional scalar median is 1.58
+milliseconds versus 0.185 milliseconds for PARI's unconditional
+`qfbclassno(D,0)`, about 8.5 times slower. A full-group speed result must not
+be presented as proof that scalar counting is uniformly competitive with
+PARI's Shanks path.
 
 ## Frozen panel and large-class-number selection
 
@@ -75,6 +831,20 @@ most 2, and no individual ratio over 3. The receipt evaluates these rules
 literally. If there is no qualifying 5--100 ms field, the native target cannot
 pass.
 
+The source-current frozen v2 qualification is
+[`receipt-v2-current-2026-09-28.json`](receipt-v2-current-2026-09-28.json).
+It was generated from clean commit `2ce9e552e` and committed separately;
+all reachable-source hashes match. Its two independent locked release builds
+are byte-identical, and all 330 exact samples on the unchanged 11-field panel
+match. Four fields genuinely fall in PARI's 5--100 ms band. The native target
+passes: geometric-mean Rust/PARI median ratio 0.301, nearest-rank p90 1.656,
+every individual band ratio below 3, and all seven under-5 ms field limits.
+The [previous source-frozen receipt](receipt-v2-current-2026-09-27.json)
+remains historical evidence for clean commit `04d0b3b0a`. The new result is
+coefficient-to-complete-group native evidence; the separate public Sage.js
+evaluator remains slower than PARI, and neither receipt clears the production
+Wasm review gate.
+
 ## Tiny batch throughput
 
 The frozen batch campaign runs 15 fresh-process samples for each of the four
@@ -98,3 +868,172 @@ The integration owner must promote evidence in two steps:
 
 Until step 2, the content-addressed receipt is useful diagnostic evidence but
 must not be described as bound to or promoted from the dirty `gitCommit` value.
+
+## Public-boundary PARI diagnostic on `opt` (2026-09-28)
+
+The four [`opt-head0fd17` receipts](opt-head0fd17-matched-polynomial.json)
+measure 15 alternating, warm-resident calls per arm and field on the unchanged
+11-field v2 panel. The isolated `opt` checkout was clean at source commit
+`0fd17dc594f63b190073c96523c0abc806e80cec`; its class-group service SHA-256
+was `2586350cb79e84fd53cda7785cbf1a2b1341bab799da8a020c3159bed60ddfb8`.
+The authenticated PARI 2.17.4 tree was copied into that checkout, and a
+private mount namespace bound it at the control's pinned path. The host's
+existing PARI symlink was not changed. Every recorded class number and group
+structure matched the frozen panel. These are unpromoted, host-specific
+diagnostics, not a release performance claim.
+
+| Public operation and starting boundary | Sage.js/PARI geometric mean of field median ratios | Smallest–largest field ratio |
+| --- | ---: | ---: |
+| [Full group, fresh polynomial](opt-head0fd17-matched-polynomial.json) | 4.442 | 2.310–10.111 |
+| [Full group, prepared field](opt-head0fd17-matched-prepared.json) | 2.967 | 1.613–6.372 |
+| [Class number, fresh polynomial](opt-head0fd17-scalar-polynomial.json) | 5.391 | 1.353–13.905 |
+| [Class number, prepared field](opt-head0fd17-scalar-prepared.json) | 3.653 | 0.853–17.559 |
+
+The group diagnostic compares Sage.js's public evaluation and projection with
+PARI's rank-zero `bnfinit` projection; PARI does not return an exact complete
+ideal-class map in this clock. The scalar diagnostic mixes PARI's unconditional
+`qfbclassno(D,0)` below `|D|=2e10` with GRH-conditional `bnfinit(nf,0)` above
+that boundary, while Sage.js remains unconditional. The resident interpreters
+also have different IPC costs. Thus neither ratio proves an equal-work speed
+comparison. It does establish that the current public boundary has a material
+gap, especially for tiny fields, despite the separately passing native Rust
+qualification. The receipts retain raw samples and exact software identities
+for further profiling.
+
+### Follow-up public diagnostic after symbolic field construction
+
+The four `opt-head7a4` matched receipts below were measured on a detached,
+clean checkout of `7a4a16343ca9f7bccff6ddbeee64818b1ac0458f`, with 15
+alternating warm-resident samples per arm for every unchanged v2 panel field.
+The benchmark source and built Rust service are the same as the earlier `0fd17`
+run. The PARI control used an unchanged private copy of the original pinned
+2.17.4 build: all six pinned files matched their recorded hashes before the
+run, and the public runner rechecked them. The host's `/home/user/upstream`
+symlink was not modified. The receipts bind the rebuilt Sage.js artifact by
+SHA-256 and check every exact answer. They are diagnostic, not promoted
+performance evidence.
+
+| Public operation and starting boundary | Sage.js/PARI geometric mean of field median ratios | Smallest–largest field ratio |
+| --- | ---: | ---: |
+| [Full group, fresh polynomial](opt-head7a4-matched-polynomial.json) | 4.183 | 2.207–9.618 |
+| [Full group, prepared field](opt-head7a4-matched-prepared.json) | 3.007 | 1.809–5.717 |
+| [Class number, fresh polynomial](opt-head7a4-class-number-polynomial.json) | 5.596 | 1.396–16.134 |
+| [Class number, prepared field](opt-head7a4-class-number-prepared.json) | 3.674 | 0.861–26.000 |
+
+This source change affects polynomial construction, not prepared-field group
+work. The fresh full-group ratio moved from 4.442 to 4.183 while the prepared
+ratio remained near 3; the two separate campaigns do not establish a precise
+speedup. PARI's scalar method changes at `|D|=2e10` as described above, so
+neither scalar aggregate is an equal-work, uniformly unconditional comparison.
+The public full-group boundary remains materially behind PARI even though the
+native coefficient-to-group qualification passes.
+
+Separate, unpaired [small-field](opt-head7a4-d47-phases.json) and
+[large-field](opt-head7a4-large-phases.json) phase probes point to different
+bottlenecks. At `D=-47`, the summary service, Python validation, and detached
+verification probes took approximately 0.57, 0.78, and 0.59 ms. At
+`D=-20,000,000,179`, they took 3.14, 0.95, and 2.93 ms. Those calls occur
+after the timed public sample and are not additive parts of it. The small-field
+gap is dominated by fixed evaluation and verification overhead; larger fields
+also pay for native group construction and independent replay. Exact
+verification must remain in the public route.
+
+### Certified PARI full-group diagnostic
+
+The original full-group public comparator above uses `bnfinit(nf,0)` without
+`bnfcertify`, so it is the faster PARI baseline but not uniformly an
+unconditional-result comparison. PARI 2.17.4 documents that `bnfcertify(b)`
+removes the GRH assumption from a `bnfinit` result if and only if it returns
+`1`. The public runner now accepts `--pari-proof certified` for full groups:
+it includes `bnfcertify(b)` inside every timed PARI sample, checks for `1`
+before printing the group, and fails rather than using an uncertified result.
+The default remains `--pari-proof conditional`, preserving the original
+baseline and receipts. Scalar runs still use their separately documented
+mixed-method comparator.
+
+```sh
+SAGEJS_CLASS_GROUP_SERVICE="$PWD/packages/class-groups/target/release/class-group-service" \
+  node bench/pari-class-group-rust/qualification/public-quadratic-boundary/benchmark/run-public-sagejs-pari.cjs \
+  --samples 15 --boundary polynomial --pari-proof certified \
+  --receipt public-api-certified-polynomial.json
+```
+
+On the same frozen 11-field v2 panel and `7a4a16343ca9f7bccff6ddbeee64818b1ac0458f`
+Sage.js build as the four preceding `opt-head7a4` receipts, a separate
+15-alternation run on opt gave the following Sage.js/certified-PARI ratios:
+
+| Starting boundary | Geometric mean of field median ratios | Smallest–largest ratio | Fields where Sage.js was faster |
+| --- | ---: | ---: | ---: |
+| [Fresh polynomial](opt-head7a4-certified-polynomial.json) | 0.551 | 0.035–9.124 | 5/11 |
+| [Prepared field](opt-head7a4-certified-prepared.json) | 0.382 | 0.027–7.865 | 7/11 |
+
+The equal-proof-standard aggregate is favorable, but it hides a large
+small-field deficit: the `D=-3` polynomial row is still 9.124× slower than
+certified PARI. These are public diagnostic timings, not the promoted native
+qualification or evidence that the public route is generally PARI-competitive.
+The original faster `bnfinit` comparison remains the practical speed target;
+the two PARI modes answer different proof-standard questions. PARI also does
+not project a complete ideal-class map in either timed mode, whereas Sage.js
+retains exact maps on demand.
+
+### Bounded medium-field cyclic proof on the public boundary
+
+The clean `f1ace23d92bed27f7d48d6b2506fe97af045e110` checkout on `opt`
+rebuilt both Sage.js and the native class-group service, then ran 15 alternating
+warm-resident samples per arm on the unchanged 11-field panel. The runner
+rechecked the same private copy of the original pinned PARI 2.17.4 binary and
+library used by the `opt-head7a4` comparison, plus every exact answer. The
+host's shared `/home/user/upstream` link was not changed. These are unpromoted
+public-boundary diagnostics; PARI uses the faster
+uncertified `bnfinit(nf,0)` group mode. The receipt binds the rebuilt Sage.js
+and service by SHA-256 and records the raw samples.
+
+| Starting boundary | Sage.js/PARI geometric mean of field median ratios | Smallest–largest field ratio |
+| --- | ---: | ---: |
+| [Fresh polynomial](opt-headf1ace-matched-polynomial.json) | 4.256 | 2.184–9.831 |
+| [Prepared field](opt-headf1ace-matched-prepared.json) | 3.003 | 1.760–6.632 |
+
+For the 4,378-class `D=-8,173,415` row, the fresh-polynomial ratio was 3.933
+and the prepared-field ratio was 2.263; the earlier `7a4a1634` diagnostics
+reported 4.46 and 3.29 respectively. The 1,715-class row was 4.249 fresh and
+2.478 prepared. These separately run campaigns do not isolate a precise
+causal speedup; the full-panel geometric means remain near the previous
+4.183 fresh and 3.007 prepared. The bounded
+medium presentation preserves the same exact generator and deferred ideal
+coordinates as the complete-map route; noncyclic cases fall back to that route.
+The public default-PARI competitiveness target remains open, especially for
+small fields and fixed interpreter overhead.
+
+### Bounded higher-rank presentations on the public boundary
+
+An isolated `opt` checkout of `8972749964aa257dd8763d22cc2e93bd6a1b9034`
+rebuilt Sage.js and the Rust class-group service, then reran the unchanged
+11-field panel with 15 alternating samples per arm and exact-output checks.
+The comparator remained the same pinned PARI 2.17.4 binary and library, using
+the faster `bnfinit(nf,0)` group mode. The two receipts have the same rebuilt
+Sage.js receipt (`f1ef87b2810ee60198ca59c6520a5cf71a46ea4d96c2be73a2f0dae97997e33f`)
+and service (`cb2f2ed61cf8b46e322f32bad36271de002167f0ae0ba1d464c7a4b63c61896f`)
+hashes.
+
+The clean checkout did not contain the optional native FLINT build. To keep
+the public benchmark's compiled map verifier available without rebuilding
+unrelated native sources, it reused the previous `opt` checkout's unchanged
+FLINT addon (SHA-256 `bbe7c3b1de49be6d5cbacf5e08f130ca421899b2ca3370e9427294896221e0c8`),
+generated FFI manifest (`b343dab8b34670ffa1f185480108a3c0affa51b03502d064e0bcdd208068cf36`),
+and native-kernel pack index (`bfdd32ce2320e8e1756207af9d78aab01d23fc485dc43e3ffed9ad4b26ef122b`).
+The changed imaginary-quadratic Rust and Python sources were not reused.
+These are unpromoted public-boundary diagnostics, not a clean native release
+qualification or a claim of production-Wasm distribution readiness.
+
+| Starting boundary | Sage.js/PARI geometric mean of field median ratios | Smallest–largest field ratio |
+| --- | ---: | ---: |
+| [Fresh polynomial](opt-head897-matched-polynomial.json) | 3.916 | 2.072–9.893 |
+| [Prepared field](opt-head897-matched-prepared.json) | 2.741 | 1.553–6.343 |
+
+For the rank-four `D=-15,015` row, the fresh-polynomial ratio was 4.877 and
+the prepared-field ratio was 4.289, versus 7.845 and 5.446 in the preceding
+`f1ace23d` run. Other unaffected rows also shifted between separately run
+campaigns, so the aggregate difference is not an isolated causal estimate.
+The bounded higher-rank route preserves unconditional detached verification
+and exact on-demand ideal-class coordinates. The frozen-panel goal of
+competition with default PARI remains unmet, particularly for small fields.

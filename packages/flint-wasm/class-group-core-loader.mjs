@@ -150,9 +150,12 @@ function emptyEnvironmentImports(imports, memoryProvider) {
 }
 
 /** Instantiate the authenticated class-group reactor inside its owning worker. */
-export async function instantiateClassGroupCore(bytes) {
+export async function instantiateClassGroupCore(bytes, { wasiHostFactory } = {}) {
   if (!(bytes instanceof Uint8Array) || bytes.byteLength === 0) {
     throw new TypeError("class-group artifact must be nonempty bytes");
+  }
+  if (wasiHostFactory !== undefined && typeof wasiHostFactory !== "function") {
+    throw new TypeError("wasiHostFactory must be a function");
   }
   const memoryContract = validateMemoryContract(bytes);
   const compileStarted = performance.now();
@@ -174,7 +177,7 @@ export async function instantiateClassGroupCore(bytes) {
   }
   const { createWasiHost } = runtime;
   let instance;
-  const wasi = createWasiHost({ stdout() {}, stderr() {} });
+  const wasi = (wasiHostFactory ?? createWasiHost)({ stdout() {}, stderr() {} });
   const wasiImports = {
     ...wasi.imports,
     ...emptyEnvironmentImports(imports, () => instance?.exports?.memory),
@@ -186,29 +189,57 @@ export async function instantiateClassGroupCore(bytes) {
     }
   }
   const instantiateStarted = performance.now();
-  instance = await WebAssembly.instantiate(module, {
-    wasi_snapshot_preview1: wasiImports,
-  });
+  try {
+    instance = await WebAssembly.instantiate(module, {
+      wasi_snapshot_preview1: wasiImports,
+    });
+  } catch (error) {
+    wasi.dispose();
+    throw error;
+  }
   const instantiateMilliseconds = performance.now() - instantiateStarted;
   if (typeof instance.exports._start === "function") {
     wasi.dispose();
     throw new TypeError("class-group core must be a reactor, not a command");
   }
-  wasi.initialize(instance);
+  try {
+    wasi.initialize(instance);
+  } catch (error) {
+    wasi.dispose();
+    throw error;
+  }
 
   const exports = instance.exports;
   if (!(exports.memory instanceof WebAssembly.Memory)) {
     wasi.dispose();
     throw new TypeError("class-group core does not export memory");
   }
-  const abiVersion = requiredFunction(exports, "sagejs_class_group_abi_version");
-  const alloc = requiredFunction(exports, "sagejs_class_group_alloc");
-  const dealloc = requiredFunction(exports, "sagejs_class_group_dealloc");
-  const runJson = requiredFunction(exports, "sagejs_class_group_run_json");
-  if (abiVersion() !== ABI_VERSION) {
+  let alloc;
+  let dealloc;
+  let runJson;
+  let reactorAbiVersion;
+  let allocationLength;
+  try {
+    const abiVersion = requiredFunction(exports, "sagejs_class_group_abi_version");
+    alloc = requiredFunction(exports, "sagejs_class_group_alloc");
+    dealloc = requiredFunction(exports, "sagejs_class_group_dealloc");
+    runJson = requiredFunction(exports, "sagejs_class_group_run_json");
+    reactorAbiVersion = abiVersion();
+    if (reactorAbiVersion === 2) {
+      allocationLength = requiredFunction(exports, "sagejs_class_group_allocation_length");
+    }
+  } catch (error) {
     wasi.dispose();
-    throw new TypeError(`unsupported class-group ABI version ${abiVersion()}`);
+    throw error;
   }
+  if (reactorAbiVersion !== 1 && reactorAbiVersion !== 2) {
+    wasi.dispose();
+    throw new TypeError(`unsupported class-group ABI version ${reactorAbiVersion}`);
+  }
+  const taggedHandles = reactorAbiVersion === 2;
+  const pointerOf = (handle) => taggedHandles
+    ? Number(BigInt.asUintN(64, handle) & 0xffff_ffffn)
+    : handle >>> 0;
 
   let closed = false;
   function invoke(request) {
@@ -217,8 +248,10 @@ export async function instantiateClassGroupCore(bytes) {
     if (input.byteLength === 0 || input.byteLength > MAX_INPUT_BYTES) {
       throw new RangeError("class-group request exceeds the transfer limit");
     }
-    const inputPointer = alloc(input.byteLength) >>> 0;
+    const inputHandle = alloc(input.byteLength);
+    const inputPointer = pointerOf(inputHandle);
     if (inputPointer === 0) throw new Error("class-group input allocation failed");
+    let outputHandle = taggedHandles ? 0n : 0;
     let outputPointer = 0;
     let outputLength = 0;
     try {
@@ -229,9 +262,10 @@ export async function instantiateClassGroupCore(bytes) {
         MAX_INPUT_BYTES,
         "input",
       ).set(input);
-      const packed = BigInt.asUintN(64, runJson(inputPointer, input.byteLength));
+      const packed = BigInt.asUintN(64, runJson(inputHandle, input.byteLength));
+      outputHandle = taggedHandles ? packed : Number(packed & 0xffff_ffffn);
       outputPointer = Number(packed & 0xffff_ffffn);
-      outputLength = Number(packed >> 32n);
+      outputLength = taggedHandles ? allocationLength(outputHandle) : Number(packed >> 32n);
       const inputEnd = inputPointer + input.byteLength;
       const outputEnd = outputPointer + outputLength;
       if (inputPointer < outputEnd && outputPointer < inputEnd) {
@@ -243,11 +277,14 @@ export async function instantiateClassGroupCore(bytes) {
         outputLength,
         MAX_OUTPUT_BYTES,
         "output",
-      ).slice();
+      );
+      // TextDecoder copies into an immutable JS string before either Wasm
+      // allocation is released in finally. A second Uint8Array copy here
+      // only duplicates the (potentially megabyte-sized) result buffer.
       return JSON.parse(decoder.decode(output));
     } finally {
-      if (outputPointer !== 0 && outputLength !== 0) dealloc(outputPointer, outputLength);
-      dealloc(inputPointer, input.byteLength);
+      if (outputPointer !== 0 && outputLength !== 0) dealloc(outputHandle, outputLength);
+      dealloc(inputHandle, input.byteLength);
     }
   }
 
@@ -255,7 +292,7 @@ export async function instantiateClassGroupCore(bytes) {
     invoke,
     diagnostics() {
       return Object.freeze({
-        abiVersion: ABI_VERSION,
+        abiVersion: reactorAbiVersion,
         imports: imports.map(({ module, name, kind }) => ({ module, name, kind })),
         exports: WebAssembly.Module.exports(module),
         compileMilliseconds,

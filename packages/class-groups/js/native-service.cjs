@@ -147,7 +147,8 @@ class NativeClassGroupService {
     this.nextId = 0;
     this.closed = false;
     this.child = undefined;
-    this.buffer = Buffer.alloc(0);
+    this.chunks = [];
+    this.bufferedBytes = 0;
     this.pending = undefined;
     this.queue = Promise.resolve();
   }
@@ -161,7 +162,8 @@ class NativeClassGroupService {
       windowsHide: true,
     });
     this.child = child;
-    this.buffer = Buffer.alloc(0);
+    this.chunks = [];
+    this.bufferedBytes = 0;
     child.stdout.on("data", (chunk) => this.receive(child, generation, chunk));
     child.on("error", (error) => this.fail(child, generation, error));
     child.on("exit", (code, signal) => {
@@ -175,7 +177,8 @@ class NativeClassGroupService {
   fail(child, generation, error) {
     if (child !== this.child || generation !== this.generation) return;
     this.child = undefined;
-    this.buffer = Buffer.alloc(0);
+    this.chunks = [];
+    this.bufferedBytes = 0;
     if (this.pending !== undefined) {
       const pending = this.pending;
       this.pending = undefined;
@@ -186,19 +189,25 @@ class NativeClassGroupService {
 
   receive(child, generation, chunk) {
     if (child !== this.child || generation !== this.generation) return;
-    this.buffer = Buffer.concat([this.buffer, chunk]);
-    if (this.buffer.byteLength > this.maximumLineBytes) {
+    this.bufferedBytes += chunk.byteLength;
+    if (this.bufferedBytes > this.maximumLineBytes) {
       this.retire(new Error("native class-group response exceeded its byte limit"));
       return;
     }
-    const newline = this.buffer.indexOf(10);
-    if (newline < 0) return;
-    const line = this.buffer.subarray(0, newline);
-    this.buffer = this.buffer.subarray(newline + 1);
-    if (this.buffer.byteLength !== 0 || this.pending === undefined) {
+    const newline = chunk.indexOf(10);
+    if (newline < 0) {
+      this.chunks.push(chunk);
+      return;
+    }
+    if (newline !== chunk.byteLength - 1 || this.pending === undefined) {
       this.retire(new Error("native class-group service violated one-response framing"));
       return;
     }
+    const line = this.chunks.length === 0
+      ? chunk.subarray(0, newline)
+      : Buffer.concat([...this.chunks, chunk.subarray(0, newline)], this.bufferedBytes - 1);
+    this.chunks = [];
+    this.bufferedBytes = 0;
     const pending = this.pending;
     this.pending = undefined;
     pending.signal?.removeEventListener("abort", pending.onAbort);

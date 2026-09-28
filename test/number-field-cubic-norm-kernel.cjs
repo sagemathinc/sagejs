@@ -3,6 +3,7 @@
 "use strict";
 
 const assert = require("node:assert/strict");
+const { existsSync } = require("node:fs");
 const { join } = require("node:path");
 const { spawnSync } = require("node:child_process");
 const test = require("node:test");
@@ -16,12 +17,13 @@ const sagejsArguments = [
   "-",
 ];
 
-function run(executable, args, source, timeout = 120_000) {
+function run(executable, args, source, timeout = 120_000, env = process.env) {
   const result = spawnSync(executable, args, {
     cwd: root,
     encoding: "utf8",
     input: source,
     timeout,
+    env,
   });
   if (result.error) throw result.error;
   assert.equal(result.status, 0, result.stderr || result.stdout);
@@ -29,7 +31,14 @@ function run(executable, args, source, timeout = 120_000) {
 }
 
 function runSagejs(source, timeout = 120_000) {
-  return run(sagejs, sagejsArguments, source, timeout);
+  // These kernel regressions inspect the bounded Python cubic engine's
+  // diagnostics. Decline the optional Rust service only in this child.
+  const unavailableService = join(root, "test", "__absent_cubic_class_group_service__");
+  assert.equal(existsSync(unavailableService), false);
+  return run(sagejs, sagejsArguments, source, timeout, {
+    ...process.env,
+    SAGEJS_CLASS_GROUP_SERVICE: unavailableService,
+  });
 }
 
 const kernelDifferential = String.raw`

@@ -321,7 +321,8 @@ function validateRustMathCorePolicy(manifest, options = {}) {
     manifest.backend_id !== "handwritten-rust-math-core" ||
     manifest.status !== "alpha-automatic-dispatch" ||
     manifest.source_model !== "separate-handwritten-implementation" ||
-    manifest.automatic_dispatch !== "enabled-for-admitted-cubic-alpha"
+    manifest.automatic_dispatch !==
+      "enabled-for-admitted-cubic-and-imaginary-quadratic-alpha"
   ) {
     throw new Error(
       "Rust math core must remain a separate alpha, production-receipt-gated backend",
@@ -348,6 +349,27 @@ function validateRustMathCorePolicy(manifest, options = {}) {
   ) {
     throw new Error(
       "Rust math-core alpha dispatch must retain its admitted domain, proof, fallback, artifact, and production-promotion boundaries",
+    );
+  }
+  const imaginaryDispatch =
+    manifest.imaginary_quadratic_automatic_dispatch_contract || {};
+  if (
+    imaginaryDispatch.release_channel !== "alpha" ||
+    imaginaryDispatch.admitted_domain !==
+      "negative-fundamental-discriminant-at-most-200000000000-and-at-most-50000-reduced-forms" ||
+    imaginaryDispatch.proof_authority !==
+      "exact-unconditional-complete-reduced-form-enumeration" ||
+    imaginaryDispatch.fallback_boundary !==
+      "typed-capability-or-resource-decline-before-publication-only" ||
+    imaginaryDispatch.artifact_binding !== "authenticated-host-artifact-sha256" ||
+    imaginaryDispatch.distribution_gate !==
+      "existing-release-provenance-safety-and-license-review" ||
+    imaginaryDispatch.production_promotion_receipt_required !== true ||
+    imaginaryDispatch.authorization !==
+      "project-owner-public-imaginary-quadratic-goal-2026-09-24"
+  ) {
+    throw new Error(
+      "Rust imaginary-quadratic alpha dispatch must retain its unconditional domain, fallback, artifact, and distribution boundaries",
     );
   }
   const contract = manifest.public_contract || {};

@@ -43,11 +43,13 @@ test("default cubic class-unit calls prime every measured artifact mode", () => 
 import sagejs.number_fields.class_unit_groups as class_unit_module
 import sagejs.number_fields.cubic_class_number as cubic_module
 import sagejs.number_fields.cubic_class_number_native_runtime as native_cubic_runtime
+import sagejs.number_fields.rust_class_group_runtime as rust_class_group_runtime
 
 # This test specifies the bounded Python artifact modes.  The resident native
-# scalar frontier has its own dispatch and receipt tests, so make it decline
-# here rather than letting the installed native pack bypass this producer.
+# scalar frontier and Rust class-unit context have their own dispatch and
+# receipt tests, so make both decline rather than bypassing this producer.
 native_cubic_runtime.certified_complex_cubic_class_number = lambda field: None
+rust_class_group_runtime.rust_class_unit_context = lambda *args, **kwargs: None
 
 original_projection = class_unit_module.cubic_class_number_projection
 original_producer = cubic_module.bounded_cubic_minkowski_class_number
@@ -182,11 +184,13 @@ test("automatic cubic preflight remains acceleration-only and cache-safe", () =>
   const output = runPublic(String.raw`
 import sagejs.number_fields.cubic_class_number as cubic_module
 import sagejs.number_fields.cubic_class_number_native_runtime as native_cubic_runtime
+import sagejs.number_fields.rust_class_group_runtime as rust_class_group_runtime
 
 # Keep this authority/caching test on the bounded Python artifact path.  Native
-# scalar dispatch is covered independently and may otherwise satisfy the
-# request before the producer interposition below is observable.
+# scalar and Rust class-unit dispatch are covered independently and may
+# otherwise satisfy the request before producer interposition is observable.
 native_cubic_runtime.certified_complex_cubic_class_number = lambda field: None
+rust_class_group_runtime.rust_class_unit_context = lambda *args, **kwargs: None
 
 original_producer = cubic_module.bounded_cubic_minkowski_class_number
 producer_calls = []

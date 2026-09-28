@@ -6,11 +6,11 @@
   "inputs": {
     "cargo_toml": {
       "path": "packages/class-groups/Cargo.toml",
-      "sha256": "0f1c21e48831183a883972cf71679014e4013651d04e6ebbf7e05be2471d8737"
+      "sha256": "3816eccf748b4521fbd0443048430776322a7be6afa039bcf4c15896ac612a3f"
     },
     "cargo_lock": {
       "path": "packages/class-groups/Cargo.lock",
-      "sha256": "6157c8ea9a89631969193354e2fd9a997ca6aa76f2f1ee0e9d66d0ec1d243db5"
+      "sha256": "1d8feca95469af9404a5a40e7675a13a50c369ec7c8da3cd73a85ee1d05bcd82"
     },
     "build_rs": {
       "path": "packages/class-groups/build.rs",
@@ -308,6 +308,16 @@
       "notes": "Original exact normal-form code retaining operation witnesses; mathematical similarity to other HNF/SNF implementations is not source evidence."
     },
     {
+      "path": "packages/class-groups/src/imaginary.rs",
+      "sha256": "bd3784f119b1a8562124870aa93bcfdc78b2bcc75ff43c98a23e9cea230f5cfe",
+      "classification": "original",
+      "declared_license_expression": "GPL-2.0-or-later",
+      "mapping_status": "not_applicable",
+      "mappings": [],
+      "missing_mapping_explanation": null,
+      "notes": "First-party exact reduced binary quadratic forms, composition, class map, and detached verifier; no translated upstream source body is claimed."
+    },
+    {
       "path": "packages/class-groups/src/ideal_arithmetic.rs",
       "sha256": "4e18797b8b645b761c58b82d73af0a7c30eef0ddd4659f57624f9c3d5b4a9a52",
       "classification": "behavioral_reimplementation",
@@ -345,7 +355,7 @@
     },
     {
       "path": "packages/class-groups/src/lib.rs",
-      "sha256": "b06f5b1f53d9e18b5a071197cddaf7002529f2bbd979a365d9431bf1a88f9bc4",
+      "sha256": "e3368af05672093f7a1b6a78a2a14ab1ea143292f12c2c5a6237a8d4f6a032e9",
       "classification": "original",
       "declared_license_expression": "GPL-2.0-or-later",
       "mapping_status": "not_applicable",
@@ -534,7 +544,7 @@
     },
     {
       "path": "packages/class-groups/src/service.rs",
-      "sha256": "e06bf34b6cad483d8075829595e7e24c1dd4ef2652888d67384ed2ccbd90d450",
+      "sha256": "b641bb64ad31295533015b411cbbc1ca670b940740d6546b17fa60a2bc9d2e32",
       "classification": "original",
       "declared_license_expression": "GPL-2.0-or-later",
       "mapping_status": "not_applicable",

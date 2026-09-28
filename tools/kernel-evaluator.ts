@@ -442,6 +442,25 @@ export function createKernelEvaluator({
   let sourceEndsWithSemicolon = false;
   let numericLiteralPoolCounter = 0;
   let optimizationReport: SageOptimizationReport | undefined;
+  type CompilerContextSnapshot = {
+    classes: [string, unknown][];
+    intrinsicModules: [string, unknown][];
+    scopedFlags: [string, unknown][];
+  };
+  type RepeatedCell = {
+    source: string;
+    filename: string;
+    language: SageLanguageMode;
+    javascriptTemplate: string;
+    pooledNumbers: boolean;
+    context: CompilerContextSnapshot;
+    report: SageOptimizationReport;
+    reportJSON: string;
+    finalStatementIsAssignment: boolean;
+    sourceEndsWithSemicolon: boolean;
+    stable: boolean;
+  };
+  let repeatedCell: RepeatedCell | undefined;
   let activeParentId: string | undefined;
   let activeEvents: SageOutputEvent[] | undefined;
   let activeCommEvents: SageCommEvent[] | undefined;
@@ -450,6 +469,41 @@ export function createKernelEvaluator({
     SageLanguageMode,
     Record<string, boolean>
   >();
+
+  function compilerContext(): CompilerContextSnapshot {
+    return {
+      classes: Object.entries(toplevel?.classes ?? {}),
+      intrinsicModules: Object.entries(toplevel?.intrinsic_modules ?? {}),
+      scopedFlags: Object.entries(
+        scopedFlagsByLanguage.get("sage") ?? {},
+      ),
+    };
+  }
+
+  function sameCompilerContext(
+    left: CompilerContextSnapshot,
+    right: CompilerContextSnapshot,
+  ): boolean {
+    const sameEntries = (
+      first: [string, unknown][],
+      second: [string, unknown][],
+    ) => first.length === second.length && first.every(
+      ([key, value], index) => key === second[index][0] &&
+        Object.is(value, second[index][1]),
+    );
+    return sameEntries(left.classes, right.classes) &&
+      sameEntries(left.intrinsicModules, right.intrinsicModules) &&
+      sameEntries(left.scopedFlags, right.scopedFlags);
+  }
+
+  function repeatableSageCell(source: string): boolean {
+    // Reuse only source without compile-time definitions, imports, or
+    // directives. A repeated cell still executes on every call, so fresh
+    // mathematical results and exceptions are retained.
+    return source.length <= 8192 &&
+      !/(?:^|[\s;])(?:class|def|async|import|from|global|nonlocal|del|exec)\b/.test(source) &&
+      !/[%#@`\\]/.test(source) && !source.includes("ρσ_kernel_");
+  }
 
   function parserOptions(
     filename: string,
@@ -661,6 +715,25 @@ export function createKernelEvaluator({
       observerIdentifier: string;
     },
   ): string {
+    const repeatable = language === "sage" && !timeitOptions &&
+      !profileOptions && repeatableSageCell(source);
+    const before = repeatable ? compilerContext() : undefined;
+    const previous = repeatedCell;
+    if (repeatable && previous?.stable && before &&
+        previous.source === source && previous.filename === filename &&
+        previous.language === language &&
+        sameCompilerContext(previous.context, before)) {
+      optimizationReport = structuredClone(previous.report);
+      finalStatementIsAssignment = previous.finalStatementIsAssignment;
+      sourceEndsWithSemicolon = previous.sourceEndsWithSemicolon;
+      return previous.pooledNumbers
+        ? previous.javascriptTemplate.replaceAll(
+          "ρσ_kernel_cached_",
+          `ρσ_kernel_${numericLiteralPoolCounter++}_`,
+        )
+        : previous.javascriptTemplate;
+    }
+    repeatedCell = undefined;
     if (profileOptions && /^[ \t]*%js(?:[ \t]|$)/m.test(source)) {
       throw new TypeError(
         "optimizer profiling rejects raw `%js` regions because they cannot share " +
@@ -739,6 +812,40 @@ export function createKernelEvaluator({
         if (!exported.has(name) && !toplevel.classes[name]) {
           toplevel.classes[name] = classes[name];
         }
+      }
+    }
+    const poolPrefix = `ρσ_kernel_${numericLiteralPoolCounter - 1}_`;
+    const pooledNumbers = javascript.includes(poolPrefix);
+    const javascriptTemplate = pooledNumbers
+      ? javascript.replaceAll(poolPrefix, "ρσ_kernel_cached_") : javascript;
+    if (repeatable && before &&
+        !javascript.replaceAll(poolPrefix, "").includes("ρσ_kernel_") &&
+        sameCompilerContext(before, compilerContext())) {
+      // The report is diagnostic metadata, not a reason to reject a cell that
+      // compiled successfully.  If it cannot be copied or serialized, skip
+      // this optional optimization and retain the normal evaluation path.
+      try {
+        const report = structuredClone(optimizationReport!);
+        const reportJSON = JSON.stringify(report);
+        repeatedCell = {
+          source,
+          filename,
+          language,
+          javascriptTemplate,
+          pooledNumbers,
+          context: compilerContext(),
+          report,
+          reportJSON,
+          finalStatementIsAssignment,
+          sourceEndsWithSemicolon,
+          stable: previous?.source === source &&
+            previous.filename === filename && previous.language === language &&
+            previous.javascriptTemplate === javascriptTemplate &&
+            previous.reportJSON === reportJSON &&
+            sameCompilerContext(previous.context, compilerContext()),
+        };
+      } catch {
+        repeatedCell = undefined;
       }
     }
     return javascript;

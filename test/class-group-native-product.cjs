@@ -23,6 +23,7 @@ const {
   ARTIFACT_SCHEMA,
   NativeClassGroupClosedError,
   NativeClassGroupInterruptedError,
+  NativeClassGroupService,
   createNativeClassGroupBackend,
   createNativeClassGroupService,
   nativeClassGroupCapability,
@@ -167,6 +168,57 @@ test("a crashed process rejects its request and restarts without replay", {
   assert.equal(service.generation, firstGeneration + 1);
   assert.throws(() => session.publication(), NativeClassGroupInterruptedError);
   await service.close();
+});
+
+test("resident framing joins a fragmented map once and rejects oversized or trailing data", async () => {
+  const service = new NativeClassGroupService({ executable: "unused" }, {
+    maximumLineBytes: 1_000_000,
+  });
+  let killed = false;
+  const child = { kill() { killed = true; } };
+  service.child = child;
+  service.generation = 1;
+  const result = new Promise((resolve, reject) => {
+    service.pending = { id: "1", resolve, reject };
+  });
+  const largeMap = "x".repeat(650_000);
+  const line = Buffer.from(`${JSON.stringify({
+    schema: "sagejs.class-groups/service-response-v1",
+    abi: 1,
+    id: "1",
+    ok: true,
+    result: { largeMap },
+  })}\n`);
+  for (let offset = 0; offset < line.length; offset += 37_000) {
+    service.receive(child, 1, line.subarray(offset, offset + 37_000));
+  }
+  assert.deepEqual(await result, { largeMap });
+  assert.equal(killed, false);
+  assert.equal(service.bufferedBytes, 0);
+  assert.equal(service.chunks.length, 0);
+
+  const malformed = new Promise((resolve, reject) => {
+    service.pending = { id: "2", resolve, reject };
+  });
+  const malformedRejection = assert.rejects(malformed, /one-response framing/);
+  service.receive(child, 1, Buffer.from('{"id":"2"}\nextra'));
+  await malformedRejection;
+  assert.equal(killed, true);
+
+  const bounded = new NativeClassGroupService({ executable: "unused" }, {
+    maximumLineBytes: 32,
+  });
+  let boundedKilled = false;
+  const boundedChild = { kill() { boundedKilled = true; } };
+  bounded.child = boundedChild;
+  bounded.generation = 1;
+  const overflow = new Promise((resolve, reject) => {
+    bounded.pending = { id: "1", resolve, reject };
+  });
+  const overflowRejection = assert.rejects(overflow, /exceeded its byte limit/);
+  bounded.receive(boundedChild, 1, Buffer.alloc(33, 120));
+  await overflowRejection;
+  assert.equal(boundedKilled, true);
 });
 
 test("unboxed backend calls are exposed only after authenticated capability handshake", {

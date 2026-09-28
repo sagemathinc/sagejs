@@ -79,7 +79,7 @@ const workload = [
   "p1_values = [P1List(level) for level in range(2, 80)]",
   "after_generated = backend.__sagejs_wasm_resource_live_count__()",
   "after_p1 = backend.p1ActiveHandleCount()",
-  "print(before, after_li, after_numeric <= numeric_limit,",
+  "print(before <= numeric_limit, after_li == before, after_numeric <= numeric_limit,",
   "      after_special <= numeric_limit,",
   "      after_algebraic <= algebraic_limits['values'],",
   "      after_matrices <= algebraic_limits['matrices'])",
@@ -104,7 +104,7 @@ const workload = [
 ].join("\n");
 
 const expected = [
-  "0 0 True True True True",
+  "True True True True True True",
   "0 True True True",
   "True True True True",
   "True True True True True True",

@@ -203,6 +203,29 @@ async function runtime(source = manifest()) {
   return { resolver, source };
 }
 
+test("Wasm signed-buffer ingress preserves exact integers without coercion", async () => {
+  const { packExactInt64Buffer } = await import("../wasm-pack-loader.mjs");
+  const values = [0, -1, Number.MAX_SAFE_INTEGER, -Number.MAX_SAFE_INTEGER,
+    (1n << 63n) - 1n, -(1n << 63n)];
+  assert.deepEqual(Array.from(packExactInt64Buffer(values)), values.map(BigInt));
+  for (const invalid of [true, false, "1", 1.5, NaN, Infinity,
+    Number.MAX_SAFE_INTEGER + 1, 1n << 63n, -(1n << 63n) - 1n]) {
+    assert.throws(() => packExactInt64Buffer([invalid]), TypeError);
+  }
+  assert.throws(() => packExactInt64Buffer(new Int32Array([1])), TypeError);
+
+  const source = manifest();
+  source.kernels[0].functions[0].bridge.parameters = [
+    { name: "rows", type: "Int64Buffer" },
+  ];
+  const { resolver } = await runtime(source);
+  const kernel = resolver.function(routes[0][1], routes[0][2]);
+  assert.equal(typeof kernel.packExactInt64Buffer, "function");
+  const packed = kernel.packExactInt64Buffer(values);
+  assert.equal(kernel(packed), 42n);
+  assert.deepEqual(Array.from(packed), values.map(BigInt));
+});
+
 test("authenticated pack routes observe every function across split source packs", async () => {
   const {
     instrumentAuthenticatedWasmKernelResolver,

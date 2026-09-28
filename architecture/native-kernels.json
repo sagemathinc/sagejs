@@ -816,6 +816,17 @@
       "platforms": ["linux-x64", "linux-arm64", "windows-x64", "macos-arm64"]
     },
     {
+      "id": "number-field-imaginary-map-production",
+      "source": "src/lib/sagejs/kernels/matrix/imaginary_map.py",
+      "functions": ["verify_packed_imaginary_map"],
+      "semantic_domain": "exact validation of sorted packed reduced binary quadratic forms, ideal representatives, and a bijective invariant-factor coordinate map for bounded negative fundamental discriminants",
+      "fallback": "same-source",
+      "host_isolation": "certified",
+      "oracles": ["cpython", "javascript", "rust", "pari"],
+      "benchmark": "bench:public-imaginary-class-group",
+      "platforms": ["linux-x64", "linux-arm64", "windows-x64", "macos-arm64"]
+    },
+    {
       "id": "number-field-zeta-coefficients-production",
       "source": "src/lib/sagejs/number_fields/zeta_coefficient_kernel.py",
       "functions": [

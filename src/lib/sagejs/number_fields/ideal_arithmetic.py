@@ -456,6 +456,13 @@ def packed_ideal_product_basis_from_bases(
         return values[: degree * degree], int(denominator)
     except (ImportError, OverflowError, RuntimeError, TypeError, ValueError):
         return None
+    except Exception as error:
+        # A Wasm IntegerBuffer reports fixed-limb exhaustion as a JavaScript
+        # RangeError, which is not one of the Python exception classes above.
+        # The caller has an ordinary exact ideal-product fallback.
+        if "IntegerBuffer word capacity exceeded" in str(error):
+            return None
+        raise
 
 
 def _packed_ideal_product(left: Any, right: Any) -> Any:

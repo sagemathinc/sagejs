@@ -13,9 +13,13 @@ const {
   installNodeHost,
 } = require("../dist/tools/host.js");
 
-function fakeService(directory, corrupt = false) {
-  const filename = path.join(directory, corrupt ? "corrupt-service" : "class-group-service");
-  const startup = path.join(directory, corrupt ? "corrupt-started" : "started");
+function fakeService(directory, corrupt = false, wrongId = false, declined = false, badCore = false,
+  legacyCompact = false, badFrame = false) {
+  const fixtureName = badFrame ? "bad-frame" : legacyCompact ? "legacy-compact" : corrupt ? "corrupt" : wrongId ? "wrong-id" : declined ? "declined" :
+    badCore ? "bad-core" : "normal";
+  const filename = path.join(directory, fixtureName + "-service");
+  const startup = path.join(directory, fixtureName + "-started");
+  const transportLog = path.join(directory, fixtureName + "-transports");
   const source = `#!/usr/bin/env node
 "use strict";
 const fs = require("node:fs");
@@ -27,13 +31,65 @@ lines.on("line", (input) => {
   let request;
   try { request = JSON.parse(input); }
   catch { return; }
+  if (request.operation === "imaginary-class-group") {
+    fs.appendFileSync(${JSON.stringify(transportLog)}, String(request.transport) + "\\n");
+  }
   if (${JSON.stringify(corrupt)}) {
     process.stdout.write(JSON.stringify({ schema: "wrong", abi: 1, id: request.id, ok: true, result: {} }) + "\\n");
+    return;
+  }
+  if (request.operation === "imaginary-class-group" && ${JSON.stringify(badFrame)}) {
+    process.stdout.write("{}\\nextra");
+    return;
+  }
+  if ((request.operation === "imaginary-class-group" ||
+       request.operation === "imaginary-class-number") && ${JSON.stringify(wrongId)}) {
+    process.stdout.write(JSON.stringify({ schema: "sagejs.class-groups/service-response-v1", abi: 1,
+      id: "wrong-host-id", ok: true, result: {} }) + "\\n");
+    return;
+  }
+  if (request.operation === "imaginary-class-group" && ${JSON.stringify(declined)}) {
+    process.stdout.write(JSON.stringify({ schema: "sagejs.class-groups/service-response-v1", abi: 1,
+      id: request.id, ok: false, error: { schema: "sagejs.class-groups/service-response-v1",
+      outcome: "error", category: "capability-declined", operation: request.operation,
+      message: "fixture packed decline" } }) + "\\n");
+    return;
+  }
+  if (request.operation === "imaginary-class-group" && request.transport === "core-v3" &&
+      ${JSON.stringify(legacyCompact)}) {
+    process.stdout.write(JSON.stringify({ schema: "sagejs.class-groups/service-response-v1", abi: 1,
+      id: request.id, ok: false, error: { schema: "sagejs.class-groups/service-response-v1",
+      outcome: "error", category: "invalid-request", operation: request.operation,
+      message: "unsupported imaginary class-group transport" } }) + "\\n");
     return;
   }
   let result;
   if (request.operation === "open") {
     result = { generation, handle: "1", completion: { outcome: "complete-conditional-grh" }, servicePid: process.pid };
+  } else if (request.operation === "imaginary-class-number") {
+    result = { schema: "sagejs.class-groups/service-response-v1", outcome: "complete",
+      operation: request.operation, result: { discriminant: -23, classNumber: 3,
+        proofStatus: "unconditional-complete" }, servicePid: process.pid };
+  } else if (request.operation === "imaginary-class-group") {
+    const form = { a: 1, b: 1, c: 1 };
+    result = { schema: "sagejs.class-groups/service-response-v1", outcome: "complete",
+      operation: request.operation, result: { discriminant: -3, classNumber: 1, invariantFactors: [],
+        completeClassMap: [{ form, inverseForm: form, coordinates: [],
+          representativeIdeal: { norm: 1, basisColumns: [[1, 0], [-1, 1]] } }],
+        certificate: { discriminant: -3, reducedForms: [form] } },
+      servicePid: process.pid };
+    if (request.transport === "core-v2" || request.transport === "core-v3") {
+      result.result.completeClassMapCorePacked = ${JSON.stringify(badCore)} ? [0, 1] : [1, 1];
+      result.result.completeClassMapLength = 1;
+      delete result.result.completeClassMap;
+      if (request.transport === "core-v3") {
+        result.result.certificate.reducedFormsFromCoreMap = true;
+      } else {
+        result.result.certificate.reducedFormsPacked = [1, 1, 1];
+      }
+      delete result.result.certificate.reducedForms;
+    }
+    if (request.largePadding === 650000) result.padding = "x".repeat(request.largePadding);
   } else if (request.generation !== generation || request.handle !== "1") {
     process.stdout.write(JSON.stringify({ schema: "sagejs.class-groups/service-response-v1", abi: 1, id: request.id, ok: false, error: { schema: "sagejs.class-groups/service-response-v1", outcome: "error", category: "stale-handle", operation: request.operation, message: "stale fixture handle" } }) + "\\n");
     return;
@@ -53,7 +109,7 @@ lines.on("line", (input) => {
 });
 `;
   fs.writeFileSync(filename, source, { mode: 0o700 });
-  return { filename, startup };
+  return { filename, startup, transportLog };
 }
 
 async function assertProcessExited(pid) {
@@ -89,6 +145,7 @@ async function main() {
     const target = {};
     const uninstall = installNodeHost(target);
     const host = target.__sagejs_host__;
+    const initialCapabilityEpoch = host.classGroupCapabilityEpoch;
     const backend = {
       call(operation, request) {
         const envelope = host.call("classGroup", [operation, request]);
@@ -109,12 +166,59 @@ async function main() {
       mathematicalScope: "absolute-monic-cubic-conditional-grh",
       maximumResidentSessions: 4,
       proofModes: ["conditional-grh"],
-      operations: ["capability", "open", "summary", "query", "publication", "close"],
+      imaginaryQuadratic: {
+        proofMode: "unconditional",
+        maximumAbsoluteDiscriminant: 200_000_000_000,
+        operations: ["imaginary-class-number", "imaginary-class-group",
+          "imaginary-class-group-summary", "imaginary-class-coordinate",
+          "imaginary-verify-presentation"],
+      },
+      operations: ["capability", "open", "summary", "publication", "query", "close",
+        "imaginary-class-number", "imaginary-class-group",
+        "imaginary-class-group-summary", "imaginary-class-coordinate",
+        "imaginary-verify-presentation"],
       route: "native-resident-worker",
       artifactSha256: crypto.createHash("sha256").update(fs.readFileSync(fixture.filename)).digest("hex"),
       artifactBytes: fs.statSync(fixture.filename).size,
     });
     assert.equal(fs.existsSync(fixture.startup), false, "capability probe must stay lazy");
+    assert.strictEqual(host.classGroupCapabilityEpoch, initialCapabilityEpoch);
+    assert.equal(backend.call("capability", {}).outcome, "available");
+    assert.strictEqual(host.classGroupCapabilityEpoch, initialCapabilityEpoch);
+
+    const imaginary = backend.call("imaginary-class-number", {
+      polynomialAscending: ["6", "-1", "1"],
+    });
+    assert.equal(imaginary.result.classNumber, 3);
+    assert.equal(fs.existsSync(fixture.startup), true);
+    const workerCapabilityEpoch = host.classGroupCapabilityEpoch;
+    assert.notStrictEqual(workerCapabilityEpoch, initialCapabilityEpoch);
+    assert.equal(backend.call("capability", {}).outcome, "available");
+    assert.strictEqual(host.classGroupCapabilityEpoch, workerCapabilityEpoch);
+
+    const groupRequest = ["imaginary-class-group", { polynomialAscending: ["1", "-1", "1"] }];
+    const malformedCompact = host.call("classGroupCompact", ["imaginary-class-group", null]);
+    assert.equal(malformedCompact.ok, false);
+    assert.equal(malformedCompact.error.name, "TypeError");
+    const fullGroup = host.call("classGroup", groupRequest);
+    const compactGroup = host.call("classGroupCompact", groupRequest);
+    assert.equal(fullGroup.ok, true);
+    assert.equal(compactGroup.ok, true);
+    assert.equal(fullGroup.value.result.completeClassMap.length, 1);
+    assert.deepEqual(fullGroup.value.result.certificate.reducedForms, [{ a: 1, b: 1, c: 1 }]);
+    assert.equal(compactGroup.value.result.completeClassMap, undefined);
+    assert.deepEqual(compactGroup.value.result.completeClassMapCorePacked, [1, 1]);
+    assert.equal(compactGroup.value.result.completeClassMapPacked, undefined);
+    assert.equal(compactGroup.value.result.completeClassMapLength, 1);
+    assert.equal(compactGroup.value.result.certificate.reducedForms, undefined);
+    assert.equal(compactGroup.value.result.certificate.reducedFormsFromCoreMap, true);
+    assert.equal(compactGroup.value.result.certificate.reducedFormsPacked, undefined);
+    const fragmentedGroup = host.call("classGroupCompact", ["imaginary-class-group", {
+      polynomialAscending: ["1", "-1", "1"], largePadding: 650000,
+    }]);
+    assert.equal(fragmentedGroup.ok, true);
+    assert.equal(fragmentedGroup.value.padding.length, 650000);
+    assert.deepEqual(fragmentedGroup.value.result.completeClassMapCorePacked, [1, 1]);
 
     const opened = backend.call("open", { request: { polynomialAscending: ["-1", "-1", "0", "1"] } });
     assert.match(opened.generation, /^[0-9]+$/);
@@ -137,13 +241,17 @@ async function main() {
     assert.equal(backend.call("close", binding).outcome, "closed");
     uninstall();
     assert.equal(target.__sagejs_host__, undefined);
+    assert.notStrictEqual(host.classGroupCapabilityEpoch, workerCapabilityEpoch);
     await assertProcessExited(opened.servicePid);
 
     const restarted = new NodeClassGroupBackend();
     const beforeRestart = restarted.call("open", { request: {} });
+    const firstWorkerEpoch = restarted.capabilityEpoch;
     restarted.retireWorker();
+    assert.notStrictEqual(restarted.capabilityEpoch, firstWorkerEpoch);
     await assertProcessExited(beforeRestart.servicePid);
     const afterRestart = restarted.call("open", { request: {} });
+    assert.notStrictEqual(restarted.capabilityEpoch, firstWorkerEpoch);
     assert.notEqual(afterRestart.generation, beforeRestart.generation);
     assert.throws(
       () => restarted.call("publication", {
@@ -163,11 +271,15 @@ async function main() {
     try {
       const result = await session.evaluate([
         "import sagejs.runtime as runtime",
+        "from sagejs.number_fields import rust_class_group_runtime as rust_runtime",
         "backend = runtime.class_group_backend()",
         "capability = backend.call('capability', {})",
         "print(capability['outcome'], capability['route'])",
+        "first_imaginary = rust_runtime._imaginary_backend()[1]",
+        "print('cached-capability', rust_runtime._imaginary_backend()[1] is first_imaginary)",
         "opened = backend.call('open', {'request': {'polynomialAscending': ['-1', '-1', '0', '1']}})",
         "print(opened['handle'], opened['completion']['outcome'])",
+        "print('worker-invalidated', rust_runtime._imaginary_backend()[1] is first_imaginary)",
         "print(backend.call('publication', {'generation': opened['generation'], 'handle': opened['handle']})['schema'])",
         "try:",
         "    backend.call('open', {'request': {'unsafe': 9007199254740993}})",
@@ -176,7 +288,7 @@ async function main() {
       ].join("\n"));
       assert.equal(
         result.stdout.trim(),
-        "available native-resident-worker\n1 complete-conditional-grh\nfixture-publication-v1\nunsafe integer rejected",
+        "available native-resident-worker\ncached-capability True\n1 complete-conditional-grh\nworker-invalidated False\nfixture-publication-v1\nunsafe integer rejected",
       );
     } finally {
       await session.close();
@@ -189,8 +301,87 @@ async function main() {
       () => corrupt.call("open", { request: {} }),
       (error) => error.code === "EBADMSG",
     );
+    assert.throws(
+      () => corrupt.call("imaginary-class-group", {
+        polynomialAscending: ["1", "-1", "1"], transport: "core-v2",
+      }),
+      (error) => error.code === "EBADMSG",
+    );
+    assert.throws(
+      () => corrupt.call("imaginary-class-number", {
+        polynomialAscending: ["6", "-1", "1"],
+      }),
+      (error) => error.code === "EBADMSG",
+    );
     corrupt.close();
     await assertProcessExited(Number(fs.readFileSync(corruptFixture.startup, "utf8")));
+
+    const wrongIdFixture = fakeService(directory, false, true);
+    process.env.SAGEJS_CLASS_GROUP_SERVICE = wrongIdFixture.filename;
+    const wrongIdBackend = new NodeClassGroupBackend();
+    assert.throws(
+      () => wrongIdBackend.call("imaginary-class-group", {
+        polynomialAscending: ["1", "-1", "1"], transport: "core-v2",
+      }),
+      (error) => error.code === "EBADMSG",
+    );
+    assert.throws(
+      () => wrongIdBackend.call("imaginary-class-number", {
+        polynomialAscending: ["6", "-1", "1"],
+      }),
+      (error) => error.code === "EBADMSG",
+    );
+    wrongIdBackend.close();
+    await assertProcessExited(Number(fs.readFileSync(wrongIdFixture.startup, "utf8")));
+
+    const badFrameFixture = fakeService(directory, false, false, false, false, false, true);
+    process.env.SAGEJS_CLASS_GROUP_SERVICE = badFrameFixture.filename;
+    const badFrameBackend = new NodeClassGroupBackend();
+    assert.throws(
+      () => badFrameBackend.call("imaginary-class-group", {
+        polynomialAscending: ["1", "-1", "1"], transport: "core-v3",
+      }),
+      (error) => error.code === "EBADMSG",
+    );
+    badFrameBackend.close();
+    await assertProcessExited(Number(fs.readFileSync(badFrameFixture.startup, "utf8")));
+
+    const declinedFixture = fakeService(directory, false, false, true);
+    process.env.SAGEJS_CLASS_GROUP_SERVICE = declinedFixture.filename;
+    const declinedBackend = new NodeClassGroupBackend();
+    assert.throws(
+      () => declinedBackend.call("imaginary-class-group", {
+        polynomialAscending: ["1", "-1", "1"], transport: "core-v2",
+      }),
+      (error) => error.code === "capability-declined" &&
+        error.message === "fixture packed decline",
+    );
+    declinedBackend.close();
+    await assertProcessExited(Number(fs.readFileSync(declinedFixture.startup, "utf8")));
+
+    const legacyFixture = fakeService(directory, false, false, false, false, true);
+    process.env.SAGEJS_CLASS_GROUP_SERVICE = legacyFixture.filename;
+    const legacyTarget = {};
+    const uninstallLegacy = installNodeHost(legacyTarget);
+    for (let index = 0; index < 2; index += 1) {
+      const response = legacyTarget.__sagejs_host__.call("classGroupCompact", groupRequest);
+      assert.equal(response.ok, true);
+      assert.deepEqual(response.value.result.certificate.reducedFormsPacked, [1, 1, 1]);
+    }
+    assert.deepEqual(fs.readFileSync(legacyFixture.transportLog, "utf8").trim().split("\n"),
+      ["core-v3", "core-v2", "core-v2"]);
+    uninstallLegacy();
+    await assertProcessExited(Number(fs.readFileSync(legacyFixture.startup, "utf8")));
+
+    const badCoreFixture = fakeService(directory, false, false, false, true);
+    process.env.SAGEJS_CLASS_GROUP_SERVICE = badCoreFixture.filename;
+    const badCoreTarget = {};
+    const uninstallBadCore = installNodeHost(badCoreTarget);
+    const badCoreResponse = badCoreTarget.__sagejs_host__.call("classGroupCompact", groupRequest);
+    assert.equal(badCoreResponse.ok, false);
+    assert.equal(badCoreResponse.error.code, "EBADMSG");
+    uninstallBadCore();
+    await assertProcessExited(Number(fs.readFileSync(badCoreFixture.startup, "utf8")));
 
     process.env.SAGEJS_CLASS_GROUP_SERVICE = path.join(directory, "missing");
     const unavailable = new NodeClassGroupBackend();

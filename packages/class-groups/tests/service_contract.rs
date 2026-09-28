@@ -57,6 +57,355 @@ fn tiny_request() -> Value {
 }
 
 #[test]
+fn bounded_rank_four_summary_has_a_detached_proof_and_exact_coordinates() {
+    let mut service = ProductService::new();
+    let polynomial = ["3754", "-1", "1"];
+    let summary = call(
+        &mut service,
+        "rank4-summary",
+        "imaginary-class-group-summary",
+        json!({"polynomialAscending": polynomial}),
+    );
+    assert_eq!(summary["ok"], true, "{summary}");
+    let presentation = &summary["result"]["result"];
+    assert_eq!(presentation["classNumber"], 96);
+    assert_eq!(presentation["invariantFactors"], json!([2, 2, 2, 12]));
+    let generator_forms = presentation["generators"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|generator| {
+            let form = &generator["form"];
+            json!([
+                form["a"].to_string(),
+                form["b"].to_string(),
+                form["c"].to_string()
+            ])
+        })
+        .collect::<Vec<_>>();
+    let verified = call(
+        &mut service,
+        "rank4-proof",
+        "imaginary-verify-presentation",
+        json!({
+            "polynomialAscending": polynomial,
+            "classNumber": 96,
+            "invariantFactors": [2, 2, 2, 12],
+            "generatorForms": generator_forms,
+        }),
+    );
+    assert_eq!(verified["ok"], true, "{verified}");
+    let mut forged = generator_forms.clone();
+    forged[1] = forged[0].clone();
+    let rejected = call(
+        &mut service,
+        "rank4-forgery",
+        "imaginary-verify-presentation",
+        json!({
+            "polynomialAscending": polynomial,
+            "classNumber": 96,
+            "invariantFactors": [2, 2, 2, 12],
+            "generatorForms": forged,
+        }),
+    );
+    assert_eq!(rejected["ok"], false);
+    assert_eq!(rejected["error"]["category"], "invalid-request");
+    let coordinate = call(
+        &mut service,
+        "rank4-coordinate",
+        "imaginary-class-coordinate",
+        json!({
+            "polynomialAscending": polynomial,
+            "formCoefficients": generator_forms[3],
+        }),
+    );
+    assert_eq!(coordinate["ok"], true, "{coordinate}");
+    assert_eq!(coordinate["result"]["presentation"], *presentation);
+    assert_eq!(coordinate["result"]["coordinates"], json!([0, 0, 0, 1]));
+}
+
+#[test]
+fn imaginary_quadratic_operations_are_unconditional_and_public() {
+    let mut service = ProductService::new();
+    let capability = call(&mut service, "iq-cap", "capability", json!({}));
+    assert_eq!(
+        capability["result"]["imaginaryQuadratic"]["proofMode"],
+        "unconditional"
+    );
+    assert_eq!(
+        capability["result"]["imaginaryQuadratic"]["transports"],
+        json!(["core-v3", "core-v2"])
+    );
+
+    let number = call(
+        &mut service,
+        "iq-number",
+        "imaginary-class-number",
+        json!({"polynomialAscending": ["6", "-1", "1"]}),
+    );
+    assert_eq!(number["ok"], true, "{number}");
+    assert_eq!(number["result"]["result"]["discriminant"], -23);
+    assert_eq!(number["result"]["result"]["classNumber"], 3);
+    assert_eq!(
+        number["result"]["result"]["proofStatus"],
+        "unconditional-complete"
+    );
+
+    let group = call(
+        &mut service,
+        "iq-group",
+        "imaginary-class-group",
+        json!({"polynomialAscending": ["6", "-1", "1"]}),
+    );
+    assert_eq!(group["ok"], true, "{group}");
+    let result = &group["result"]["result"];
+    assert_eq!(result["classNumber"], 3);
+    assert_eq!(result["invariantFactors"], json!([3]));
+    assert_eq!(result["completeClassMap"].as_array().unwrap().len(), 3);
+    assert_eq!(result["proofStatus"], "unconditional-complete");
+    assert_eq!(result["runtimeUsesPariOrFixtureAnswers"], false);
+    assert!(
+        result["completeClassMap"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .all(|entry| {
+                entry["representativeIdeal"].is_object() && entry["coordinates"].is_array()
+            })
+    );
+
+    let packed = call(
+        &mut service,
+        "iq-group-packed",
+        "imaginary-class-group",
+        json!({"polynomialAscending": ["6", "-1", "1"], "transport": "core-v2"}),
+    );
+    assert_eq!(packed["ok"], true, "{packed}");
+    let mut expected = result.clone();
+    let entries = expected["completeClassMap"].as_array().unwrap().clone();
+    let mut core_rows = Vec::new();
+    for entry in &entries {
+        core_rows.push(entry["form"]["a"].clone());
+        core_rows.push(entry["form"]["b"].clone());
+        core_rows.extend(entry["coordinates"].as_array().unwrap().iter().cloned());
+    }
+    expected.as_object_mut().unwrap().remove("completeClassMap");
+    expected["completeClassMapCorePacked"] = json!(core_rows);
+    expected["completeClassMapLength"] = json!(entries.len());
+    let forms = expected["certificate"]["reducedForms"]
+        .as_array()
+        .unwrap()
+        .clone();
+    let mut packed_forms = Vec::new();
+    for form in &forms {
+        packed_forms.extend([form["a"].clone(), form["b"].clone(), form["c"].clone()]);
+    }
+    expected["certificate"]
+        .as_object_mut()
+        .unwrap()
+        .remove("reducedForms");
+    expected["certificate"]["reducedFormsPacked"] = json!(packed_forms);
+    assert_eq!(packed["result"]["result"], expected);
+
+    let derived = call(
+        &mut service,
+        "iq-group-derived",
+        "imaginary-class-group",
+        json!({"polynomialAscending": ["6", "-1", "1"], "transport": "core-v3"}),
+    );
+    assert_eq!(derived["ok"], true, "{derived}");
+    let mut expected_derived = expected.clone();
+    expected_derived["certificate"]
+        .as_object_mut()
+        .unwrap()
+        .remove("reducedFormsPacked");
+    expected_derived["certificate"]["reducedFormsFromCoreMap"] = json!(true);
+    assert_eq!(derived["result"]["result"], expected_derived);
+
+    let literal_unknown_id = call(
+        &mut service,
+        "unknown",
+        "imaginary-class-group",
+        json!({"polynomialAscending": ["6", "-1", "1"], "transport": "core-v2"}),
+    );
+    assert_eq!(literal_unknown_id["ok"], true);
+    assert_eq!(literal_unknown_id["id"], "unknown");
+
+    let unsupported_transport = call(
+        &mut service,
+        "iq-group-bad-transport",
+        "imaginary-class-group",
+        json!({"polynomialAscending": ["6", "-1", "1"], "transport": "unknown"}),
+    );
+    assert_eq!(unsupported_transport["ok"], false);
+    assert_eq!(
+        unsupported_transport["error"]["category"],
+        "invalid-request"
+    );
+}
+
+#[test]
+fn imaginary_presentation_omits_the_map_but_retains_exact_coordinate_queries() {
+    let mut service = ProductService::new();
+    let polynomial = json!(["3750000079", "-1", "1"]);
+    let summary = call(
+        &mut service,
+        "iq-summary",
+        "imaginary-class-group-summary",
+        json!({"polynomialAscending": polynomial}),
+    );
+    assert_eq!(summary["ok"], true, "{summary}");
+    let presentation = &summary["result"]["result"];
+    assert_eq!(
+        presentation["schema"],
+        "sagejs.class-groups/imaginary-generator-presentation-v1"
+    );
+    assert_eq!(presentation["discriminant"], -15_000_000_315_i64);
+    assert_eq!(presentation["classNumber"], 33_768);
+    assert_eq!(presentation["invariantFactors"], json!([2, 16_884]));
+    assert_eq!(presentation["proofStatus"], "unconditional-complete");
+    assert_eq!(presentation["runtimeUsesPariOrFixtureAnswers"], false);
+    assert_eq!(
+        presentation["certificate"]["reducedFormsFromExactCount"],
+        true
+    );
+    assert!(presentation.get("completeClassMap").is_none());
+    assert!(presentation.get("completeClassMapCorePacked").is_none());
+    assert!(presentation["certificate"].get("reducedForms").is_none());
+    assert!(serde_json::to_vec(&summary).unwrap().len() < 3_000);
+
+    let generator_forms = presentation["generators"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|generator| {
+            let form = &generator["form"];
+            json!([
+                form["a"].to_string(),
+                form["b"].to_string(),
+                form["c"].to_string()
+            ])
+        })
+        .collect::<Vec<_>>();
+    let verified = call(
+        &mut service,
+        "iq-verify",
+        "imaginary-verify-presentation",
+        json!({
+            "polynomialAscending": polynomial,
+            "classNumber": presentation["classNumber"],
+            "invariantFactors": presentation["invariantFactors"],
+            "generatorForms": generator_forms,
+        }),
+    );
+    assert_eq!(verified["ok"], true, "{verified}");
+    assert_eq!(verified["result"]["outcome"], "verified");
+    let forged = call(
+        &mut service,
+        "iq-forged",
+        "imaginary-verify-presentation",
+        json!({
+            "polynomialAscending": polynomial,
+            "classNumber": presentation["classNumber"],
+            "invariantFactors": presentation["invariantFactors"],
+            "generatorForms": [["1", "1", "3750000079"], generator_forms[1]],
+        }),
+    );
+    assert_eq!(forged["ok"], false);
+    assert_eq!(forged["error"]["category"], "invalid-request");
+
+    let generator = &presentation["generators"][0];
+    let form = &generator["form"];
+    let coordinates = call(
+        &mut service,
+        "iq-coordinate",
+        "imaginary-class-coordinate",
+        json!({
+            "polynomialAscending": polynomial,
+            "formCoefficients": [
+                form["a"].to_string(),
+                form["b"].to_string(),
+                form["c"].to_string(),
+            ],
+        }),
+    );
+    assert_eq!(coordinates["ok"], true, "{coordinates}");
+    assert_eq!(coordinates["result"]["presentation"], *presentation);
+    assert_eq!(coordinates["result"]["coordinates"], json!([1, 0]));
+    assert_eq!(coordinates["result"]["form"], *form);
+    assert_eq!(
+        coordinates["result"]["representativeIdeal"],
+        generator["representativeIdeal"]
+    );
+
+    let nonreduced = call(
+        &mut service,
+        "iq-nonreduced",
+        "imaginary-class-coordinate",
+        json!({
+            "polynomialAscending": polynomial,
+            "formCoefficients": ["2", "0", "1"],
+        }),
+    );
+    assert_eq!(nonreduced["ok"], false);
+    assert_eq!(nonreduced["error"]["category"], "invalid-request");
+
+    let higher_rank = call(
+        &mut service,
+        "iq-higher-rank",
+        "imaginary-class-group-summary",
+        json!({"polynomialAscending": ["105", "0", "1"]}),
+    );
+    assert_eq!(higher_rank["ok"], true, "{higher_rank}");
+    assert_eq!(higher_rank["result"]["result"]["invariantFactors"], json!([2, 2, 2]));
+    let eager = call(
+        &mut service,
+        "iq-higher-rank-eager",
+        "imaginary-class-group",
+        json!({"polynomialAscending": ["105", "0", "1"]}),
+    );
+    assert_eq!(eager["ok"], true);
+    assert_eq!(eager["result"]["result"]["classNumber"], 8);
+}
+
+#[test]
+fn imaginary_quadratic_rejections_are_typed_and_do_not_poison_service() {
+    let mut service = ProductService::new();
+    let invalid = call(
+        &mut service,
+        "bad",
+        "imaginary-class-number",
+        json!({
+            "polynomialAscending": ["9", "0", "1"]
+        }),
+    );
+    assert_eq!(invalid["ok"], false, "{invalid}");
+    assert_eq!(invalid["error"]["category"], "invalid-request");
+
+    let oversized = call(
+        &mut service,
+        "large",
+        "imaginary-class-group",
+        json!({
+            "polynomialAscending": ["50000000003", "-1", "1"]
+        }),
+    );
+    assert_eq!(oversized["ok"], false, "{oversized}");
+    assert_eq!(oversized["error"]["category"], "resource-exhausted");
+
+    let valid = call(
+        &mut service,
+        "recover",
+        "imaginary-class-number",
+        json!({
+            "polynomialAscending": ["1", "-1", "1"]
+        }),
+    );
+    assert_eq!(valid["ok"], true, "{valid}");
+    assert_eq!(valid["result"]["result"]["classNumber"], 1);
+}
+
+#[test]
 fn capability_and_errors_have_stable_typed_envelopes() {
     let mut service = ProductService::new();
     let capability = call(&mut service, "1", "capability", json!({}));
