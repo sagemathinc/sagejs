@@ -853,3 +853,34 @@ The integration owner must promote evidence in two steps:
 
 Until step 2, the content-addressed receipt is useful diagnostic evidence but
 must not be described as bound to or promoted from the dirty `gitCommit` value.
+
+## Public-boundary PARI diagnostic on `opt` (2026-09-28)
+
+The four [`opt-head0fd17` receipts](opt-head0fd17-matched-polynomial.json)
+measure 15 alternating, warm-resident calls per arm and field on the unchanged
+11-field v2 panel. The isolated `opt` checkout was clean at source commit
+`0fd17dc594f63b190073c96523c0abc806e80cec`; its class-group service SHA-256
+was `2586350cb79e84fd53cda7785cbf1a2b1341bab799da8a020c3159bed60ddfb8`.
+The authenticated PARI 2.17.4 tree was copied into that checkout, and a
+private mount namespace bound it at the control's pinned path. The host's
+existing PARI symlink was not changed. Every recorded class number and group
+structure matched the frozen panel. These are unpromoted, host-specific
+diagnostics, not a release performance claim.
+
+| Public operation and starting boundary | Sage.js/PARI geometric mean of field median ratios | Smallest–largest field ratio |
+| --- | ---: | ---: |
+| [Full group, fresh polynomial](opt-head0fd17-matched-polynomial.json) | 4.442 | 2.310–10.111 |
+| [Full group, prepared field](opt-head0fd17-matched-prepared.json) | 2.967 | 1.613–6.372 |
+| [Class number, fresh polynomial](opt-head0fd17-scalar-polynomial.json) | 5.391 | 1.353–13.905 |
+| [Class number, prepared field](opt-head0fd17-scalar-prepared.json) | 3.653 | 0.853–17.559 |
+
+The group diagnostic compares Sage.js's public evaluation and projection with
+PARI's rank-zero `bnfinit` projection; PARI does not return an exact complete
+ideal-class map in this clock. The scalar diagnostic mixes PARI's unconditional
+`qfbclassno(D,0)` below `|D|=2e10` with GRH-conditional `bnfinit(nf,0)` above
+that boundary, while Sage.js remains unconditional. The resident interpreters
+also have different IPC costs. Thus neither ratio proves an equal-work speed
+comparison. It does establish that the current public boundary has a material
+gap, especially for tiny fields, despite the separately passing native Rust
+qualification. The receipts retain raw samples and exact software identities
+for further profiling.
