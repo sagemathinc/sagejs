@@ -1016,25 +1016,23 @@ def _str_replace(
     string = _native_string(string)
     old = _str_require_string(old, "replace")
     repl = _str_require_string(repl, "replace")
-    if count is runtime.undefined:
-        left = runtime.number.MAX_SAFE_INTEGER
-    else:
-        left = int(count)
-        if left < 0:
-            left = runtime.number.MAX_SAFE_INTEGER
+    left = -1 if count is runtime.undefined else int(count)
     if left == 0:
         return string
     if old == "":
+        if left < 0:
+            left = len(string) + 1
         pieces = []
-        pos = 0
-        while pos <= len(string):
+        for character in string:
             if left > 0:
                 pieces.append(repl)
                 left -= 1
-            if pos < len(string):
-                pieces.append(string[pos])
-            pos += 1
+            pieces.append(character)
+        if left > 0:
+            pieces.append(repl)
         return _str_join("", pieces)
+    if left < 0:
+        return _native_split(string, old).join(repl)
     pos = 0
     while left > 0:
         found = string.indexOf(old, pos)
