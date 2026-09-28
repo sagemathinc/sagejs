@@ -15,7 +15,8 @@ and review any changed digest. The cross-Linux-host and macOS receipts below
 concern the earlier
 `7344622aa162561860fef387e2133d59d1908b1aec71c8c1c15c57b7c98cd201`
 artifact; they do not certify these new bytes. The earlier same-host linked-object
-rebuild also concerns an older digest, not this candidate. Run:
+rebuild also concerns an older digest; a separate byte-matched link-map receipt
+for this candidate is recorded below. Run:
 
 ```sh
 sh packages/imaginary-quadratic-core/scripts/build-wasm.sh
@@ -157,10 +158,16 @@ inlined dependency code may have no separately linked object, linker output
 can transform selected members, and the legal obligations for the bundled
 WASI libc and every other component remain to be established independently.
 The current `e28a3e01` candidate has passed the locked build-graph and ABI
-inventory above, but has no byte-matched linked-object or cross-host rebuild
-receipt yet. Those earlier receipts must not be reused for this digest.
+inventory above. A fresh same-host `-C save-temps`/link-map rebuild produced
+byte-identical Wasm and the
+[`link-map-inventory-2026-09-28-current.json`](link-map-inventory-2026-09-28-current.json)
+receipt: 40 linked inputs, including 23 Rust-sysroot WASI libc members whose
+archive bytes match the pinned SDK. This is linked-object evidence for the
+current digest, not cross-host reproducibility, an artifact-derived SBOM, or
+distribution approval. The earlier cross-host receipts must not be reused for
+this digest.
 
-To collect a new linked-object inventory for the current candidate after
+To reproduce the linked-object inventory for the current candidate after
 preparing the pinned Wasm toolchain, run from the repository root:
 
 ```sh
