@@ -266,7 +266,10 @@ class MatchObject:
         return int(pair[1])
 
     def span(self, group=0):
-        return (self.start(group), self.end(group))
+        unused, pair = self._resolve(group)
+        if pair is None or pair is runtime.undefined:
+            return (-1, -1)
+        return (int(pair[0]), int(pair[1]))
 
     def expand(self, template):
         return _expand(template, self)

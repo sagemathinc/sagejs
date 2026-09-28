@@ -38,6 +38,14 @@ def capture_span(count):
     return checksum
 
 
+def capture_span_method(count):
+    checksum = 0
+    for _ in range(count):
+        start, end = match.span(1)
+        checksum += end - start
+    return checksum
+
+
 def fullmatch_creation(count):
     checksum = 0
     for _ in range(count):
@@ -51,6 +59,7 @@ for name, function, expected in (
     ("named_group", named_group, 3),
     ("all_groups", all_groups, 3),
     ("capture_span", capture_span, 3),
+    ("capture_span_method", capture_span_method, 3),
     ("fullmatch_creation", fullmatch_creation, 2),
 ):
     assert function(1_000) == expected * 1_000
