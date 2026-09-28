@@ -44,3 +44,19 @@ try:
     next(stopped_pair)
 except StopIteration as error:
     print("paired callback stop", error.value)
+
+events = []
+
+
+class EagerIterable:
+    def __iter__(self):
+        events.append("iter")
+        return iter([3])
+
+
+eager = map(lambda value: value, EagerIterable())
+print("eager", events, list(eager))
+try:
+    map(lambda: None)
+except TypeError as error:
+    print("no iterables", str(error))
