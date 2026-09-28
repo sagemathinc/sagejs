@@ -237,8 +237,16 @@ export class ClassGroupCoreService {
   async request(type, fields, { signal } = {}) {
     if (this.closed) throw new ClassGroupCoreClosedError();
     if (signal?.aborted) throw abortError();
-    await this.ready({ signal });
-    if (signal?.aborted) throw abortError();
+    for (;;) {
+      const generation = this.generation;
+      await this.ready({ signal });
+      if (signal?.aborted) throw abortError();
+      if (generation !== this.generation) continue;
+      if (this.workerState !== "ready" || this.worker === undefined) {
+        throw new ClassGroupCoreInterruptedError("class-group worker became unavailable");
+      }
+      break;
+    }
     const id = ++this.nextId;
     const generation = this.generation;
     return new Promise((resolve, reject) => {
@@ -248,7 +256,13 @@ export class ClassGroupCoreService {
       };
       this.pending.set(id, { resolve, reject, signal, onAbort });
       signal?.addEventListener("abort", onAbort, { once: true });
-      this.worker.postMessage({ type, id, ...fields });
+      try {
+        this.worker.postMessage({ type, id, ...fields });
+      } catch (error) {
+        this.pending.delete(id);
+        signal?.removeEventListener("abort", onAbort);
+        reject(error);
+      }
     });
   }
 

@@ -263,6 +263,76 @@ test("a post-ready worker crash rejects work and starts a fresh generation", asy
   await service.close();
 });
 
+test("a crash between readiness and invocation retries on the ready generation", async () => {
+  const workers = [];
+  class RacyWorker {
+    constructor() {
+      this.generation = workers.length + 1;
+      this.ready = false;
+      workers.push(this);
+    }
+
+    postMessage(message) {
+      if (message.type === "initialize") {
+        const publishReady = () => {
+          this.ready = true;
+          this.onmessage({ data: { type: "ready", protocol: 1, diagnostics: {} } });
+          if (this.generation === 1) {
+            queueMicrotask(() => this.onerror({ error: new Error("worker crashed") }));
+          }
+        };
+        if (this.generation === 1) queueMicrotask(publishReady);
+        else setTimeout(publishReady, 10);
+        return;
+      }
+      if (message.type !== "invoke" || !this.ready) return;
+      queueMicrotask(() => this.onmessage({
+        data: { type: "result", id: message.id, ok: true, result: message.request },
+      }));
+    }
+
+    terminate() {
+      this.terminated = true;
+    }
+  }
+
+  const service = new ClassGroupCoreService({ receipt, WorkerConstructor: RacyWorker });
+  let timeout;
+  try {
+    const answer = await Promise.race([
+      service.invoke({ value: 42 }),
+      new Promise((_, reject) => {
+        timeout = setTimeout(() => reject(new Error("invocation hung after worker restart")), 1000);
+      }),
+    ]);
+    assert.equal(answer.value, 42);
+    assert.equal(service.generation, 2);
+    assert.equal(service.pending.size, 0);
+    assert.equal(workers[0].terminated, true);
+  } finally {
+    clearTimeout(timeout);
+    await service.close();
+  }
+});
+
+test("a failed worker post does not retain a pending request", async () => {
+  const { FakeWorker } = fakeWorkers();
+  class ThrowingWorker extends FakeWorker {
+    postMessage(message) {
+      if (message.type === "invoke") throw new Error("worker post failed");
+      super.postMessage(message);
+    }
+  }
+  const service = new ClassGroupCoreService({ receipt, WorkerConstructor: ThrowingWorker });
+  try {
+    await assert.rejects(service.invoke({ value: 1 }), /worker post failed/);
+    assert.equal(service.pending.size, 0);
+    assert.equal(service.workerState, "ready");
+  } finally {
+    await service.close();
+  }
+});
+
 test("the factory defaults to packaged authenticated artifact URLs", async () => {
   const { FakeWorker, workers } = fakeWorkers();
   const service = new ClassGroupCoreService({ WorkerConstructor: FakeWorker });
