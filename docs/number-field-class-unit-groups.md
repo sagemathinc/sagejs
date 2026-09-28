@@ -71,13 +71,15 @@ the platform package or Wasm evaluator advertises the exact capability.
 `IdealClassGroup`, including exact generator ideals and resident arbitrary-ideal
 class queries; the backend is not exposed as a second mathematical API.
 
-This route publishes `exact-relations-conditional-grh` authority. The default
-and `proof=True` still require the independently authenticated unconditional
-Minkowski suffix. Automatic fallback is allowed only when capability discovery
-declines before a result is published; resource exhaustion, corrupt evidence,
-and failures after publication remain visible. Native Windows currently
-declines this optional service, with the portable Wasm or ordinary exact route
-remaining available.
+This route publishes `exact-relations-conditional-grh` authority. Its compact
+publication does not retain the live class-unit terminal required by the
+unconditional Minkowski suffix. Therefore default and `proof=True` automatic
+calls use the ordinary exact engine; explicit `algorithm='rust'` with required
+proof declines before a Rust session opens. Conditional `proof=False` calls
+still use Rust. Automatic fallback is allowed only on a pre-publication
+capability decline; resource exhaustion, corrupt evidence, and failures after
+publication remain visible. Native Windows currently declines this optional
+service, with the portable Wasm or ordinary exact route remaining available.
 
 If resource limits or cancellation prevent certification, `result.complete`
 is false and the status is `incomplete-resource-limit`. The result may expose

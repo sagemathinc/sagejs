@@ -2522,6 +2522,26 @@ class _TrustedServiceUnitCertificate:
         return unit == factored.FactoredNumberFieldElement(self._field, self._factors)
 
 
+def _unit_lattice_index_metadata(
+    payload: dict[str, Any], unit_rank: int
+) -> tuple[int, int]:
+    """Validate the index against the denominator in every unit dimension."""
+    common_denominator = _positive_decimal(
+        payload["commonDenominator"], "unit common denominator"
+    )
+    selected_basis_index = _positive_decimal(
+        payload["selectedBasisIndex"], "selected unit-basis index"
+    )
+    if unit_rank < 1 or unit_rank > 2:
+        raise RelationMatrixError("unsupported cubic unit rank")
+    denominator_power = common_denominator**unit_rank
+    if denominator_power % selected_basis_index != 0:
+        raise RelationMatrixError(
+            "selected unit-basis index does not divide its denominator power"
+        )
+    return common_denominator, selected_basis_index
+
+
 def _trusted_service_units(
     field: Any,
     publication_basis: Sequence[Any],
@@ -2540,17 +2560,12 @@ def _trusted_service_units(
         },
         "publication units",
     )
-    common_denominator = _positive_decimal(
-        units_data["commonDenominator"], "unit common denominator"
-    )
-    selected_basis_index = _positive_decimal(
-        units_data["selectedBasisIndex"], "selected unit-basis index"
-    )
-    if selected_basis_index > common_denominator:
-        raise RelationMatrixError("selected unit-basis index exceeds its denominator")
     embeddings = __import__("sagejs.number_fields.embeddings", fromlist=["embeddings"])
     signature = embeddings.exact_signature(field)
     unit_rank = int(signature[0]) + int(signature[1]) - 1
+    common_denominator, selected_basis_index = _unit_lattice_index_metadata(
+        units_data, unit_rank
+    )
     fundamental = units_data["fundamentalUnits"]
     if not isinstance(fundamental, list) or len(fundamental) != unit_rank:
         raise RelationMatrixError("publication fundamental-unit rank mismatch")
@@ -2652,15 +2667,6 @@ def _replay_publication_units(
         },
         "publication units",
     )
-    common_denominator = _positive_decimal(
-        units_data["commonDenominator"], "unit common denominator"
-    )
-    selected_basis_index = _positive_decimal(
-        units_data["selectedBasisIndex"], "selected unit-basis index"
-    )
-    if selected_basis_index > common_denominator:
-        raise RelationMatrixError("selected unit-basis index exceeds its denominator")
-
     relation_count = len(relation_rows)
     relation_elements = tuple(
         _element_from_prepared_coordinates(
@@ -2681,6 +2687,9 @@ def _replay_publication_units(
     )
     signature = signature_module.exact_signature(field)
     unit_rank = int(signature[0]) + int(signature[1]) - 1
+    common_denominator, selected_basis_index = _unit_lattice_index_metadata(
+        units_data, unit_rank
+    )
     fundamental = units_data["fundamentalUnits"]
     if not isinstance(fundamental, list) or len(fundamental) != unit_rank:
         raise RelationMatrixError("publication fundamental-unit rank mismatch")

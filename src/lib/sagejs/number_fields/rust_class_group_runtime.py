@@ -1388,57 +1388,6 @@ def _conditional_result(field: Any, algorithm: str, backend: Any = None) -> Any:
     return result
 
 
-def _required_result(
-    field: Any, proof: bool, algorithm: str, backend: Any = None
-) -> Any:
-    key = bool(proof)
-    cache = _cache(field)
-    retained = cache.get(key)
-    if retained is not None:
-        required = EXACT_UNCONDITIONAL if proof else None
-        if (
-            getattr(retained, "field", None) is field
-            and getattr(retained, "complete", None) is True
-            and (
-                required is None or getattr(retained, "proof_status", None) == required
-            )
-        ):
-            return retained
-        raise RustClassGroupPublicationError("the Rust proof-policy cache is corrupt")
-    source = _conditional_result(field, algorithm, backend)
-    if not proof or source.proof_status == EXACT_UNCONDITIONAL:
-        cache[key] = source
-        return source
-    groups = __import__(
-        "sagejs.number_fields.class_unit_groups", fromlist=["class_unit_groups"]
-    )
-    try:
-        upgraded = groups._upgrade_cached_conditional_result(
-            field,
-            source,
-            algorithm="auto",
-            limits=groups.ClassUnitEngineLimits(),
-            seed=0,
-        )
-    except RustClassGroupCapabilityDecline as error:
-        raise RustClassGroupPublicationError(
-            "the unconditional suffix declined after Rust publication"
-        ) from error
-    if (
-        upgraded is None
-        or getattr(upgraded, "complete", None) is not True
-        or getattr(upgraded, "proof_status", None) != EXACT_UNCONDITIONAL
-    ):
-        raise RustClassGroupPublicationError(
-            "the conditional Rust prefix did not complete the unconditional Minkowski suffix"
-        )
-    session = getattr(source, "_rust_class_group_session", None)
-    if session is not None:
-        _bind_session(upgraded, session)
-    cache[key] = upgraded
-    return upgraded
-
-
 def rust_class_unit_context(
     field: Any,
     *,
@@ -1468,8 +1417,18 @@ def rust_class_unit_context(
             )
         return None
     proof_value = True if proof is None else bool(proof)
+    if proof_value:
+        # The production Rust publication carries a compact presentation
+        # context, not the live terminal state required by the existing
+        # unconditional Minkowski suffix. Decline before opening a resident
+        # session; a proof-required auto call uses the exact general engine.
+        if algorithm == "auto":
+            return None
+        raise RustClassGroupCapabilityDecline(
+            "the Rust cubic class-unit context supports conditional proof only"
+        )
     try:
-        return _required_result(field, proof_value, algorithm, backend)
+        return _conditional_result(field, algorithm, backend)
     except RustClassGroupCapabilityDecline:
         if algorithm == "auto":
             return None
