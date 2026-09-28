@@ -84,6 +84,7 @@ let pythonFrontend;
 let dynamicCompiler;
 let baselib;
 let toplevel;
+let repeatedCell;
 let runtimeModuleNames = [];
 let foreignFrontendUrl;
 let treeSitterRuntimeUrl;
@@ -101,7 +102,51 @@ if (
   throw new TypeError("invalid Sage.js compiler-worker optimization level");
 }
 
-function compileWithFrontend(source, filename, frontend, language) {
+function compilerContext() {
+  return {
+    classes: Object.entries(toplevel?.classes ?? {}),
+    intrinsicModules: Object.entries(toplevel?.intrinsic_modules ?? {}),
+    scopedFlags: Object.entries(toplevel?.scoped_flags ?? {}),
+  };
+}
+
+function sameCompilerContext(left, right) {
+  const sameEntries = (first, second) => first.length === second.length &&
+    first.every(([key, value], index) =>
+      key === second[index][0] && Object.is(value, second[index][1]));
+  return sameEntries(left.classes, right.classes) &&
+    sameEntries(left.intrinsicModules, right.intrinsicModules) &&
+    sameEntries(left.scopedFlags, right.scopedFlags);
+}
+
+function repeatableSageCell(source) {
+  // Match the native evaluator's conservative cell boundary. Reusing code
+  // never reuses the value: the evaluator still executes it on every call.
+  return typeof source === "string" && source.length <= 8192 &&
+    !/(?:^|[\s;])(?:class|def|async|import|from|global|nonlocal|del|exec)\b/.test(source) &&
+    !/[%#@`\\]/.test(source) && !source.includes("ρσ_browser_");
+}
+
+function compileWithFrontend(source, filename, frontend, language, allowRepeatCache = false) {
+  const repeatable = allowRepeatCache && language === "sage" && repeatableSageCell(source);
+  const before = repeatable ? compilerContext() : undefined;
+  const previous = repeatedCell;
+  if (repeatable && previous?.stable &&
+      previous.source === source && previous.filename === filename &&
+      sameCompilerContext(previous.context, before)) {
+    return {
+      ...previous.output,
+      dynamicImports: [...previous.output.dynamicImports],
+      moduleImports: [...previous.output.moduleImports],
+      optimization: structuredClone(previous.output.optimization),
+      javascript: previous.pooledNumbers
+        ? previous.javascriptTemplate.replaceAll(
+          "ρσ_browser_cached_", `ρσ_browser_${numericLiteralPoolCounter++}_`,
+        )
+        : previous.javascriptTemplate,
+    };
+  }
+  repeatedCell = undefined;
   const classes = toplevel?.classes;
   const scopedFlags = toplevel?.scoped_flags ?? {
     dict_literals: true,
@@ -148,12 +193,38 @@ function compileWithFrontend(source, filename, frontend, language) {
   const dynamicImports = imports
     .filter((module) => module?.dynamic === true)
     .map((module) => module.module_id);
-  return {
+  const output = {
     javascript,
     dynamicImports,
     moduleImports,
     optimization: optimizationReport(toplevel.optimization_ir, filename),
   };
+  const poolPrefix = `ρσ_browser_${numericLiteralPoolCounter - 1}_`;
+  const pooledNumbers = javascript.includes(poolPrefix);
+  const javascriptTemplate = pooledNumbers
+    ? javascript.replaceAll(poolPrefix, "ρσ_browser_cached_") : javascript;
+  const after = compilerContext();
+  if (repeatable && before && sameCompilerContext(before, after) &&
+      !javascript.replaceAll(poolPrefix, "").includes("ρσ_browser_")) {
+    const reportJSON = JSON.stringify(output.optimization);
+    const importsJSON = JSON.stringify([dynamicImports, moduleImports]);
+    repeatedCell = {
+      source,
+      filename,
+      context: after,
+      output,
+      javascriptTemplate,
+      pooledNumbers,
+      reportJSON,
+      importsJSON,
+      stable: previous?.source === source && previous.filename === filename &&
+        previous.javascriptTemplate === javascriptTemplate &&
+        previous.reportJSON === reportJSON &&
+        previous.importsJSON === importsJSON &&
+        sameCompilerContext(previous.context, after),
+    };
+  }
+  return output;
 }
 
 async function foreignModule() {
@@ -194,6 +265,7 @@ async function compile(source, filename, defaultLanguage = "sage") {
       filename,
       defaultLanguage === "sage" ? sageFrontend : pythonFrontend,
       defaultLanguage,
+      true,
     );
   }
   const module = await foreignModule();
@@ -251,6 +323,7 @@ self.onmessage = async ({ data }) => {
       dynamicCompiler = undefined;
       baselib = undefined;
       toplevel = undefined;
+      repeatedCell = undefined;
       runtimeModuleNames = [];
       foreignFrontendModulePromise = undefined;
       configuredForeignGrammars.clear();
@@ -347,11 +420,13 @@ self.onmessage = async ({ data }) => {
       }
       result = await compile(data.source, data.filename, data.mode);
     } else if (data.type === "compileDynamic") {
+      repeatedCell = undefined;
       if (!dynamicCompiler) {
         throw new Error("Sage.js browser compiler is not initialized");
       }
       result = dynamicCompiler.compile(data.source, data.filename, data.mode);
     } else if (data.type === "runDynamic") {
+      repeatedCell = undefined;
       if (!dynamicCompiler) {
         throw new Error("Sage.js browser compiler is not initialized");
       }

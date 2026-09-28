@@ -72,6 +72,13 @@ test("the isolated quadratic reactor serves Sage-mode ideal classes in Wasm", {
     assert.equal(symbolic.repr,
       "[-47, 5, (5,), 'exact-unconditional', (1,)]");
 
+    await evaluator.evaluate("counter = 0");
+    for (let index = 1; index <= 5; index += 1) {
+      const next = await evaluator.evaluate("counter = counter + 1\ncounter");
+      assert.equal(next.repr, String(index),
+        "a repeated compiled cell must still execute against fresh state");
+    }
+
     const tiny = await evaluator.evaluate([
       "from sagejs.number_fields import rust_class_group_runtime as rust_runtime",
       "from sagejs.kernels.matrix.imaginary_map import verify_packed_imaginary_map",

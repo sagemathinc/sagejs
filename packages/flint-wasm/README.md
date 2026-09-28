@@ -113,6 +113,13 @@ two isolated realms:
 2. A nested compiler worker runs the self-hosted Sage.js compiler and returns
    generated JavaScript.
 
+The compiler worker conservatively reuses the generated code for a repeated,
+short Sage cell after two compilations agree and its compiler context is
+unchanged. It still executes the code on every evaluation, so assignments and
+mathematical objects are never cached. Definitions, imports, directives, raw
+JavaScript, Python-mode cells, and changing compiler contexts bypass this
+cache. Generated numeric-literal pools receive a fresh name on each reuse.
+
 This mirrors the separate VM context used by the Node REPL and prevents the
 compiler's compatibility runtime from colliding with the evaluated program.
 The main page stays responsive and can interrupt either compilation or

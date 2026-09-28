@@ -522,6 +522,19 @@ difference from the earlier 6.77 ratio cannot be assigned solely to compact
 transport. The ordinary public Wasm kernel still declines the reactor, and
 even this development evaluator is not competitive with PARI on the panel.
 
+A later source-current development evaluator uses a conservative repeated
+Sage-cell compiler cache. The frozen 11-field, 15-pair
+[prepared-field](public-api-prepared-development-wasm-compiler-cache-diagnostic.json)
+and [fresh-polynomial](public-api-polynomial-development-wasm-compiler-cache-diagnostic.json)
+diagnostics have geometric-mean Sage-mode Wasm/PARI median ratios of 3.14 and
+4.81, respectively. The prepared `D=-47` row took 2.93 ms versus PARI's
+0.53 ms; the prepared 33,768-class composite row took 11.35 ms versus
+4.54 ms. The two boundaries share the same build-receipt hashes but are
+separate runs from the earlier 5.27 result, so the differences do not isolate
+a causal speedup. Both receipts are unpromoted
+development diagnostics, omit the public kernel's outer worker IPC, and leave
+the production Wasm review gate and PARI-competitive goal open.
+
 The native product service now advertises the same `core-v3` transport, while
 retaining `core-v2` and the ordinary response. A 30-pair alternating direct
 service probe on the 33,768-class composite field measured 10.91 ms for
