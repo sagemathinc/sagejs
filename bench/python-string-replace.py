@@ -27,6 +27,8 @@ for size in (100, 1_000, 5_000):
     measure("one-" + str(size), text, "a", "$&", 1, 200)
 
 measure("limited-1000", "ab" * 2_500, "a", "$&", 1_000, 200)
+for count in (2, 8, 100):
+    measure("limited-" + str(count), "ab" * 2_500, "a", "$&", count, 200)
 
 
 def escape(text):

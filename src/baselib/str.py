@@ -1035,10 +1035,10 @@ def _str_replace(
         return _native_split(string, old).join(repl)
     if left == 1:
         return _native_replace(string, old, _native_split(repl, "$").join("$$"))
-    parts = _native_split(string, old)
-    if left >= parts.length - 1:
-        return parts.join(repl)
-    return parts.splice(0, left + 1).join(repl) + old + parts.join(old)
+    parts = runtime.reflect.apply(
+        _NATIVE_SPLIT, string, [old, min(left, len(string)) + 1]
+    )
+    return parts.join(repl) + string.slice(parts.join(old).length)
 
 
 def _str_split(
