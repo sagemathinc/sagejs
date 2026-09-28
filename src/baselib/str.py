@@ -1033,15 +1033,12 @@ def _str_replace(
         return _str_join("", pieces)
     if left < 0:
         return _native_split(string, old).join(repl)
-    pos = 0
-    while left > 0:
-        found = string.indexOf(old, pos)
-        if found == -1:
-            break
-        string = string[:found] + repl + string[found + len(old) :]
-        pos = found + len(repl)
-        left -= 1
-    return string
+    if left == 1:
+        return _native_replace(string, old, _native_split(repl, "$").join("$$"))
+    parts = _native_split(string, old)
+    if left >= parts.length - 1:
+        return parts.join(repl)
+    return parts.splice(0, left + 1).join(repl) + old + parts.join(old)
 
 
 def _str_split(

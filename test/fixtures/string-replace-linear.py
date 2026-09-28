@@ -8,7 +8,7 @@ def codes(text):
 for text in ("", "aaaa", "abab", "a\U0001f600a", "a\ud800a"):
     for old in ("", "a", "aa", "ab", "\U0001f600", "\ud800", "z"):
         for new in ("", "$&", "$$", "$`'", "x\U0001f600"):
-            for count in (-7, -1, 0, 1, 2, 100):
+            for count in (-7, -1, 0, 1, 2, 100, 2**60):
                 print(codes(text.replace(old, new, count)))
             print(codes(text.replace(old, new)))
 
