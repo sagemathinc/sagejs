@@ -4196,8 +4196,6 @@ class QuadraticClassGroup:
             raise ArithmeticError(
                 "quadratic class-group invariant generators do not span"
             )
-        invariants.reverse()
-        generators.reverse()
         return invariants, generators
 
     def __len__(self) -> int:

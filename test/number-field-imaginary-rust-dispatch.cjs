@@ -295,6 +295,27 @@ test("explicit quadratic-forms bypasses Rust even after a Rust answer is cached"
   );
 });
 
+test("quadratic-forms reports noncyclic invariant factors in divisibility order", async () => {
+  const answer = await evaluate([
+    "R.<x> = QQ[]",
+    "results = []",
+    "for d, expected in [(-231, (2, 6)), (-15015, (2, 2, 2, 12))]:",
+    "    for K in (QuadraticField(d), NumberField(x^2 - d, 'a')):",
+    "        G = K.class_group(algorithm='quadratic-forms')",
+    "        factors = G.invariants()",
+    "        orders = tuple(g.order() for g in G.gens())",
+    "        results.append((factors, orders, factors == expected,",
+    "            all(factors[i+1] % factors[i] == 0 for i in range(len(factors)-1))))",
+    "results",
+  ]);
+  assert.equal(
+    answer.repr,
+    "[((2, 6), (2, 6), True, True), ((2, 6), (2, 6), True, True), " +
+      "((2, 2, 2, 12), (2, 2, 2, 12), True, True), " +
+      "((2, 2, 2, 12), (2, 2, 2, 12), True, True)]",
+  );
+});
+
 test("automatic imaginary quadratic class groups reuse the validated map", async () => {
   const answer = await evaluate([
     ...fixture,
