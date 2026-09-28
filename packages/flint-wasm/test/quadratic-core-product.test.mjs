@@ -30,7 +30,9 @@ test("the isolated quadratic reactor retains complete ideal maps in Wasm", {
     });
     assert.equal(capability.ok, true);
     assert.deepEqual(capability.result.operations,
-      ["capability", "imaginary-class-number", "imaginary-class-group"]);
+      ["capability", "imaginary-class-number", "imaginary-class-group",
+        "imaginary-class-group-summary", "imaginary-class-coordinate",
+        "imaginary-verify-presentation"]);
   } finally {
     direct.close();
   }

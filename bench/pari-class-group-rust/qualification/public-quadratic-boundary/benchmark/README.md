@@ -510,6 +510,18 @@ diagnostic. The composite field took 28.60 ms versus PARI's 4.55 ms. This
 does not establish a performance improvement, public Wasm availability, or
 distribution safety; the independent review gates still apply.
 
+The reactor now also exposes compact authenticated presentations and exact
+on-demand ideal coordinates, matching the native group protocol without
+discarding the complete-map operation. The frozen 11-field, 15-pair prepared
+development-evaluator diagnostic is
+[`public-api-prepared-development-wasm-compact-presentation-diagnostic.json`](public-api-prepared-development-wasm-compact-presentation-diagnostic.json).
+All exact groups matched; the geometric-mean Sage-mode Wasm/PARI median ratio
+was 5.27. The tiny `D=-47` row took 6.89 ms versus 0.63 ms, and the 33,768-class
+composite row took 15.24 ms versus 4.64 ms. This is a separate run, so its
+difference from the earlier 6.77 ratio cannot be assigned solely to compact
+transport. The ordinary public Wasm kernel still declines the reactor, and
+even this development evaluator is not competitive with PARI on the panel.
+
 The native product service now advertises the same `core-v3` transport, while
 retaining `core-v2` and the ordinary response. A 30-pair alternating direct
 service probe on the 33,768-class composite field measured 10.91 ms for

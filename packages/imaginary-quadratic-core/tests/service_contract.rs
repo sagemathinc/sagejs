@@ -45,7 +45,10 @@ fn exposes_only_the_bounded_quadratic_capability() {
         json!([
             "capability",
             "imaginary-class-number",
-            "imaginary-class-group"
+            "imaginary-class-group",
+            "imaginary-class-group-summary",
+            "imaginary-class-coordinate",
+            "imaginary-verify-presentation"
         ])
     );
     let cubic = call(&mut service, request("open", ["1", "0", "1"]));
@@ -112,6 +115,71 @@ fn computes_full_and_core_maps_with_the_same_exact_answer() {
         9
     );
     assert!(packed["result"]["result"].get("completeClassMap").is_none());
+}
+
+#[test]
+fn bounded_summaries_verify_independently_and_defer_exact_coordinates() {
+    let mut service = QuadraticService::new();
+    for (polynomial, class_number, invariants) in [
+        (["12", "-1", "1"], 5, json!([5])),
+        (["3754", "-1", "1"], 96, json!([2, 2, 2, 12])),
+    ] {
+        let summary = call(
+            &mut service,
+            request("imaginary-class-group-summary", polynomial),
+        );
+        assert_eq!(summary["ok"], true, "{summary}");
+        let presentation = &summary["result"]["result"];
+        assert_eq!(presentation["classNumber"], class_number);
+        assert_eq!(presentation["invariantFactors"], invariants);
+        assert!(presentation.get("completeClassMap").is_none());
+        let generator_forms = presentation["generators"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|generator| {
+                let form = &generator["form"];
+                json!([
+                    form["a"].to_string(),
+                    form["b"].to_string(),
+                    form["c"].to_string(),
+                ])
+            })
+            .collect::<Vec<_>>();
+        let verification = json!({
+            "schema": "sagejs.class-groups/service-request-v1",
+            "abi": 1,
+            "id": "quadratic-test",
+            "operation": "imaginary-verify-presentation",
+            "polynomialAscending": polynomial,
+            "classNumber": class_number,
+            "invariantFactors": invariants,
+            "generatorForms": generator_forms,
+        });
+        let verified = call(&mut service, verification.clone());
+        assert_eq!(verified["ok"], true, "{verified}");
+        assert_eq!(verified["result"]["outcome"], "verified");
+        let mut forged = verification;
+        forged["generatorForms"][0] = if class_number == 5 {
+            json!(["1", "1", "12"])
+        } else {
+            forged["generatorForms"][1].clone()
+        };
+        let rejected = call(&mut service, forged);
+        assert_eq!(rejected["ok"], false);
+        assert_eq!(rejected["error"]["category"], "invalid-request");
+
+        let mut coordinate = request("imaginary-class-coordinate", polynomial);
+        coordinate["formCoefficients"] = generator_forms[0].clone();
+        let queried = call(&mut service, coordinate);
+        assert_eq!(queried["ok"], true, "{queried}");
+        assert_eq!(queried["result"]["presentation"], *presentation);
+        assert_eq!(queried["result"]["coordinates"][0], 1);
+        assert_eq!(
+            queried["result"]["form"],
+            presentation["generators"][0]["form"]
+        );
+    }
 }
 
 #[test]

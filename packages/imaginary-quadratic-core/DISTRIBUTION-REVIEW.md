@@ -7,14 +7,14 @@ license opinion, artifact-derived SBOM, or distribution approval.
 ## Exact candidate and reproducible checks
 
 The current `wasm32-wasip1` candidate is
-`target/wasm32-wasip1/release/sagejs_imaginary_quadratic_core.wasm`, 346,889
+`target/wasm32-wasip1/release/sagejs_imaginary_quadratic_core.wasm`, 391,454
 bytes, SHA-256
-`cc437c7db9cd5e6744c9309ce48afa6e9c515dc404aa74e30bcc023c2acf3696`.
+`4dbf5a8f422e477ce78ff11d87b0cc4a0e4bac6b25b3c7a73ddc15412b735d12`.
 This digest identifies one development build, not a production release. Rebuild
 and review any changed digest. The cross-Linux-host and macOS receipts below
 concern earlier `7344622a` and `e28a3e01` artifacts; they do not certify these
-new bytes. The byte-matched link-map receipt for this candidate is recorded
-below. Run:
+new bytes. The byte-matched same-host link-map receipt for this candidate is
+recorded below. Run:
 
 ```sh
 sh packages/imaginary-quadratic-core/scripts/build-wasm.sh
@@ -99,7 +99,8 @@ Its linker reports the same LLD 22.1.0 revision as the Linux SDK. Two
 independent clean Cargo target directories on `m1` produced byte-identical
 346,801-byte artifacts with SHA-256
 `7e7b0f5ff1be5ecebc79cefd8e5347b7f3417e23b9a49d01a6bf38e435b45369`.
-That hash differs from the 346,869-byte canonical Linux candidate above.
+That hash differs from the earlier 346,869-byte canonical Linux candidate
+described in the adjacent 2026-09-27 receipts.
 The difference reaches the function, element, code, and data sections, so it
 cannot be dismissed as only a name or producer-section difference; its cause
 has not been established. The Mac-built artifact passed the Linux structural
@@ -181,7 +182,8 @@ complete source/license inventory, or approve production distribution.
 
 On 2026-09-28, `m1` rebuilt the **earlier** reactor source from clean detached
 commit `1aa8366a79f06a5c2c7b1fc861a4085ade14d4b9`. The isolated reactor
-source and lockfile are unchanged from the Linux candidate above; intervening
+source and lockfile were unchanged from the earlier 346,136-byte Linux
+candidate; intervening
 changes in that package only update this review document. The official WASI
 SDK 33.0 arm64-macos archive matched its pinned SHA-256
 `85c997a2665ead91673b5bb88b7d0df3fc8900df3fba244f720d478187bbdc78`.
@@ -215,7 +217,8 @@ functional evidence, **not** cross-host byte identity, independent safety
 review, or distribution approval. Do not silently substitute the Mac bytes
 for the current candidate.
 
-On 2026-09-28, the new 346,889-byte candidate above passed `verify-wasm.mjs`,
+On 2026-09-28, the earlier 346,889-byte `cc437c7d` candidate passed
+`verify-wasm.mjs`,
 the locked source/build/ABI inventory, and a fresh same-host `-C save-temps`
 link-map rebuild that matched its SHA-256 byte for byte. The updated
 [`link-map-inventory-2026-09-28-current.json`](link-map-inventory-2026-09-28-current.json)
@@ -231,8 +234,30 @@ presentation change is also covered by native Rust and Sage-mode exact-map
 regressions, including a noncyclic fallback. The shared source now also
 verifies bounded higher-rank presentations by independently counting reduced
 forms and checking that all products of generator powers are distinct. The
-standalone development reactor still returns the complete exact map; this
-source change is not a production-Wasm distribution decision.
+standalone development reactor at that revision still returned the complete
+exact map; this source change was not a production-Wasm distribution decision.
+
+Later on 2026-09-28, the standalone reactor added bounded compact summaries,
+independent generator-presentation verification, and exact on-demand
+ideal-coordinate queries, matching the native service's public protocol while
+retaining its complete-map operation. The current 391,454-byte candidate at
+the top of this document passed the structural verifier, refreshed locked
+source/build inventory, 34 Rust unit and five service-contract tests, and five
+Node product/evaluator tests. An independent same-host `-C save-temps` rebuild
+produced byte-identical Wasm; the updated
+`link-map-inventory-2026-09-28-current.json` records 40 linked inputs and the
+byte-identical pinned SDK/Rust-sysroot WASI libc archive. A local prepared
+`D=-47` Sage-mode evaluator diagnostic fell from roughly 10.3 ms with the
+previous eager-map reactor to 7.7 ms with compact summaries, but the two
+separately run measurements are exploratory, not an isolated or frozen-panel
+PARI comparison. The subsequent frozen 11-field, 15-pair prepared development
+evaluator [diagnostic](../../bench/pari-class-group-rust/qualification/public-quadratic-boundary/benchmark/public-api-prepared-development-wasm-compact-presentation-diagnostic.json)
+returned every exact group and recorded a 5.27 geometric-mean Sage-mode
+Wasm/PARI median ratio. It omits the production kernel's outer worker boundary,
+is not a controlled before/after experiment, and falls short of PARI
+competitiveness. No cross-host reproducibility, independent safety review,
+license decision, or production-distribution approval has been established for
+these current bytes.
 
 To reproduce the linked-object inventory for the current candidate after
 preparing the pinned Wasm toolchain, run from the repository root:

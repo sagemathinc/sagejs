@@ -125,8 +125,12 @@ try {
           let forgedError = "";
           try {
             await evaluator.evaluate([
-              "forged = rust_runtime.rust_imaginary_result(",
-              " K, operation='imaginary-class-group', algorithm='rust')",
+              "backend, capability, resident = rust_runtime._imaginary_backend()",
+              "discriminant, polynomial = rust_runtime._imaginary_polynomial(K)",
+              "answer = rust_runtime._imaginary_call(backend, resident,",
+              " 'imaginary-class-group',",
+              " {'polynomialAscending': polynomial, 'transport': 'core-v3'})",
+              "forged = answer['result']",
               "forged['completeClassMapCorePacked'][0] = True",
               "rust_runtime.validate_imaginary_group_result(",
               " forged, K.discriminant(), compact=True)",

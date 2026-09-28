@@ -171,8 +171,9 @@ async function main() {
       ? "The production Sage.js Wasm kernel still declines this unreviewed reactor. " +
         "This harness injects it into a development evaluator and excludes the public " +
         "kernel's outer worker IPC. Both arms include interpreter evaluation and result " +
-        "projection; Sage.js authenticates a complete ideal-class map while PARI also " +
-        "computes rank-zero unit data. This is not a promoted or symmetric kernel receipt."
+        "projection; Sage.js authenticates an exact group presentation with " +
+        "on-demand ideal-class coordinates, while PARI also computes rank-zero " +
+        "unit data. This is not a promoted or symmetric kernel receipt."
       : "The production Sage.js Wasm kernel still declines this unreviewed reactor. " +
         "This harness injects it into a development evaluator and excludes the public " +
         "kernel's outer worker IPC. For |D| < 2e10, PARI uses unconditional qfbclassno(D,0); " +

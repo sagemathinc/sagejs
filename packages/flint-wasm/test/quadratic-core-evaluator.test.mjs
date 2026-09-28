@@ -83,7 +83,7 @@ test("the isolated quadratic reactor serves Sage-mode ideal classes in Wasm", {
       "[G.order(), G.invariants(), G.proof_status,",
       " G(G.gen().ideal()).coordinates(), G(I).coordinates(),",
       " K.class_number(algorithm='rust'), K.class_group().algorithm,",
-      " 'completeClassMapCorePacked' in rust_runtime.rust_imaginary_result(",
+      " '_coordinateMap' in rust_runtime.rust_imaginary_result(",
       " K, operation='imaginary-class-group', algorithm='rust'),",
       " callable(getattr(verify_packed_imaginary_map, 'packExactInt64Buffer', None)),",
       " len(G.certificate['reducedForms']),",
@@ -92,8 +92,12 @@ test("the isolated quadratic reactor serves Sage-mode ideal classes in Wasm", {
     assert.equal(tiny.repr,
       "[3, (3,), 'exact-unconditional', (1,), (1,), 3, 'rust', True, True, 3, True]");
     await assert.rejects(evaluator.evaluate([
-      "forged = rust_runtime.rust_imaginary_result(",
-      " K, operation='imaginary-class-group', algorithm='rust')",
+      "backend, capability, resident = rust_runtime._imaginary_backend()",
+      "discriminant, polynomial = rust_runtime._imaginary_polynomial(K)",
+      "answer = rust_runtime._imaginary_call(backend, resident,",
+      " 'imaginary-class-group',",
+      " {'polynomialAscending': polynomial, 'transport': 'core-v3'})",
+      "forged = answer['result']",
       "forged['completeClassMapCorePacked'][0] = True",
       "rust_runtime.validate_imaginary_group_result(",
       " forged, K.discriminant(), compact=True)",
@@ -112,6 +116,17 @@ test("the isolated quadratic reactor serves Sage-mode ideal classes in Wasm", {
     assert.equal(large.repr,
       "[33768, (2, 16884), 'exact-unconditional', " +
       "(1, 0), (0, 1), (1, 1), (1, 0), 33768]");
+
+    const rankFour = await evaluator.evaluate([
+      "K.<a> = NumberField(x^2-x+3754)",
+      "G = K.class_group(algorithm='rust')",
+      "[G.order(), G.invariants(), G.proof_status,",
+      " G(G.gen(0).ideal()).coordinates(),",
+      " G(G.gen(1).ideal()).coordinates()]",
+    ].join("\n"));
+    assert.equal(rankFour.repr,
+      "[96, (2, 2, 2, 12), 'exact-unconditional', " +
+      "(1, 0, 0, 0), (0, 1, 0, 0)]");
 
     const panel = JSON.parse(await readFile(new URL(
       "../../../bench/pari-class-group-rust/qualification/" +

@@ -4,8 +4,8 @@
   "target": "wasm32-wasip1",
   "artifact": {
     "file": "packages/imaginary-quadratic-core/target/wasm32-wasip1/release/sagejs_imaginary_quadratic_core.wasm",
-    "bytes": 346889,
-    "sha256": "cc437c7db9cd5e6744c9309ce48afa6e9c515dc404aa74e30bcc023c2acf3696"
+    "bytes": 391454,
+    "sha256": "4dbf5a8f422e477ce78ff11d87b0cc4a0e4bac6b25b3c7a73ddc15412b735d12"
   },
   "wasm": {
     "imports": [
@@ -85,7 +85,7 @@
     },
     {
       "file": "packages/imaginary-quadratic-core/src/service.rs",
-      "sha256": "17debe857cab3a6603b52b5d655d5157dad1f18ed609145aa3db214e9cbc45d9"
+      "sha256": "e781f85cb0a77ffb22f3dbc12543ccf6259482ce96bf75d9e1df964c108e643f"
     },
     {
       "file": "packages/imaginary-quadratic-core/src/reactor.rs",

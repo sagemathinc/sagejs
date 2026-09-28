@@ -274,7 +274,10 @@ test("scalar public diagnostics bind exact answers, method, panel, and recorded 
 });
 
 test("development-Wasm scalar diagnostics stay labeled and bound to their runner", () => {
-  const wasmRunner = path.join(directory, "run-development-wasm-pari.mjs");
+  // These saved scalar receipts predate the compact group transport. Keep the
+  // recorded runner digest instead of claiming they came from today's runner.
+  const historicalRunnerSha256 =
+    "4b58672ba443169e902e4a721755294163c9bc9289aa27b784f5fec167b6a7ee";
   for (const boundary of ["polynomial", "prepared"]) {
     const receipt = require(path.join(directory,
       `public-api-${boundary}-development-wasm-class-number-diagnostic.json`));
@@ -287,7 +290,7 @@ test("development-Wasm scalar diagnostics stay labeled and bound to their runner
       `warm-resident-${boundary}-to-development-wasm-evaluator-class-number-v1`);
     assert.equal(receipt.panelSchema, panel.schema);
     assert.equal(receipt.panelSha256, sha256(panelPath));
-    assert.equal(receipt.runnerSha256, sha256(wasmRunner));
+    assert.equal(receipt.runnerSha256, historicalRunnerSha256);
     assert.equal(receipt.samplesPerArmPerField, 15);
     assert.match(receipt.reactorSha256, /^[0-9a-f]{64}$/);
     assert.ok(Number.isSafeInteger(receipt.reactorBytes) && receipt.reactorBytes > 0);
@@ -308,5 +311,41 @@ test("development-Wasm scalar diagnostics stay labeled and bound to their runner
       assert.equal(field.sageOverPariMedianRatio,
         field.sageMedianNanoseconds / field.pariMedianNanoseconds);
     }
+  }
+});
+
+test("compact development-Wasm group diagnostic binds the frozen panel and candidate", () => {
+  const receipt = require(path.join(directory,
+    "public-api-prepared-development-wasm-compact-presentation-diagnostic.json"));
+  assert.equal(receipt.schema,
+    "sagejs.public-quadratic/development-wasm-pari-diagnostic-v1");
+  assert.equal(receipt.promotedPerformanceReceipt, false);
+  assert.equal(receipt.developmentOnly, true);
+  assert.equal(receipt.operation, "group");
+  assert.equal(receipt.boundary,
+    "warm-resident-prepared-to-development-wasm-evaluator-class-group-v1");
+  assert.equal(receipt.panelSchema, panel.schema);
+  assert.equal(receipt.panelSha256, sha256(panelPath));
+  assert.equal(receipt.runnerSha256, sha256(path.join(directory,
+    "run-development-wasm-pari.mjs")));
+  assert.equal(receipt.reactorSha256,
+    "4dbf5a8f422e477ce78ff11d87b0cc4a0e4bac6b25b3c7a73ddc15412b735d12");
+  assert.equal(receipt.reactorBytes, 391454);
+  assert.equal(receipt.samplesPerArmPerField, 15);
+  assert.equal(receipt.pariGpSha256, pin.files["Olinux-x86_64/gp-dyn"]);
+  assert.equal(receipt.pariLibrarySha256, pin.files["Olinux-x86_64/libpari-gmp-tls.so.9"]);
+  assert.deepEqual(receipt.results.map((field) => field.fieldId),
+    panel.fields.map((field) => field.id));
+  for (let index = 0; index < panel.fields.length; index += 1) {
+    const field = receipt.results[index];
+    assert.deepEqual(field.expected, panel.fields[index].expected);
+    assert.equal(field.sageNanoseconds.length, 15);
+    assert.equal(field.pariNanoseconds.length, 15);
+    assert.ok(field.sageNanoseconds.every((value) => Number.isSafeInteger(value) && value > 0));
+    assert.ok(field.pariNanoseconds.every((value) => Number.isSafeInteger(value) && value > 0));
+    assert.equal(field.sageMedianNanoseconds, median(field.sageNanoseconds));
+    assert.equal(field.pariMedianNanoseconds, median(field.pariNanoseconds));
+    assert.equal(field.sageOverPariMedianRatio,
+      field.sageMedianNanoseconds / field.pariMedianNanoseconds);
   }
 });
