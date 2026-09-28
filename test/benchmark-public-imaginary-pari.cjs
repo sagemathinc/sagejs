@@ -113,6 +113,38 @@ test("recorded 15-pair public diagnostics bind the frozen panel and runner", () 
   }
 });
 
+test("current map-free public diagnostics bind the panel and exact PARI control", () => {
+  for (const boundary of ["polynomial", "prepared"]) {
+    const receipt = require(path.join(directory,
+      `public-api-${boundary}-mapfree-current-diagnostic.json`));
+    assert.equal(receipt.schema, "sagejs.public-quadratic/public-sagejs-pari-diagnostic-v1");
+    assert.equal(receipt.promotedPerformanceReceipt, false);
+    assert.equal(receipt.operation, "group");
+    assert.equal(receipt.boundary,
+      `warm-resident-${boundary}-to-public-class-group-and-projection-v1`);
+    assert.equal(receipt.panelSchema, panel.schema);
+    assert.equal(receipt.panelSha256, sha256(panelPath));
+    assert.equal(receipt.runnerSha256, sha256(runner));
+    assert.equal(receipt.samplesPerArmPerField, 15);
+    assert.match(receipt.serviceSha256, /^[0-9a-f]{64}$/);
+    assert.equal(receipt.pariGpSha256, pin.files["Olinux-x86_64/gp-dyn"]);
+    assert.equal(receipt.pariLibrarySha256, pin.files["Olinux-x86_64/libpari-gmp-tls.so.9"]);
+    assert.deepEqual(receipt.results.map((row) => row.fieldId),
+      panel.fields.map((field) => field.id));
+    receipt.results.forEach((row, index) => {
+      assert.deepEqual(row.expected, panel.fields[index].expected);
+      assert.equal(row.sageNanoseconds.length, 15);
+      assert.equal(row.pariNanoseconds.length, 15);
+      assert.ok(row.sageNanoseconds.every((value) => Number.isSafeInteger(value) && value > 0));
+      assert.ok(row.pariNanoseconds.every((value) => Number.isSafeInteger(value) && value > 0));
+      assert.equal(row.sageMedianNanoseconds, median(row.sageNanoseconds));
+      assert.equal(row.pariMedianNanoseconds, median(row.pariNanoseconds));
+      assert.equal(row.sageOverPariMedianRatio,
+        row.sageMedianNanoseconds / row.pariMedianNanoseconds);
+    });
+  }
+});
+
 test("scalar public diagnostics bind exact answers, method, panel, and recorded runner", () => {
   for (const [boundary, phase] of [
     ["polynomial", "exact-backend"],

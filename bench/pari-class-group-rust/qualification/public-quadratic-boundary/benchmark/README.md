@@ -663,6 +663,33 @@ still declines this unreviewed reactor, and the development harness omits the
 public kernel's outer worker IPC. They neither qualify a Wasm release nor
 establish scalar PARI competitiveness.
 
+## Current map-free public full-group diagnostic
+
+After the large cyclic and rank-two presentation producer stopped eagerly
+building a complete class map, the unchanged 11-field v2 panel was rerun with
+15 alternating warm-resident Sage.js/PARI 2.17.4 samples per arm on this Linux
+host. Both arms checked the exact class number and invariant factors. The
+[fresh-polynomial](public-api-polynomial-mapfree-current-diagnostic.json) and
+[prepared-field](public-api-prepared-mapfree-current-diagnostic.json) receipts
+pin the production native service bytes, authenticated PARI executable and
+library, panel, runner, and Sage.js build receipt. The fresh-polynomial
+geometric mean of per-field Sage.js/PARI median ratios is **4.71** (nearest-rank
+p90 **12.83**); the prepared-field ratio is **2.57** (p90 **6.08**). Across the
+five large fields alone the ratios are **2.22** and **1.34**, respectively.
+For the composite `D=-15,000,000,315` case, fresh-polynomial medians are 10.43
+ms versus 4.57 ms; prepared-field medians are 6.55 ms versus 4.54 ms. The
+tiny trivial case is 8.84 ms versus 0.55 ms from a polynomial and 3.32 ms
+versus 0.46 ms prepared.
+
+These are unpromoted public-boundary diagnostics, not a source-frozen native
+qualification or proof of public PARI competitiveness. The arms include
+different resident evaluator/GP overhead; PARI's full `bnfinit` computes
+units and a regulator but does not project an exact ideal-class map. This
+run does not isolate a causal speedup against a same-host, interleaved
+pre-change Sage.js arm. The separate quiet-host Sage.js-only before/after
+diagnostic is recorded in
+[`compact-summary-quiet-host-diagnostic-2026-09-28.md`](compact-summary-quiet-host-diagnostic-2026-09-28.md).
+
 ## Matched scalar class-number comparison
 
 `run_class_number.py` separately compares the exact scalar Rust count, the
