@@ -1054,22 +1054,20 @@ def _str_split(
     maxsplit = int(maxsplit)
     if sep is runtime.undefined or sep is None:
         parts = []
-        position = 0
-        while position < len(string):
-            while (
-                position < len(string) and _index_of(WHITESPACE, string[position]) != -1
-            ):
-                position += 1
-            if position >= len(string):
+        pos = 0
+        while pos < len(string):
+            while pos < len(string) and _index_of(WHITESPACE, string[pos]) != -1:
+                pos += 1
+            if pos >= len(string):
                 break
             if maxsplit >= 0 and len(parts) >= maxsplit:
-                parts.append(string[position:])
+                parts.append(string[pos:])
                 break
-            end = position
+            end = pos
             while end < len(string) and _index_of(WHITESPACE, string[end]) == -1:
                 end += 1
-            parts.append(string[position:end])
-            position = end
+            parts.append(string[pos:end])
+            pos = end
         return parts
 
     sep = _str_require_string(sep, "split")
@@ -1077,15 +1075,17 @@ def _str_split(
         raise ValueError("empty separator")
     if maxsplit == 0:
         return [string]
+    if maxsplit < 0:
+        return list(_native_split(string, sep))
     parts = []
-    position = 0
-    while maxsplit < 0 or len(parts) < maxsplit:
-        found = string.indexOf(sep, position)
+    pos = 0
+    while len(parts) < maxsplit:
+        found = string.indexOf(sep, pos)
         if found == -1:
             break
-        parts.append(string[position:found])
-        position = found + len(sep)
-    parts.append(string[position:])
+        parts.append(string[pos:found])
+        pos = found + len(sep)
+    parts.append(string[pos:])
     return parts
 
 
