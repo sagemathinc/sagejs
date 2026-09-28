@@ -340,7 +340,7 @@ for polynomial in (x*x + x + 6, x*x + 3*x + 8):
 # Imaginary fields with Minkowski bound below 2 use the same public certificate
 # short circuit; every nonzero fractional ideal maps to the unique class.
 eisenstein = NumberField(x*x + x + 1, "z")
-trivial = eisenstein.class_group()
+trivial = eisenstein.class_group(algorithm="minkowski")
 assert trivial.algorithm == "minkowski"
 assert trivial.certificate.proves_triviality
 principal = eisenstein.maximal_order().ideal(2)

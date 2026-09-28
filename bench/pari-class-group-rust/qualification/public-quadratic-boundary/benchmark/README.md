@@ -690,6 +690,28 @@ pre-change Sage.js arm. The separate quiet-host Sage.js-only before/after
 diagnostic is recorded in
 [`compact-summary-quiet-host-diagnostic-2026-09-28.md`](compact-summary-quiet-host-diagnostic-2026-09-28.md).
 
+## Deferred quadratic-backend public diagnostic
+
+The public `NumberField` Rust group route now projects a verified class number
+and invariant factors without eagerly constructing a second quadratic field.
+The ordinary exact backend is constructed on first ideal-class, certificate,
+or coordinate access; focused native-service tests check that this deferred
+path retains the exact ideal map and detects a forged on-demand coordinate.
+The unchanged 11-field, 15-sample matched panel produced new
+[fresh-polynomial](public-api-polynomial-deferred-backend-diagnostic.json) and
+[prepared-field](public-api-prepared-deferred-backend-diagnostic.json) receipts.
+Their Sage.js/PARI geometric-mean median ratios are **3.81** (p90 **10.56**)
+and **2.44** (p90 **5.87**), respectively. The five larger fields alone are
+**1.83** and **1.28**. For the composite `D=-15,000,000,315` case, the
+fresh-polynomial medians are 9.22 ms versus 4.67 ms; prepared-field medians
+are 5.89 ms versus 4.48 ms. The tiny trivial field remains 6.25 ms versus
+0.51 ms fresh and 3.02 ms versus 0.43 ms prepared. All exact outputs match.
+
+These are unpromoted public-boundary diagnostics, not an isolated causal
+comparison or a PARI-competitive public result. The previously recorded
+map-free run was not interleaved with this run, and the two programs still
+have different evaluator/IPC costs.
+
 ## Matched scalar class-number comparison
 
 `run_class_number.py` separately compares the exact scalar Rust count, the

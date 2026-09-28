@@ -228,7 +228,7 @@ test("scalar discriminants with square factors match certified maximal orders", 
     "matches = []",
     "for d in (-3, -4, -7, -8, -12, -18, -20, -28, -45, -75):",
     "    L = NumberField(x^2 - d, 'a')",
-    "    request = L._imaginary_rust_scalar_request_field('rust', {})",
+    "    request = L._imaginary_rust_discriminant_request_field('rust', {})",
     "    no_backend = runtime.reflect.get(L, '_quadratic_backend_cache') is runtime.undefined",
     "    no_order = runtime.reflect.get(L, '_maximal_order_cache') is runtime.undefined",
     "    matches.append(no_backend and no_order and",
@@ -711,22 +711,44 @@ test("the native service retains the eager exact-map fallback for higher-rank gr
   assert.equal(answer.repr, "[8, (2, 2, 2), 8, 8]");
 });
 
+test("a verified imaginary summary defers quadratic backend until ideal access", {
+  skip: !process.env.SAGEJS_CLASS_GROUP_SERVICE,
+}, async () => {
+  const answer = await evaluate([
+    "import sagejs.runtime as runtime",
+    "R.<x> = QQ[]",
+    "K.<a> = NumberField(x^2 + 23)",
+    "G = K.class_group(algorithm='rust')",
+    "summary = [G.order(), G.invariants(), G.proof_status, K.discriminant()]",
+    "before = [runtime.reflect.get(K, '_quadratic_backend_cache') is runtime.undefined,",
+    "    runtime.reflect.get(K, '_maximal_order_cache') is runtime.undefined]",
+    "I = G.gen().ideal()",
+    "after = runtime.reflect.get(K, '_quadratic_backend_cache') is not runtime.undefined",
+    "[summary, before, after, I.norm(), G(I).coordinates()]",
+  ]);
+  assert.equal(answer.repr,
+    "[[3, (3,), 'exact-unconditional', -23], [True, True], True, 2, (1,)]");
+});
+
 test("the native service keeps a large public group compact until its map is requested", {
   skip: !process.env.SAGEJS_CLASS_GROUP_SERVICE,
 }, async () => {
   const answer = await evaluate([
+    "import sagejs.runtime as runtime",
     "R.<x> = QQ[]",
     "K.<a> = NumberField(x^2 - x + 3750000079)",
     "G = K.class_group(algorithm='rust')",
-    "before = len(G._group._coordinate_map.cache)",
+    "deferred = runtime.reflect.get(K, '_quadratic_backend_cache') is runtime.undefined",
+    "backend_group = G._group._realize()",
+    "before = len(backend_group._coordinate_map.cache)",
     "I, J = [generator.ideal() for generator in G.gens()]",
     "product = G(I*J).coordinates()",
-    "after = len(G._group._coordinate_map.cache)",
+    "after = len(backend_group._coordinate_map.cache)",
     "full = len(G.certificate['reducedForms'])",
-    "[G.order(), G.invariants(), before, after, product, full,",
-    " len(G._group._coordinate_map)]",
+    "[deferred, G.order(), G.invariants(), before, after, product, full,",
+    " len(backend_group._coordinate_map)]",
   ]);
-  assert.equal(answer.repr, "[33768, (2, 16884), 3, 4, (1, 1), 33768, 33768]");
+  assert.equal(answer.repr, "[True, 33768, (2, 16884), 3, 4, (1, 1), 33768, 33768]");
 });
 
 test("a forged on-demand Rust coordinate fails independent form composition", {
