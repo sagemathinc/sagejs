@@ -27,6 +27,10 @@ const recordedRunnerSha256 =
 // group benchmark began requiring the production imaginary-map verifier.
 const scalarRecordedRunnerSha256 =
   "7c3c58fb419f9d6a56274251ebf5bce76c03a15d434e75fe533c15c7f552935c";
+// These map-free receipts also predate the certified-PARI option. Bind them
+// to their actual producer rather than changing their historical identity.
+const mapFreeRecordedRunnerSha256 =
+  "375b73400e0ed875ac38dbaeb5757951a6a1b878d7f211507c3d81f95df1dc82";
 
 function sha256(filename) {
   return createHash("sha256").update(fs.readFileSync(filename)).digest("hex");
@@ -35,14 +39,17 @@ function sha256(filename) {
 test("public Sage.js/PARI diagnostic rejects unfrozen inputs and unsafe receipt paths", () => {
   assert.deepEqual(parseArguments([]), {
     samples: 15, fieldId: undefined, boundary: "polynomial",
-    operation: "group", receipt: undefined,
+    operation: "group", pariProof: "conditional", receipt: undefined,
   });
   assert.equal(parseArguments(["--field", panel.fields[0].id]).fieldId, panel.fields[0].id);
   assert.equal(parseArguments(["--boundary", "prepared"]).boundary, "prepared");
   assert.equal(parseArguments(["--operation", "class-number"]).operation, "class-number");
+  assert.equal(parseArguments(["--pari-proof", "certified"]).pariProof, "certified");
   for (const args of [
     ["--samples", "0"], ["--samples", "101"], ["--samples", "1.5"],
     ["--field", "unlisted"], ["--boundary", "other"], ["--operation", "other"],
+    ["--pari-proof", "unknown"],
+    ["--operation", "class-number", "--pari-proof", "certified"],
     ["--receipt", "../escape.json"], ["--receipt", "other.txt"],
   ]) {
     assert.throws(() => parseArguments(args));
@@ -124,7 +131,7 @@ test("current map-free public diagnostics bind the panel and exact PARI control"
       `warm-resident-${boundary}-to-public-class-group-and-projection-v1`);
     assert.equal(receipt.panelSchema, panel.schema);
     assert.equal(receipt.panelSha256, sha256(panelPath));
-    assert.equal(receipt.runnerSha256, sha256(runner));
+    assert.equal(receipt.runnerSha256, mapFreeRecordedRunnerSha256);
     assert.equal(receipt.samplesPerArmPerField, 15);
     assert.match(receipt.serviceSha256, /^[0-9a-f]{64}$/);
     assert.equal(receipt.pariGpSha256, pin.files["Olinux-x86_64/gp-dyn"]);
@@ -137,6 +144,34 @@ test("current map-free public diagnostics bind the panel and exact PARI control"
       assert.equal(row.pariNanoseconds.length, 15);
       assert.ok(row.sageNanoseconds.every((value) => Number.isSafeInteger(value) && value > 0));
       assert.ok(row.pariNanoseconds.every((value) => Number.isSafeInteger(value) && value > 0));
+      assert.equal(row.sageMedianNanoseconds, median(row.sageNanoseconds));
+      assert.equal(row.pariMedianNanoseconds, median(row.pariNanoseconds));
+      assert.equal(row.sageOverPariMedianRatio,
+        row.sageMedianNanoseconds / row.pariMedianNanoseconds);
+    });
+  }
+});
+
+test("certified PARI diagnostics bind the current runner and frozen panel", () => {
+  for (const boundary of ["polynomial", "prepared"]) {
+    const receipt = require(path.join(directory,
+      `opt-head7a4-certified-${boundary}.json`));
+    assert.equal(receipt.promotedPerformanceReceipt, false);
+    assert.equal(receipt.operation, "group");
+    assert.equal(receipt.pariProof, "certified");
+    assert.match(receipt.caveat, /bnfcertify\(b\)/);
+    assert.equal(receipt.panelSchema, panel.schema);
+    assert.equal(receipt.panelSha256, sha256(panelPath));
+    assert.equal(receipt.runnerSha256, sha256(runner));
+    assert.equal(receipt.samplesPerArmPerField, 15);
+    assert.equal(receipt.pariGpSha256, pin.files["Olinux-x86_64/gp-dyn"]);
+    assert.equal(receipt.pariLibrarySha256, pin.files["Olinux-x86_64/libpari-gmp-tls.so.9"]);
+    assert.deepEqual(receipt.results.map((row) => row.fieldId),
+      panel.fields.map((field) => field.id));
+    receipt.results.forEach((row, index) => {
+      assert.deepEqual(row.expected, panel.fields[index].expected);
+      assert.equal(row.sageNanoseconds.length, 15);
+      assert.equal(row.pariNanoseconds.length, 15);
       assert.equal(row.sageMedianNanoseconds, median(row.sageNanoseconds));
       assert.equal(row.pariMedianNanoseconds, median(row.pariNanoseconds));
       assert.equal(row.sageOverPariMedianRatio,
