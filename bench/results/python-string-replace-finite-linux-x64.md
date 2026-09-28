@@ -45,11 +45,25 @@ needles, Unicode, empty needles, literal dollar signs, and a count of `2**60`.
 The exact source passed the full build (two current native adapters and 41
 production kernel families), 265 unit files, 26 active compiler fixtures,
 strict Python, docs, merge checks, and the focused differential test. The
-core-runtime source is 911,989 / 912,000 bytes. Startup on this exact source
-normalized to 428.2 ms (fail) against the unchanged 425.0 ms budget, with an
-integration workload active; the parent measured 427.4 ms (fail) in an adjacent
-run. The previous candidate revision sampled 427.7 ms (fail), then 417.1 and
-416.7 ms (pass). CI, browser size, independent performance, peak memory, and
-a quiet startup rerun remain pending. The finite-count case is still about
-2.5× CPython at 1,000 matches, and the very fast CPython one-replacement
+core-runtime source is 911,989 / 912,000 bytes. Source-current CI passed the
+Linux x64 routine gate, Chromium parity, and Linux arm64, macOS arm64, and
+Windows x64 platform smokes. #349's separate full integration suite passed
+424/424 files in about one hour after its native prerequisites were
+provisioned.
+
+After that integration load ended, three interleaved 11-sample startup pairs
+on this host gave parent/candidate normalized medians of 432.3/423.7,
+428.3/420.8, and 416.6/415.1 ms. All three candidate runs passed the unchanged
+425.0 ms budget; the parent passed one of three. Earlier, while integration
+was active, this exact candidate source measured 428.2 ms (fail) and the parent
+427.4 ms (fail) in adjacent runs. Thus the exact candidate passed the local
+post-load gate and CI, but several-millisecond host variation remains visible.
+
+The post-load same-source warm-batch recheck (seven measured batches after
+three warmups) gave parent/candidate/CPython medians of 273.155/7.578/3.168 ms
+for 1,000 replacements, 1.101/1.090/0.042 ms for two replacements, and
+24.824/1.664/0.350 ms for 100 replacements. The independent quiet host still
+did not resolve; this is a quieter shared-host recheck, not independent
+confirmation. Peak memory remains unmeasured. The finite-count case is still
+about 2.4× CPython at 1,000 matches, and the very fast CPython two-replacement
 case remains a substantial relative gap despite its small absolute time.
