@@ -176,6 +176,38 @@ test("the quadratic reactor rejects forged and stale guest pointers", {
     const recovered = alloc(1);
     assert.ok(recovered > 0n);
     dealloc(recovered, 1);
+
+    // A hostile caller can supply arbitrary 64-bit handle/length pairs.  A
+    // reproducible spread of forged values must not trap, expose another
+    // allocation, or invalidate a still-live request.
+    const live = alloc(request.length);
+    assert.ok(live > 0n);
+    new Uint8Array(memory.buffer, pointerOf(live), request.length).set(request);
+    const rejectForged = (forged, forgedLength) => {
+      assert.equal(allocationLength(forged), 0);
+      const rejected = invoke(forged, forgedLength);
+      assert.equal(rejected.result.ok, false);
+      dealloc(rejected.outputHandle, rejected.outputLength);
+      dealloc(forged, forgedLength);
+    };
+    for (let bit = 0n; bit < 64n; bit += 1n) {
+      rejectForged(live ^ (1n << bit), request.length);
+    }
+    let randomState = 0x9e3779b9;
+    const nextRandom = () => {
+      randomState = (Math.imul(randomState, 1664525) + 1013904223) >>> 0;
+      return randomState;
+    };
+    for (let index = 0; index < 512; index += 1) {
+      let forged = (BigInt(nextRandom()) << 32n) | BigInt(nextRandom());
+      if (forged === live) forged ^= 1n << 32n;
+      const forgedLength = nextRandom() % (request.length + 3);
+      rejectForged(forged, forgedLength);
+    }
+    const survived = invoke(live, request.length);
+    assert.equal(survived.result.ok, true);
+    dealloc(survived.outputHandle, survived.outputLength);
+    dealloc(live, request.length);
   } finally {
     wasi.dispose();
   }
