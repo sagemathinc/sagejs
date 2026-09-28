@@ -991,3 +991,37 @@ medium presentation preserves the same exact generator and deferred ideal
 coordinates as the complete-map route; noncyclic cases fall back to that route.
 The public default-PARI competitiveness target remains open, especially for
 small fields and fixed interpreter overhead.
+
+### Bounded higher-rank presentations on the public boundary
+
+An isolated `opt` checkout of `8972749964aa257dd8763d22cc2e93bd6a1b9034`
+rebuilt Sage.js and the Rust class-group service, then reran the unchanged
+11-field panel with 15 alternating samples per arm and exact-output checks.
+The comparator remained the same pinned PARI 2.17.4 binary and library, using
+the faster `bnfinit(nf,0)` group mode. The two receipts have the same rebuilt
+Sage.js receipt (`f1ef87b2810ee60198ca59c6520a5cf71a46ea4d96c2be73a2f0dae97997e33f`)
+and service (`cb2f2ed61cf8b46e322f32bad36271de002167f0ae0ba1d464c7a4b63c61896f`)
+hashes.
+
+The clean checkout did not contain the optional native FLINT build. To keep
+the public benchmark's compiled map verifier available without rebuilding
+unrelated native sources, it reused the previous `opt` checkout's unchanged
+FLINT addon (SHA-256 `bbe7c3b1de49be6d5cbacf5e08f130ca421899b2ca3370e9427294896221e0c8`),
+generated FFI manifest (`b343dab8b34670ffa1f185480108a3c0affa51b03502d064e0bcdd208068cf36`),
+and native-kernel pack index (`bfdd32ce2320e8e1756207af9d78aab01d23fc485dc43e3ffed9ad4b26ef122b`).
+The changed imaginary-quadratic Rust and Python sources were not reused.
+These are unpromoted public-boundary diagnostics, not a clean native release
+qualification or a claim of production-Wasm distribution readiness.
+
+| Starting boundary | Sage.js/PARI geometric mean of field median ratios | Smallest–largest field ratio |
+| --- | ---: | ---: |
+| [Fresh polynomial](opt-head897-matched-polynomial.json) | 3.916 | 2.072–9.893 |
+| [Prepared field](opt-head897-matched-prepared.json) | 2.741 | 1.553–6.343 |
+
+For the rank-four `D=-15,015` row, the fresh-polynomial ratio was 4.877 and
+the prepared-field ratio was 4.289, versus 7.845 and 5.446 in the preceding
+`f1ace23d` run. Other unaffected rows also shifted between separately run
+campaigns, so the aggregate difference is not an isolated causal estimate.
+The bounded higher-rank route preserves unconditional detached verification
+and exact on-demand ideal-class coordinates. The frozen-panel goal of
+competition with default PARI remains unmet, particularly for small fields.
