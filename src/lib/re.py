@@ -205,9 +205,8 @@ class MatchObject:
         pair = self._indices[index]
         return value, pair
 
-    def group(self, *groups):
-        if len(groups) < 2:
-            group = groups[0] if groups else 0
+    def group(self, group=0, /, *groups):
+        if not groups:
             if isinstance(group, str):
                 named = _property(self._match, "groups")
                 if named is None or named is runtime.undefined:
@@ -222,11 +221,9 @@ class MatchObject:
                 value = self._match[index]
             # Native RegExp captures are already Python strings or undefined.
             return None if value is None or value is runtime.undefined else value
-        if not groups:
-            groups = (0,)
         values = []
-        for group in groups:
-            value, unused = self._resolve(group)
+        for item in (group,) + groups:
+            value, unused = self._resolve(item)
             values.append(
                 None if value is None or value is runtime.undefined else value
             )
@@ -282,9 +279,11 @@ class RegexObject:
     def __init__(self, pattern, flags=0):
         self.pattern, self.flags = _transform(pattern, int(flags))
         # CPython validates patterns in ``re.compile`` rather than waiting for
-        # the first match operation.  Construct one disposable native regexp
-        # here so coercing traits reject malformed patterns immediately.
-        runtime.reflect.construct(
+        # the first match operation.  Keep the validated native regexp for
+        # matching, resetting its lastIndex before every execution.
+        self._native_pattern = self.pattern
+        self._native_flags = self.flags
+        self._compiled = runtime.reflect.construct(
             runtime.regexp, [self.pattern, _flag_text(self.flags)]
         )
 
@@ -299,9 +298,15 @@ class RegexObject:
         return hash((self.pattern, self.flags))
 
     def _native(self):
-        return runtime.reflect.construct(
-            runtime.regexp, [self.pattern, _flag_text(self.flags)]
-        )
+        if not runtime.strict_equal(
+            self.pattern, self._native_pattern
+        ) or not runtime.strict_equal(self.flags, self._native_flags):
+            self._compiled = runtime.reflect.construct(
+                runtime.regexp, [self.pattern, _flag_text(self.flags)]
+            )
+            self._native_pattern = self.pattern
+            self._native_flags = self.flags
+        return self._compiled
 
     def search(self, string, pos=0, endpos=None):
         text = str(string)

@@ -1,5 +1,15 @@
 text = "a,b,c"
 print("split", text.split(","), text.split(",", 1))
+for label, sample, separator_text, expected in (
+    ("empty", "", ".", [""]),
+    ("trailing", ".a.", ".", ["", "a", ""]),
+    ("multi", "a::b::::", "::", ["a", "b", "", ""]),
+    ("unicode", "α😀β😀", "😀", ["α", "β", ""]),
+):
+    parts = sample.split(separator_text)
+    parts.append("extra")
+    print("unlimited", label, parts == expected + ["extra"], type(parts).__name__)
+print("limited", "a::b::c".split("::", 0), "a::b::c".split("::", 1))
 print("keyword", text.split(sep=",", maxsplit=1))
 print("other", text.rsplit(",", 1), text.replace(",", ";"), text.upper())
 
