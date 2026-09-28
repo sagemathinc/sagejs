@@ -11,8 +11,8 @@ The current `wasm32-wasip1` candidate is
 bytes, SHA-256
 `e28a3e01b0da2580f8bb4bcd8c654e6c98918ac1311e653f17e6b4950462cb91`.
 This digest identifies one development build, not a production release. Rebuild
-and review any changed digest. The cross-Linux-host and macOS receipts below
-concern the earlier
+and review any changed digest. The earlier cross-Linux-host and macOS receipts
+below concern the
 `7344622aa162561860fef387e2133d59d1908b1aec71c8c1c15c57b7c98cd201`
 artifact; they do not certify these new bytes. The earlier same-host linked-object
 rebuild also concerns an older digest; a separate byte-matched link-map receipt
@@ -163,9 +163,25 @@ byte-identical Wasm and the
 [`link-map-inventory-2026-09-28-current.json`](link-map-inventory-2026-09-28-current.json)
 receipt: 40 linked inputs, including 23 Rust-sysroot WASI libc members whose
 archive bytes match the pinned SDK. This is linked-object evidence for the
-current digest, not cross-host reproducibility, an artifact-derived SBOM, or
-distribution approval. The earlier cross-host receipts must not be reused for
-this digest.
+current digest, not an artifact-derived SBOM or distribution approval. The
+earlier cross-host receipts must not be reused for this digest; a separate
+current-digest Linux rebuild is recorded next.
+
+On 2026-09-28, the `opt` Linux x86-64 VM checked out clean commit
+`f056a01281681ca91af87e331fb60a3b2877b3d3` and built the standalone
+reactor in a fresh Cargo target directory with locked offline dependencies,
+Rust 1.98.1, `wasm32-wasip1`, and the same `RUSTFLAGS` as `build-wasm.sh`.
+The linker was copied from the verified local WASI SDK 33.0 and checked on
+`opt` at SHA-256
+`5c965a9e8525c7206aa583f9691f1a7a5e46bd4d793bf65f809b7124c670df26`;
+its LLD version is 22.1.0. The linked Rust-sysroot WASI libc archive has the
+same SHA-256 as the pinned SDK archive above. The independent build produced
+346,136 bytes with SHA-256
+`e28a3e01b0da2580f8bb4bcd8c654e6c98918ac1311e653f17e6b4950462cb91`,
+byte-identical to the current candidate. This establishes reproducibility
+between two Linux hosts for these exact source and toolchain inputs. It does
+not resolve the previously observed macOS byte difference, establish a
+complete source/license inventory, or approve production distribution.
 
 To reproduce the linked-object inventory for the current candidate after
 preparing the pinned Wasm toolchain, run from the repository root:
