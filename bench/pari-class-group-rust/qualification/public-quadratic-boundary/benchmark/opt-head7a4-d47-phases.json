@@ -1,0 +1,132 @@
+{
+  "schema": "sagejs.public-quadratic/public-sagejs-latency-diagnostic-v1",
+  "panelSchema": "sagejs.public-quadratic/benchmark-panel-v2",
+  "promotedPerformanceReceipt": false,
+  "boundary": "warm-node-kernel-evaluate-public-sagejs-call-v1",
+  "caveat": "Includes public Python/Sage.js dispatch, exact presentation or map validation, and kernel evaluation overhead; excludes kernel startup and field construction. The optional evaluation-boundary probe separates parent-observed wall time from the evaluator's execution-only duration; their difference is not attributed to any one phase. Not directly comparable to the promoted Rust/PARI coefficient boundary.",
+  "node": "v26.7.0",
+  "platform": "linux-x64",
+  "samplesPerField": 15,
+  "phaseDiagnosticEnabled": true,
+  "repeatedCellPhaseEnabled": true,
+  "repeatedCellPhaseCaveat": "Each exact source is evaluated consecutively after one warmup. These separate medians are not additive, cannot isolate a causal speedup, and must not be substituted for the matched public Sage.js/PARI panel.",
+  "runnerSha256": "9c7bdabc6f9dddfd7b35880b3cf2cc937451ecdc3b0825a7dea2754fe2e57689",
+  "panelSha256": "3e5bf27142c382e4a1dd31f32656554ada0e20f586b7058f83df8cbf096a8825",
+  "sageBuildReceiptSha256": "12558568bfded50709248c0b640b64f4aba50d544ca39da99c8e9cf1680814dd",
+  "serviceSha256": "2586350cb79e84fd53cda7785cbf1a2b1341bab799da8a020c3159bed60ddfb8",
+  "cpuModel": "AMD EPYC 7B13",
+  "loadAverage1m5m15m": [
+    0.65,
+    1.13,
+    0.82
+  ],
+  "results": [
+    {
+      "fieldId": "tiny-cyclic-d47",
+      "discriminant": -47,
+      "classNumber": 5,
+      "invariantFactors": [
+        5
+      ],
+      "firstDefaultNanoseconds": 195042057,
+      "cachedDefaultNanoseconds": [
+        30433318,
+        8391600,
+        9772700,
+        9261010,
+        8603769,
+        7959319,
+        7944600,
+        7741159,
+        8690149,
+        6961780,
+        7040519,
+        7115300,
+        6343340,
+        6764350,
+        6269999
+      ],
+      "cachedDefaultMedianNanoseconds": 7944600,
+      "freshExplicitNanoseconds": [
+        28488958,
+        15260149,
+        14277449,
+        13973219,
+        10790499,
+        11367150,
+        12572539,
+        11172479,
+        11222480,
+        10530719,
+        10102949,
+        12008719,
+        11893200,
+        10338399,
+        9091600
+      ],
+      "freshExplicitMedianNanoseconds": 11367150,
+      "scalarExplicitNanoseconds": [
+        7159609,
+        6783509,
+        7066740,
+        8527259,
+        5199730,
+        5120619,
+        6039599,
+        5343320,
+        5674249,
+        4297310,
+        5234669,
+        4583310,
+        5947649,
+        4863600,
+        4343549
+      ],
+      "scalarExplicitMedianNanoseconds": 5343320,
+      "rssAfterFieldBytes": 365400064,
+      "phaseDiagnostic": {
+        "publicReceiptMs": 3.170490264892578,
+        "summaryServiceMs": 0.5729198455810547,
+        "validationMs": 0.7796287536621094,
+        "detachedVerificationMs": 0.5939006805419922,
+        "note": "Summary and detached verification timings come from a separate replay after the public receipt; they are not additive components of publicReceiptMs."
+      },
+      "evaluationBoundary": {
+        "empty": {
+          "wallMedianNanoseconds": 3164820,
+          "executionMedianNanoseconds": 556609
+        },
+        "freshGroup": {
+          "wallMedianNanoseconds": 9647349,
+          "executionMedianNanoseconds": 3565250
+        },
+        "scalar": {
+          "wallMedianNanoseconds": 4596090,
+          "executionMedianNanoseconds": 1213180
+        }
+      },
+      "repeatedCellPhases": {
+        "empty": {
+          "wallMedianNanoseconds": 763200,
+          "executionMedianNanoseconds": 366000
+        },
+        "polynomial": {
+          "wallMedianNanoseconds": 2308229,
+          "executionMedianNanoseconds": 1868310
+        },
+        "fieldFromPolynomial": {
+          "wallMedianNanoseconds": 1589320,
+          "executionMedianNanoseconds": 1161860
+        },
+        "preparedGroup": {
+          "wallMedianNanoseconds": 2866660,
+          "executionMedianNanoseconds": 2421290
+        },
+        "freshPolynomialGroup": {
+          "wallMedianNanoseconds": 7496890,
+          "executionMedianNanoseconds": 6826420
+        }
+      }
+    }
+  ]
+}

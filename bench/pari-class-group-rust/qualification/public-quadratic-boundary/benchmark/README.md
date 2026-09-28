@@ -884,3 +884,41 @@ comparison. It does establish that the current public boundary has a material
 gap, especially for tiny fields, despite the separately passing native Rust
 qualification. The receipts retain raw samples and exact software identities
 for further profiling.
+
+### Follow-up public diagnostic after symbolic field construction
+
+The four `opt-head7a4` matched receipts below were measured on a detached,
+clean checkout of `7a4a16343ca9f7bccff6ddbeee64818b1ac0458f`, with 15
+alternating warm-resident samples per arm for every unchanged v2 panel field.
+The benchmark source and built Rust service are the same as the earlier `0fd17`
+run. The PARI control used an unchanged private copy of the original pinned
+2.17.4 build: all six pinned files matched their recorded hashes before the
+run, and the public runner rechecked them. The host's `/home/user/upstream`
+symlink was not modified. The receipts bind the rebuilt Sage.js artifact by
+SHA-256 and check every exact answer. They are diagnostic, not promoted
+performance evidence.
+
+| Public operation and starting boundary | Sage.js/PARI geometric mean of field median ratios | Smallest–largest field ratio |
+| --- | ---: | ---: |
+| [Full group, fresh polynomial](opt-head7a4-matched-polynomial.json) | 4.183 | 2.207–9.618 |
+| [Full group, prepared field](opt-head7a4-matched-prepared.json) | 3.007 | 1.809–5.717 |
+| [Class number, fresh polynomial](opt-head7a4-class-number-polynomial.json) | 5.596 | 1.396–16.134 |
+| [Class number, prepared field](opt-head7a4-class-number-prepared.json) | 3.674 | 0.861–26.000 |
+
+This source change affects polynomial construction, not prepared-field group
+work. The fresh full-group ratio moved from 4.442 to 4.183 while the prepared
+ratio remained near 3; the two separate campaigns do not establish a precise
+speedup. PARI's scalar method changes at `|D|=2e10` as described above, so
+neither scalar aggregate is an equal-work, uniformly unconditional comparison.
+The public full-group boundary remains materially behind PARI even though the
+native coefficient-to-group qualification passes.
+
+Separate, unpaired [small-field](opt-head7a4-d47-phases.json) and
+[large-field](opt-head7a4-large-phases.json) phase probes point to different
+bottlenecks. At `D=-47`, the summary service, Python validation, and detached
+verification probes took approximately 0.57, 0.78, and 0.59 ms. At
+`D=-20,000,000,179`, they took 3.14, 0.95, and 2.93 ms. Those calls occur
+after the timed public sample and are not additive parts of it. The small-field
+gap is dominated by fixed evaluation and verification overhead; larger fields
+also pay for native group construction and independent replay. Exact
+verification must remain in the public route.
