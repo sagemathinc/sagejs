@@ -922,3 +922,41 @@ after the timed public sample and are not additive parts of it. The small-field
 gap is dominated by fixed evaluation and verification overhead; larger fields
 also pay for native group construction and independent replay. Exact
 verification must remain in the public route.
+
+### Certified PARI full-group diagnostic
+
+The original full-group public comparator above uses `bnfinit(nf,0)` without
+`bnfcertify`, so it is the faster PARI baseline but not uniformly an
+unconditional-result comparison. PARI 2.17.4 documents that `bnfcertify(b)`
+removes the GRH assumption from a `bnfinit` result if and only if it returns
+`1`. The public runner now accepts `--pari-proof certified` for full groups:
+it includes `bnfcertify(b)` inside every timed PARI sample, checks for `1`
+before printing the group, and fails rather than using an uncertified result.
+The default remains `--pari-proof conditional`, preserving the original
+baseline and receipts. Scalar runs still use their separately documented
+mixed-method comparator.
+
+```sh
+SAGEJS_CLASS_GROUP_SERVICE="$PWD/packages/class-groups/target/release/class-group-service" \
+  node bench/pari-class-group-rust/qualification/public-quadratic-boundary/benchmark/run-public-sagejs-pari.cjs \
+  --samples 15 --boundary polynomial --pari-proof certified \
+  --receipt public-api-certified-polynomial.json
+```
+
+On the same frozen 11-field v2 panel and `7a4a16343ca9f7bccff6ddbeee64818b1ac0458f`
+Sage.js build as the four preceding `opt-head7a4` receipts, a separate
+15-alternation run on opt gave the following Sage.js/certified-PARI ratios:
+
+| Starting boundary | Geometric mean of field median ratios | Smallest–largest ratio | Fields where Sage.js was faster |
+| --- | ---: | ---: | ---: |
+| [Fresh polynomial](opt-head7a4-certified-polynomial.json) | 0.551 | 0.035–9.124 | 5/11 |
+| [Prepared field](opt-head7a4-certified-prepared.json) | 0.382 | 0.027–7.865 | 7/11 |
+
+The equal-proof-standard aggregate is favorable, but it hides a large
+small-field deficit: the `D=-3` polynomial row is still 9.124× slower than
+certified PARI. These are public diagnostic timings, not the promoted native
+qualification or evidence that the public route is generally PARI-competitive.
+The original faster `bnfinit` comparison remains the practical speed target;
+the two PARI modes answer different proof-standard questions. PARI also does
+not project a complete ideal-class map in either timed mode, whereas Sage.js
+retains exact maps on demand.

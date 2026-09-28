@@ -20,7 +20,7 @@ function sha256(filename) {
 function parseArguments(argv) {
   const options = {
     samples: 15, fieldId: undefined, boundary: "polynomial",
-    operation: "group", receipt: undefined,
+    operation: "group", pariProof: "conditional", receipt: undefined,
   };
   for (let index = 0; index < argv.length; index += 1) {
     const flag = argv[index];
@@ -32,6 +32,8 @@ function parseArguments(argv) {
       options.boundary = argv[++index];
     } else if (flag === "--operation" && argv[index + 1] !== undefined) {
       options.operation = argv[++index];
+    } else if (flag === "--pari-proof" && argv[index + 1] !== undefined) {
+      options.pariProof = argv[++index];
     } else if (flag === "--receipt" && argv[index + 1] !== undefined) {
       options.receipt = argv[++index];
     } else {
@@ -46,6 +48,12 @@ function parseArguments(argv) {
   }
   if (!new Set(["group", "class-number"]).has(options.operation)) {
     throw new Error("--operation must be group or class-number");
+  }
+  if (!new Set(["conditional", "certified"]).has(options.pariProof)) {
+    throw new Error("--pari-proof must be conditional or certified");
+  }
+  if (options.operation !== "group" && options.pariProof === "certified") {
+    throw new Error("--pari-proof certified currently requires --operation group");
   }
   if (options.fieldId !== undefined && !panel.fields.some((field) => field.id === options.fieldId)) {
     throw new Error(`unknown frozen field: ${options.fieldId}`);
@@ -193,15 +201,23 @@ function scalarPariMethod(field) {
     ? "qfbclassno-unconditional" : "bnfinit-conditional";
 }
 
-async function timePari(gp, field, fieldIndex, sampleIndex, boundary, operation) {
+function pariGroupBody(pariProof) {
+  return "b=bnfinit(nf,0);" +
+    (pariProof === "certified"
+      ? 'if(bnfcertify(b)!=1,error("PARI certification failed"));'
+      : "") +
+    "print([nf.disc,b.no,Vecrev(b.clgp[2])])";
+}
+
+async function timePari(gp, field, fieldIndex, sampleIndex, boundary, operation,
+                        pariProof = "conditional") {
   const seed = 2_026_092_600 + fieldIndex * 1000 + sampleIndex;
   const preparation = boundary === "polynomial" ? `nf=nfinit(${field.pariPolynomial});` : "";
   const scalar = operation === "class-number";
   const method = scalar && scalarPariMethod(field);
   const body = method === "qfbclassno-unconditional"
     ? "h=qfbclassno(nf.disc,0);print([nf.disc,h])"
-    : "b=bnfinit(nf,0);" +
-      (scalar ? "print([nf.disc,b.no])" : "print([nf.disc,b.no,Vecrev(b.clgp[2])])");
+    : scalar ? "b=bnfinit(nf,0);print([nf.disc,b.no])" : pariGroupBody(pariProof);
   const code = `setrand(${seed});${preparation}${body}`;
   const start = performance.now();
   const line = await gp.query(code);
@@ -247,7 +263,7 @@ async function main() {
     await sage.evaluate("R.<x> = QQ[]");
     for (const [fieldIndex, field] of panel.fields.entries()) {
       if (options.fieldId !== undefined && field.id !== options.fieldId) continue;
-      process.stderr.write(`measuring ${field.id} (${options.boundary}, ${options.operation})\n`);
+      process.stderr.write(`measuring ${field.id} (${options.boundary}, ${options.operation}, PARI ${options.pariProof})\n`);
       if (options.boundary === "prepared") {
         await sage.evaluate(`K.<a> = NumberField(${field.pariPolynomial})`);
         const discriminant = Number(await gp.query(
@@ -258,7 +274,8 @@ async function main() {
         }
       }
       await timeSage(sage, field, options.boundary, options.operation);
-      await timePari(gp, field, fieldIndex, 0, options.boundary, options.operation);
+      await timePari(gp, field, fieldIndex, 0, options.boundary, options.operation,
+                     options.pariProof);
       const sageNanoseconds = [];
       const pariNanoseconds = [];
       for (let sample = 0; sample < options.samples; sample += 1) {
@@ -269,6 +286,7 @@ async function main() {
           } else {
             pariNanoseconds.push(await timePari(
               gp, field, fieldIndex, sample + 1, options.boundary, options.operation,
+              options.pariProof,
             ));
           }
         }
@@ -302,9 +320,10 @@ async function main() {
       options.operation === "group" ? "class-group-and-projection" : "class-number"
     }-v1`,
     caveat: options.operation === "group"
-      ? "Both arms include interpreter evaluation and exact result projection. Sage.js verifies a small generator presentation for supported ranks and materializes the exact class map on demand; other ranks retain the complete-map route. PARI computes rank-zero units and regulator but does not project a complete map. Resident Node/Sage.js and GP have different IPC costs. This diagnostic is not the promoted matched native receipt."
+      ? `Both arms include interpreter evaluation and exact result projection. Sage.js verifies a small generator presentation for supported ranks and materializes the exact class map on demand; other ranks retain the complete-map route. PARI computes rank-zero units and regulator but does not project a complete map. ${options.pariProof === "certified" ? "PARI additionally calls bnfcertify(b) and rejects any result other than 1, removing the GRH assumption." : "PARI uses bnfinit(nf,0) without certification, so large-field results may depend on GRH."} Resident Node/Sage.js and GP have different IPC costs. This diagnostic is not the promoted matched native receipt.`
       : "Both arms start from the same public polynomial or prepared field and include interpreter evaluation. For |D| < 2e10 PARI uses unconditional qfbclassno(D,0); larger rows project a GRH-conditional bnfinit(nf,0) full-group result, whereas Sage.js computes an unconditional scalar. Resident IPC costs differ. This mixed-method diagnostic is not a promoted parity receipt.",
     operation: options.operation,
+    pariProof: options.operation === "group" ? options.pariProof : "mixed-scalar-methods",
     samplesPerArmPerField: options.samples,
     runnerSha256: sha256(__filename),
     sageBuildReceiptSha256: sha256(path.join(root, "dist/build-receipt.json")),
@@ -339,6 +358,7 @@ module.exports = {
   expectedSage,
   assertProductionImaginaryMapKernel,
   scalarPariMethod,
+  pariGroupBody,
   sha256,
   verifyPariIdentity,
   ResidentGp,
