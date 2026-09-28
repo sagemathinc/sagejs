@@ -89,6 +89,12 @@ jobs:
           SAGEJS_BROWSER_ENGINES: chromium,firefox,webkit
           SAGEJS_REQUIRED_BROWSER_ENGINES: chromium,firefox,webkit
         run: node packages/flint-wasm/test/browser-quadratic-core-evaluator.mjs
+      - name: Replay exact ideal classes without cross-origin isolation
+        env:
+          SAGEJS_BROWSER_UNISOLATED: "1"
+          SAGEJS_BROWSER_ENGINES: chromium,firefox,webkit
+          SAGEJS_REQUIRED_BROWSER_ENGINES: chromium,firefox,webkit
+        run: node packages/flint-wasm/test/browser-quadratic-core-evaluator.mjs
 
   routine:
     name: Bounded public cubic corpus

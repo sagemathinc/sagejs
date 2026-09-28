@@ -1,13 +1,19 @@
 # Sage.js WebAssembly runtime
 
-The separate receipt-gated class-group specialist exposes unconditional,
+The separate receipt-gated class-group specialist can run unconditional,
 bounded imaginary-quadratic computations without making the evaluator's main
-memory grow. For example:
+memory grow. It remains a **development-only reactor**: the production package
+does not include its default Wasm artifact or receipt, so calling
+`createClassGroupCore()` without explicit development inputs is not yet a
+supported public Wasm capability. See the
+[distribution review](../imaginary-quadratic-core/DISTRIBUTION-REVIEW.md)
+before staging those bytes. A development harness can supply the exact artifact
+and its matching SHA-256 receipt:
 
 ```js
 import { createClassGroupCore } from "@sagemath/sagejs-flint-wasm/class-group-core";
 
-const core = await createClassGroupCore();
+const core = await createClassGroupCore({ artifact, receipt });
 try {
   const number = await core.imaginaryClassNumber([6, -1, 1]); // D = -23, h = 3
   const group = await core.imaginaryClassGroup([6, -1, 1]);
@@ -18,9 +24,10 @@ try {
 ```
 
 Both methods require a monic polynomial of a negative fundamental
-discriminant with absolute value at most `10^7`; unsupported inputs fail with
-typed errors. Coefficients may be safe JavaScript integers, `bigint`s, or
-canonical decimal strings within the exact JSON range.
+discriminant. The current development reactor advertises `|D| <= 2×10^11`
+and a 50,000-reduced-form resource cap; unsupported inputs fail with typed
+errors. Coefficients may be safe JavaScript integers, `bigint`s, or canonical
+decimal strings within the exact JSON range.
 
 This package links Sage.js-owned WebAssembly builds of FLINT, GMP, MPFR, MPC,
 M4RI, ffpoly, and smalljac into a browser-compatible Sage.js evaluator. It compiles and
