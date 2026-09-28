@@ -7,7 +7,8 @@ from typing import Any
 import sagejs.runtime as runtime
 
 _Str = str
-WHITESPACE = " \t\n\r\x0b\x0c"
+WHITESPACE = " \t\n\r\v\f\x1c\x1d\x1e\x1f\x85\xa0\u1680\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200a\u2028\u2029\u202f\u205f\u3000"
+_WORD = runtime.regexp("[^" + WHITESPACE + "]+", "g")
 _NATIVE_REPLACE = runtime.string_class.prototype.replace
 _NATIVE_SPLIT = runtime.string_class.prototype.split
 
@@ -854,7 +855,7 @@ def _str_isupper(string: Any) -> bool:
 
 def _str_isspace(string: Any) -> bool:
     string = _native_string(string)
-    return bool(string) and runtime.regexp(r"^\s+$").test(string)
+    return bool(string) and _string_call(string, "match", _WORD) is None
 
 
 def _str_isalpha(string: Any) -> bool:
@@ -1009,39 +1010,39 @@ def _str_rpartition(string: Any, separator: _Str) -> Any:
 def _str_replace(
     string: Any,
     old: _Str,
-    replacement: _Str,
-    replacement_count: Any = runtime.undefined,
+    repl: _Str,
+    count: Any = runtime.undefined,
 ) -> _Str:
     string = _native_string(string)
     old = _str_require_string(old, "replace")
-    replacement = _str_require_string(replacement, "replace")
-    if replacement_count is runtime.undefined:
-        remaining = runtime.number.MAX_SAFE_INTEGER
+    repl = _str_require_string(repl, "replace")
+    if count is runtime.undefined:
+        left = runtime.number.MAX_SAFE_INTEGER
     else:
-        remaining = int(replacement_count)
-        if remaining < 0:
-            remaining = runtime.number.MAX_SAFE_INTEGER
-    if remaining == 0:
+        left = int(count)
+        if left < 0:
+            left = runtime.number.MAX_SAFE_INTEGER
+    if left == 0:
         return string
     if old == "":
         pieces = []
-        position = 0
-        while position <= len(string):
-            if remaining > 0:
-                pieces.append(replacement)
-                remaining -= 1
-            if position < len(string):
-                pieces.append(string[position])
-            position += 1
+        pos = 0
+        while pos <= len(string):
+            if left > 0:
+                pieces.append(repl)
+                left -= 1
+            if pos < len(string):
+                pieces.append(string[pos])
+            pos += 1
         return _str_join("", pieces)
-    position = 0
-    while remaining > 0:
-        found = string.indexOf(old, position)
+    pos = 0
+    while left > 0:
+        found = string.indexOf(old, pos)
         if found == -1:
             break
-        string = string[:found] + replacement + string[found + len(old) :]
-        position = found + len(replacement)
-        remaining -= 1
+        string = string[:found] + repl + string[found + len(old) :]
+        pos = found + len(repl)
+        left -= 1
     return string
 
 
@@ -1053,23 +1054,19 @@ def _str_split(
     string = _native_string(string)
     maxsplit = int(maxsplit)
     if sep is runtime.undefined or sep is None:
+        if maxsplit < 0:
+            words = _string_call(string, "match", _WORD)
+            return [] if words is None else list(words)
         parts = []
-        position = 0
-        while position < len(string):
-            while (
-                position < len(string) and _index_of(WHITESPACE, string[position]) != -1
-            ):
-                position += 1
-            if position >= len(string):
+        _WORD.lastIndex = 0
+        while True:
+            word = _WORD.exec(string)
+            if not word:
                 break
-            if maxsplit >= 0 and len(parts) >= maxsplit:
-                parts.append(string[position:])
+            if len(parts) == maxsplit:
+                parts.append(string[word.index :])
                 break
-            end = position
-            while end < len(string) and _index_of(WHITESPACE, string[end]) == -1:
-                end += 1
-            parts.append(string[position:end])
-            position = end
+            parts.append(word[0])
         return parts
 
     sep = _str_require_string(sep, "split")
@@ -1077,15 +1074,17 @@ def _str_split(
         raise ValueError("empty separator")
     if maxsplit == 0:
         return [string]
+    if maxsplit < 0:
+        return list(_native_split(string, sep))
     parts = []
-    position = 0
-    while maxsplit < 0 or len(parts) < maxsplit:
-        found = string.indexOf(sep, position)
+    pos = 0
+    while len(parts) < maxsplit:
+        found = string.indexOf(sep, pos)
         if found == -1:
             break
-        parts.append(string[position:found])
-        position = found + len(sep)
-    parts.append(string[position:])
+        parts.append(string[pos:found])
+        pos = found + len(sep)
+    parts.append(string[pos:])
     return parts
 
 
@@ -1425,7 +1424,11 @@ def _define_string_method(
     name: _Str,
     implementation: Any,
 ) -> None:
+    if name == "replace":
+        implementation.__positional_only__ = 3
     native_method = runtime.native_method(implementation)
+    if name == "replace":
+        native_method.__positional_only__ = 2
     # A function read from ``str`` is an unbound Python method: callers supply
     # the string explicitly (``str.rstrip(value, chars)``).  The separate
     # prototype adapter below supplies the receiver for ``value.rstrip``.

@@ -203,6 +203,8 @@ assert str.rsplit("a,b,c", sep=",", maxsplit=1) == ["a,b", "c"]
 assert "a\nb".splitlines(keepends=True) == ["a\n", "b"]
 assert "hello".encode(encoding="utf-8") == b"hello"
 assert "a\tb".expandtabs(tabsize=4) == "a   b"
+assert "ab".replace("a", "c", count=1) == "cb"
+assert str.replace("ab", "a", "c", count=1) == "cb"
 for invalid in (
     lambda: "a,b".split(",", sep=","),
     lambda: "a,b".rsplit(",", sep=","),
