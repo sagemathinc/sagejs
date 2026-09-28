@@ -8,20 +8,21 @@
 //! four public polynomial coefficients.
 
 use crate::{
-    ArbitraryIdealReductionLimits, BinaryQuadraticForm, CompactPresentationContinuationCache,
-    CompactPresentationLimits, CompleteImaginaryClassGroup, CubicAnalyticEvidence,
-    CubicCompletionProofMode, CubicConditionalCompletionError, CubicConditionalCompletionOptions,
-    CubicPresentationCandidateLimits, GrhConditionalCompleteCubicClassGroup,
-    ImaginaryClassGroupError, ImaginaryFormClassMapEntry, MaximalOrderEvidenceStatus,
-    NormalFormLimits, PreparedContinuationLimits, PreparedCubicRelationCollector,
-    PreparedIdealWorkspace, PresentationZeroState, PrincipalElementWitnessState,
-    PublicCubicPreparationLimits, VerifiedCompactPresentation,
+    ArbitraryIdealReductionLimits, BinaryQuadraticForm, CompactImaginaryPresentation,
+    CompactPresentationContinuationCache, CompactPresentationLimits, CompleteImaginaryClassGroup,
+    CubicAnalyticEvidence, CubicCompletionProofMode, CubicConditionalCompletionError,
+    CubicConditionalCompletionOptions, CubicPresentationCandidateLimits,
+    GrhConditionalCompleteCubicClassGroup, ImaginaryClassGroupError, ImaginaryFormClassMapEntry,
+    MaximalOrderEvidenceStatus, NormalFormLimits, PreparedContinuationLimits,
+    PreparedCubicRelationCollector, PreparedIdealWorkspace, PresentationZeroState,
+    PrincipalElementWitnessState, PublicCubicPreparationLimits, VerifiedCompactPresentation,
     authenticate_compact_cubic_presentation_candidate_with_cache,
     authenticate_compact_presentation, authenticate_cubic_presentation_candidate,
     complete_cubic_class_group_conditionally_with_context,
     compute_imaginary_class_group_from_coefficients,
     compute_imaginary_class_number_from_coefficients, prepare_cubic_conditional_completion_context,
-    prepare_monic_cubic, verify_imaginary_generator_presentation,
+    prepare_monic_cubic, try_compute_imaginary_presentation_from_coefficients,
+    verify_imaginary_generator_presentation,
 };
 use rug::Integer;
 use serde::ser::SerializeSeq;
@@ -2151,7 +2152,7 @@ impl ProductService {
         Ok(group)
     }
 
-    fn imaginary_presentation_value(group: &CompleteImaginaryClassGroup) -> Value {
+    fn imaginary_presentation_value(group: &CompactImaginaryPresentation) -> Value {
         json!({
             "schema": IMAGINARY_PRESENTATION_SCHEMA,
             "polynomialAscending": group.polynomial_ascending,
@@ -2160,15 +2161,15 @@ impl ProductService {
             "invariantFactors": group.invariant_factors,
             "generators": group.generators,
             "certificate": {
-                "discriminant": group.certificate.discriminant,
-                "fundamentalSquarefreeCore": group.certificate.fundamental_squarefree_core,
-                "squarefreeCorePrimeFactors": group.certificate.squarefree_core_prime_factors,
-                "reductionBoundA": group.certificate.reduction_bound_a,
-                "theorem": group.certificate.theorem,
+                "discriminant": group.discriminant,
+                "fundamentalSquarefreeCore": group.fundamental_squarefree_core,
+                "squarefreeCorePrimeFactors": group.squarefree_core_prime_factors,
+                "reductionBoundA": group.reduction_bound_a,
+                "theorem": "primitive reduced positive-definite forms uniquely enumerate proper ideal classes of a negative fundamental discriminant",
                 "reducedFormsFromExactCount": true,
             },
-            "proofStatus": group.proof_status,
-            "runtimeUsesPariOrFixtureAnswers": group.runtime_uses_pari_or_fixture_answers,
+            "proofStatus": "unconditional-complete",
+            "runtimeUsesPariOrFixtureAnswers": false,
         })
     }
 
@@ -2181,7 +2182,16 @@ impl ProductService {
                 "summary does not accept a map transport",
             ));
         }
-        let group = Self::imaginary_presentation(operation, request.polynomial_ascending)?;
+        let coefficients = Self::imaginary_coefficients(operation, request.polynomial_ascending)?;
+        let group = match try_compute_imaginary_presentation_from_coefficients(coefficients)
+            .map_err(|error| Self::imaginary_error(operation, error))?
+        {
+            Some(group) => group,
+            None => CompactImaginaryPresentation::from_complete(&Self::imaginary_presentation(
+                operation,
+                coefficients.map(|value| value.to_string()),
+            )?),
+        };
         Ok(json!({
             "schema": SERVICE_RESPONSE_SCHEMA,
             "outcome": "complete",
@@ -2217,7 +2227,7 @@ impl ProductService {
             "schema": SERVICE_RESPONSE_SCHEMA,
             "outcome": "complete",
             "operation": operation,
-            "presentation": Self::imaginary_presentation_value(&group),
+            "presentation": Self::imaginary_presentation_value(&CompactImaginaryPresentation::from_complete(&group)),
             "form": entry.form,
             "coordinates": entry.coordinates,
             "representativeIdeal": entry.representative_ideal,
@@ -2609,6 +2619,48 @@ fn serialize_service_result(id: &str, result: Result<Value, ServiceError>) -> Ve
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn large_imaginary_summary_is_exact_and_does_not_publish_a_map() {
+        let polynomial = ["3750000079".to_owned(), "-1".to_owned(), "1".to_owned()];
+        let summary = ProductService::imaginary_group_summary(ImaginaryServiceRequest {
+            schema: SERVICE_REQUEST_SCHEMA.to_owned(),
+            abi: SERVICE_ABI_VERSION,
+            id: "large-summary".to_owned(),
+            operation: "imaginary-class-group-summary".to_owned(),
+            polynomial_ascending: polynomial.clone(),
+            transport: None,
+        })
+        .unwrap();
+        let result = &summary["result"];
+        assert_eq!(result["classNumber"], 33_768);
+        assert_eq!(result["invariantFactors"], json!([2, 16_884]));
+        assert_eq!(result["proofStatus"], "unconditional-complete");
+        assert_eq!(result["certificate"]["reducedFormsFromExactCount"], true);
+        assert!(result.get("completeClassMap").is_none());
+        let generator_forms = result["generators"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|generator| {
+                let form = &generator["form"];
+                ["a", "b", "c"].map(|key| form[key].as_i64().unwrap().to_string())
+            })
+            .collect::<Vec<_>>();
+        let verification =
+            ProductService::imaginary_verify_presentation(ImaginaryPresentationServiceRequest {
+                schema: SERVICE_REQUEST_SCHEMA.to_owned(),
+                abi: SERVICE_ABI_VERSION,
+                id: "large-summary-verification".to_owned(),
+                operation: "imaginary-verify-presentation".to_owned(),
+                polynomial_ascending: polynomial,
+                class_number: 33_768,
+                invariant_factors: vec![2, 16_884],
+                generator_forms,
+            })
+            .unwrap();
+        assert_eq!(verification["outcome"], "verified");
+    }
 
     fn request(maximum_candidates: usize) -> Request {
         Request {

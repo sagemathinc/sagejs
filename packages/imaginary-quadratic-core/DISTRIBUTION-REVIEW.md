@@ -7,15 +7,15 @@ license opinion, artifact-derived SBOM, or distribution approval.
 ## Exact candidate and reproducible checks
 
 The current `wasm32-wasip1` candidate is
-`target/wasm32-wasip1/release/sagejs_imaginary_quadratic_core.wasm`, 346,869
+`target/wasm32-wasip1/release/sagejs_imaginary_quadratic_core.wasm`, 346,136
 bytes, SHA-256
-`5aad704d7d6f9af61301431f1f76807e54a614d5132b9b5066626e7aff51915e`.
+`e28a3e01b0da2580f8bb4bcd8c654e6c98918ac1311e653f17e6b4950462cb91`.
 This digest identifies one development build, not a production release. Rebuild
 and review any changed digest. The cross-Linux-host and macOS receipts below
 concern the earlier
 `7344622aa162561860fef387e2133d59d1908b1aec71c8c1c15c57b7c98cd201`
-artifact; they do not certify these new bytes. A same-host byte-identical
-linked-object rebuild of the current digest is recorded below. Run:
+artifact; they do not certify these new bytes. The earlier same-host linked-object
+rebuild also concerns an older digest, not this candidate. Run:
 
 ```sh
 sh packages/imaginary-quadratic-core/scripts/build-wasm.sh
@@ -41,7 +41,7 @@ macros, so the graph must not be misrepresented as a list of code present in
 the final Wasm bytes.
 
 The saved
-[`development-distribution-inventory-2026-09-27.json`](development-distribution-inventory-2026-09-27.json)
+[`development-distribution-inventory-2026-09-28.json`](development-distribution-inventory-2026-09-28.json)
 binds this development candidate's SHA-256 to the audit's 12 source/toolchain
 input hashes, four WASI imports, export and memory inventories, and 13 locked
 packages with registry-archive and notice-file hashes. Regenerate it only
@@ -49,7 +49,7 @@ after inspecting a changed candidate or input:
 
 ```sh
 node packages/imaginary-quadratic-core/scripts/audit-distribution.mjs \
-  --output packages/imaginary-quadratic-core/development-distribution-inventory-2026-09-27.json
+  --output packages/imaginary-quadratic-core/development-distribution-inventory-2026-09-28.json
 ```
 
 It is a review input, not the independent linked-component, license, or
@@ -130,7 +130,7 @@ The earlier artifact's linked-object receipt remains in
 On 2026-09-28, an additional fresh Linux target directory was built with the
 same compiler, linker, dependencies, and optimization flags plus
 `-C save-temps` and the linker's `--Map` output. Its final Wasm bytes matched
-the **current** 346,869-byte candidate SHA-256
+the **earlier** 346,869-byte candidate SHA-256
 `5aad704d7d6f9af61301431f1f76807e54a614d5132b9b5066626e7aff51915e`.
 The refreshed
 [`link-map-inventory-2026-09-28.json`](link-map-inventory-2026-09-28.json)
@@ -144,7 +144,7 @@ sysroot `libc.a` is byte-for-byte identical to the archive in the pinned
 WASI SDK 33.0 Linux x64 sysroot (both SHA-256
 `5d8ba34d8c6fd0ac59e0efe37241143887f8f232864bbeacc4181ae739f63371`).
 The inventory requires and records that archive equality when given the SDK
-path. This current-artifact receipt is same-host linked-object evidence, not
+path. This earlier-artifact receipt is same-host linked-object evidence, not
 cross-host reproducibility or distribution approval. The official
 [`wasi-sdk-33` source tag](https://github.com/WebAssembly/wasi-sdk/tree/wasi-sdk-33/src)
 points its `src/wasi-libc` submodule at
@@ -156,9 +156,12 @@ provenance input for review, **not** an artifact-derived SBOM:
 inlined dependency code may have no separately linked object, linker output
 can transform selected members, and the legal obligations for the bundled
 WASI libc and every other component remain to be established independently.
+The current `e28a3e01` candidate has passed the locked build-graph and ABI
+inventory above, but has no byte-matched linked-object or cross-host rebuild
+receipt yet. Those earlier receipts must not be reused for this digest.
 
-To reproduce that development inventory after preparing the pinned Wasm
-toolchain and building the candidate, run from the repository root:
+To collect a new linked-object inventory for the current candidate after
+preparing the pinned Wasm toolchain, run from the repository root:
 
 ```sh
 review_dir=$(mktemp -d -p /tmp sagejs-iq-link-map.XXXXXX)

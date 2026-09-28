@@ -13,7 +13,7 @@
 //! forms; all other inputs fail closed.
 
 use serde::Serialize;
-use smallvec::{smallvec, SmallVec};
+use smallvec::{SmallVec, smallvec};
 use std::{
     collections::{BTreeSet, VecDeque},
     fmt,
@@ -205,6 +205,37 @@ pub struct CompleteImaginaryClassGroup {
     pub runtime_uses_pari_or_fixture_answers: bool,
 }
 
+/// Exact generator presentation without eagerly constructing every class map
+/// entry. The complete map remains available through the separate coordinate
+/// operation; this smaller result is only used for groups whose generators
+/// prove the full order directly.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct CompactImaginaryPresentation {
+    pub polynomial_ascending: [i64; 3],
+    pub discriminant: i64,
+    pub class_number: usize,
+    pub invariant_factors: Vec<u64>,
+    pub generators: Vec<ClassGenerator>,
+    pub fundamental_squarefree_core: i64,
+    pub squarefree_core_prime_factors: Vec<u64>,
+    pub reduction_bound_a: i64,
+}
+
+impl CompactImaginaryPresentation {
+    pub fn from_complete(group: &CompleteImaginaryClassGroup) -> Self {
+        Self {
+            polynomial_ascending: group.polynomial_ascending,
+            discriminant: group.discriminant,
+            class_number: group.class_number,
+            invariant_factors: group.invariant_factors.clone(),
+            generators: group.generators.clone(),
+            fundamental_squarefree_core: group.certificate.fundamental_squarefree_core,
+            squarefree_core_prime_factors: group.certificate.squarefree_core_prime_factors.clone(),
+            reduction_bound_a: group.certificate.reduction_bound_a,
+        }
+    }
+}
+
 /// The unconditional scalar result, computed without constructing a group law.
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -265,6 +296,84 @@ pub fn compute_imaginary_class_number_from_coefficients(
         class_number,
         proof_status: "unconditional-complete",
     })
+}
+
+/// Try the large-group presentation route without enumerating an orbit or
+/// materializing a class map. The exact reduced-form count is the group order;
+/// exact order tests prove a cyclic generator, or a cyclic index-two subgroup
+/// with an independent involution. Other structures use the complete route.
+pub fn try_compute_imaginary_presentation_from_coefficients(
+    polynomial_ascending: [i64; 3],
+) -> Result<Option<CompactImaginaryPresentation>, ImaginaryClassGroupError> {
+    let (discriminant, squarefree_core, prime_factors) =
+        validated_imaginary_discriminant(polynomial_ascending)?;
+    if discriminant.unsigned_abs() < 1_000_000_000 {
+        return Ok(None);
+    }
+    let cyclic_candidate = matches!(prime_factors.len(), 1 | 2);
+    let rank_two_candidate = prime_factors.len() == 3 && discriminant.rem_euclid(4) == 1;
+    if !cyclic_candidate && !rank_two_candidate {
+        return Ok(None);
+    }
+    let class_number = count_reduced_forms(discriminant);
+    if class_number > MAXIMUM_REDUCED_FORMS {
+        return Err(ImaginaryClassGroupError::ReducedFormResourceLimit {
+            class_number,
+            maximum: MAXIMUM_REDUCED_FORMS,
+        });
+    }
+    if class_number < 10_000 {
+        return Ok(None);
+    }
+    let linear = polynomial_ascending[1];
+    let (invariant_factors, generators) = if cyclic_candidate {
+        let Some(generator) = find_cyclic_generator(discriminant, class_number)? else {
+            return Ok(None);
+        };
+        (
+            vec![class_number as u64],
+            vec![ClassGenerator {
+                form: generator,
+                coordinates: smallvec![1],
+                exact_order: class_number as u64,
+                representative_ideal: ideal_representative(linear, generator),
+            }],
+        )
+    } else {
+        let Some((involution, generator)) =
+            find_rank_two_generators(discriminant, class_number, &prime_factors)?
+        else {
+            return Ok(None);
+        };
+        let order = class_number / 2;
+        (
+            vec![2, order as u64],
+            vec![
+                ClassGenerator {
+                    form: involution,
+                    coordinates: smallvec![1, 0],
+                    exact_order: 2,
+                    representative_ideal: ideal_representative(linear, involution),
+                },
+                ClassGenerator {
+                    form: generator,
+                    coordinates: smallvec![0, 1],
+                    exact_order: order as u64,
+                    representative_ideal: ideal_representative(linear, generator),
+                },
+            ],
+        )
+    };
+    Ok(Some(CompactImaginaryPresentation {
+        polynomial_ascending,
+        discriminant,
+        class_number,
+        invariant_factors,
+        generators,
+        fundamental_squarefree_core: squarefree_core,
+        squarefree_core_prime_factors: prime_factors,
+        reduction_bound_a: integer_square_root(discriminant.unsigned_abs() / 3) as i64,
+    }))
 }
 
 /// Verify a map-free presentation of a bounded imaginary quadratic class group.
@@ -556,54 +665,8 @@ fn cyclic_orbit_from_class_number(
     if class_number < 10_000 {
         return Ok(None);
     }
-    let principal = principal_form(discriminant);
-    let factors = factor_usize(class_number);
     let bound = integer_square_root(discriminant.unsigned_abs() / 3) as i64;
-    let mut generator = None;
-    // Prefer larger split-prime norms for the long orbit: multiplying by a
-    // norm-2, -3, or -5 form repeatedly hits the general lattice product
-    // more often. Keep those three primes as a complete-search fallback.
-    for norm in orbit_candidate_norms() {
-        if !is_prime(norm as u64) {
-            continue;
-        }
-        for middle in -norm..=norm {
-            let numerator = i128::from(middle) * i128::from(middle) - i128::from(discriminant);
-            let denominator = 4 * i128::from(norm);
-            if numerator % denominator != 0 {
-                continue;
-            }
-            let last = numerator / denominator;
-            let Ok(last) = i64::try_from(last) else {
-                continue;
-            };
-            let candidate = BinaryQuadraticForm {
-                a: norm,
-                b: middle,
-                c: last,
-            };
-            if !candidate.is_primitive_reduced(discriminant)
-                || form_power(candidate, class_number, discriminant)? != principal
-            {
-                continue;
-            }
-            let mut full_order = true;
-            for &(prime, _) in &factors {
-                if form_power(candidate, class_number / prime, discriminant)? == principal {
-                    full_order = false;
-                    break;
-                }
-            }
-            if full_order {
-                generator = Some(candidate);
-                break;
-            }
-        }
-        if generator.is_some() {
-            break;
-        }
-    }
-    let Some(generator) = generator else {
+    let Some(generator) = find_cyclic_generator(discriminant, class_number)? else {
         return Ok(None);
     };
     let mut tagged = collect_cyclic_orbit(generator, class_number, discriminant)?;
@@ -651,6 +714,54 @@ fn cyclic_orbit_from_class_number(
     )))
 }
 
+fn find_cyclic_generator(
+    discriminant: i64,
+    class_number: usize,
+) -> Result<Option<BinaryQuadraticForm>, ImaginaryClassGroupError> {
+    let principal = principal_form(discriminant);
+    let factors = factor_usize(class_number);
+    // Prefer larger split-prime norms for the long orbit: multiplying by a
+    // norm-2, -3, or -5 form repeatedly hits the general lattice product
+    // more often. Keep those three primes as a complete-search fallback.
+    for norm in orbit_candidate_norms() {
+        if !is_prime(norm as u64) {
+            continue;
+        }
+        for middle in -norm..=norm {
+            let numerator = i128::from(middle) * i128::from(middle) - i128::from(discriminant);
+            let denominator = 4 * i128::from(norm);
+            if numerator % denominator != 0 {
+                continue;
+            }
+            let last = numerator / denominator;
+            let Ok(last) = i64::try_from(last) else {
+                continue;
+            };
+            let candidate = BinaryQuadraticForm {
+                a: norm,
+                b: middle,
+                c: last,
+            };
+            if !candidate.is_primitive_reduced(discriminant)
+                || form_power(candidate, class_number, discriminant)? != principal
+            {
+                continue;
+            }
+            let mut full_order = true;
+            for &(prime, _) in &factors {
+                if form_power(candidate, class_number / prime, discriminant)? == principal {
+                    full_order = false;
+                    break;
+                }
+            }
+            if full_order {
+                return Ok(Some(candidate));
+            }
+        }
+    }
+    Ok(None)
+}
+
 /// A proved index-two cyclic subgroup plus an involution outside it gives a
 /// complete `C2 x C(h/2)` map. For odd squarefree `D`, forms with `b=a` are
 /// inexpensive exact involution candidates derived from divisors of `|D|`.
@@ -677,65 +788,13 @@ fn rank_two_orbit_from_class_number(
     if class_number < 10_000 || class_number % 4 != 0 {
         return Ok(None);
     }
-    let order = class_number / 2;
-    let principal = principal_form(discriminant);
     let bound = integer_square_root(discriminant.unsigned_abs() / 3) as i64;
-    let involutions = divisor_boundary_involutions(discriminant, prime_factors, bound);
-    if involutions.len() < 3 {
-        return Ok(None);
-    }
-    let factors = factor_usize(order);
-    let mut generators = None;
-    for norm in orbit_candidate_norms() {
-        if !is_prime(norm as u64) {
-            continue;
-        }
-        for middle in -norm..=norm {
-            let numerator = i128::from(middle) * i128::from(middle) - i128::from(discriminant);
-            let denominator = 4 * i128::from(norm);
-            if numerator % denominator != 0 {
-                continue;
-            }
-            let Ok(last) = i64::try_from(numerator / denominator) else {
-                continue;
-            };
-            let candidate = BinaryQuadraticForm {
-                a: norm,
-                b: middle,
-                c: last,
-            };
-            if !candidate.is_primitive_reduced(discriminant)
-                || form_power(candidate, order, discriminant)? != principal
-            {
-                continue;
-            }
-            let mut full_order = true;
-            for &(prime, _) in &factors {
-                if form_power(candidate, order / prime, discriminant)? == principal {
-                    full_order = false;
-                    break;
-                }
-            }
-            if !full_order {
-                continue;
-            }
-            let subgroup_involution = form_power(candidate, order / 2, discriminant)?;
-            if let Some(involution) = involutions
-                .iter()
-                .copied()
-                .find(|form| *form != principal && *form != subgroup_involution)
-            {
-                generators = Some((involution, candidate));
-                break;
-            }
-        }
-        if generators.is_some() {
-            break;
-        }
-    }
-    let Some((involution, generator)) = generators else {
+    let Some((involution, generator)) =
+        find_rank_two_generators(discriminant, class_number, prime_factors)?
+    else {
         return Ok(None);
     };
+    let order = class_number / 2;
     let mut tagged = collect_rank_two_orbit(involution, generator, order, discriminant)?;
     if tagged.len() != class_number {
         return Err(ImaginaryClassGroupError::GroupLawFailure);
@@ -784,6 +843,68 @@ fn rank_two_orbit_from_class_number(
         },
         complete_class_map,
     )))
+}
+
+fn find_rank_two_generators(
+    discriminant: i64,
+    class_number: usize,
+    prime_factors: &[u64],
+) -> Result<Option<(BinaryQuadraticForm, BinaryQuadraticForm)>, ImaginaryClassGroupError> {
+    if class_number % 4 != 0 {
+        return Ok(None);
+    }
+    let order = class_number / 2;
+    let principal = principal_form(discriminant);
+    let bound = integer_square_root(discriminant.unsigned_abs() / 3) as i64;
+    let involutions = divisor_boundary_involutions(discriminant, prime_factors, bound);
+    if involutions.len() < 3 {
+        return Ok(None);
+    }
+    let factors = factor_usize(order);
+    for norm in orbit_candidate_norms() {
+        if !is_prime(norm as u64) {
+            continue;
+        }
+        for middle in -norm..=norm {
+            let numerator = i128::from(middle) * i128::from(middle) - i128::from(discriminant);
+            let denominator = 4 * i128::from(norm);
+            if numerator % denominator != 0 {
+                continue;
+            }
+            let Ok(last) = i64::try_from(numerator / denominator) else {
+                continue;
+            };
+            let candidate = BinaryQuadraticForm {
+                a: norm,
+                b: middle,
+                c: last,
+            };
+            if !candidate.is_primitive_reduced(discriminant)
+                || form_power(candidate, order, discriminant)? != principal
+            {
+                continue;
+            }
+            let mut full_order = true;
+            for &(prime, _) in &factors {
+                if form_power(candidate, order / prime, discriminant)? == principal {
+                    full_order = false;
+                    break;
+                }
+            }
+            if !full_order {
+                continue;
+            }
+            let subgroup_involution = form_power(candidate, order / 2, discriminant)?;
+            if let Some(involution) = involutions
+                .iter()
+                .copied()
+                .find(|form| *form != principal && *form != subgroup_involution)
+            {
+                return Ok(Some((involution, candidate)));
+            }
+        }
+    }
+    Ok(None)
 }
 
 fn divisor_boundary_involutions(
@@ -3098,7 +3219,11 @@ mod tests {
     #[test]
     fn bounded_miller_rabin_agrees_with_trial_division() {
         for value in 0..=100_000 {
-            assert_eq!(is_prime_bounded_by_jaeschke(value), is_prime(value), "{value}");
+            assert_eq!(
+                is_prime_bounded_by_jaeschke(value),
+                is_prime(value),
+                "{value}"
+            );
         }
         for value in [
             20_000_001_124,
@@ -3107,7 +3232,11 @@ mod tests {
             199_999_999_997,
             200_000_000_000,
         ] {
-            assert_eq!(is_prime_bounded_by_jaeschke(value), is_prime(value), "{value}");
+            assert_eq!(
+                is_prime_bounded_by_jaeschke(value),
+                is_prime(value),
+                "{value}"
+            );
         }
         assert!(!is_prime_bounded_by_jaeschke(3_474_749_660_383));
     }
@@ -3118,7 +3247,10 @@ mod tests {
         assert_eq!(squarefree_prime_factors(0), None);
         assert_eq!(squarefree_prime_factors(15), Some(vec![3, 5]));
         assert_eq!(squarefree_prime_factors(45), None);
-        assert_eq!(squarefree_prime_factors(15_000_000_315), Some(vec![3, 5, 1_000_000_021]));
+        assert_eq!(
+            squarefree_prime_factors(15_000_000_315),
+            Some(vec![3, 5, 1_000_000_021])
+        );
     }
 
     #[test]
@@ -3269,6 +3401,42 @@ mod tests {
             verify_imaginary_generator_presentation([9, 0, 1], 1, &[], &[]),
             Err(ImaginaryClassGroupError::NotFundamentalDiscriminant),
         );
+    }
+
+    #[test]
+    fn large_presentation_avoids_map_without_weakening_generator_proof() {
+        assert_eq!(
+            try_compute_imaginary_presentation_from_coefficients([12, -1, 1]).unwrap(),
+            None
+        );
+        for (polynomial, expected_order, expected_invariants) in [
+            ([5_000_000_045, -1, 1], 27_325, vec![27_325]),
+            ([3_750_000_079, -1, 1], 33_768, vec![2, 16_884]),
+        ] {
+            let presentation = try_compute_imaginary_presentation_from_coefficients(polynomial)
+                .unwrap()
+                .expect("large frozen field has a bounded generator presentation");
+            assert_eq!(presentation.class_number, expected_order);
+            assert_eq!(presentation.invariant_factors, expected_invariants);
+            let generator_forms = presentation
+                .generators
+                .iter()
+                .map(|generator| generator.form)
+                .collect::<Vec<_>>();
+            assert_eq!(
+                verify_imaginary_generator_presentation(
+                    polynomial,
+                    presentation.class_number,
+                    &presentation.invariant_factors,
+                    &generator_forms,
+                ),
+                Ok(())
+            );
+            let full = compute_imaginary_class_group_from_coefficients(polynomial).unwrap();
+            assert_eq!(presentation.invariant_factors, full.invariant_factors);
+            assert_eq!(presentation.generators, full.generators);
+            assert_eq!(full.complete_class_map.len(), presentation.class_number);
+        }
     }
 
     #[test]

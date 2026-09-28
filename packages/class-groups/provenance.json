@@ -309,7 +309,7 @@
     },
     {
       "path": "packages/class-groups/src/imaginary.rs",
-      "sha256": "4eb17dafabf2b3a80a400c747e528ab43bb985e4b80ebf003d0cef0373c38451",
+      "sha256": "17d1f213310ce8e3c7b4d529c863372feca1e3b18243aa46d0c8d88fc0f91cf8",
       "classification": "original",
       "declared_license_expression": "GPL-2.0-or-later",
       "mapping_status": "not_applicable",
@@ -355,7 +355,7 @@
     },
     {
       "path": "packages/class-groups/src/lib.rs",
-      "sha256": "b17b6f58917f16e946c25a85074c14162d6c6feaba6330dd0bb1163c593222df",
+      "sha256": "e3368af05672093f7a1b6a78a2a14ab1ea143292f12c2c5a6237a8d4f6a032e9",
       "classification": "original",
       "declared_license_expression": "GPL-2.0-or-later",
       "mapping_status": "not_applicable",
@@ -544,7 +544,7 @@
     },
     {
       "path": "packages/class-groups/src/service.rs",
-      "sha256": "f05922e8fc505b10b5603a91792c96b62edeea4d1f27b04ea1ba41af7ddf764f",
+      "sha256": "579a924c368fae7dca9341d05e7ea8c6d9bd7b4a4093177e3f735a0acaca9d02",
       "classification": "original",
       "declared_license_expression": "GPL-2.0-or-later",
       "mapping_status": "not_applicable",

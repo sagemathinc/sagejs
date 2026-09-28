@@ -92,14 +92,16 @@ pub use cubic_presentation::{
 pub use flint_normal_form::FlintDyadicInterval;
 pub use hnf::{BigIntMatrix, NormalFormError, NormalFormLimits};
 pub use imaginary::{
-    BinaryQuadraticForm, ClassGenerator as ImaginaryClassGenerator, CompleteImaginaryClassGroup,
-    CompleteImaginaryClassNumber, FormClassMapEntry as ImaginaryFormClassMapEntry,
+    BinaryQuadraticForm, ClassGenerator as ImaginaryClassGenerator, CompactImaginaryPresentation,
+    CompleteImaginaryClassGroup, CompleteImaginaryClassNumber,
+    FormClassMapEntry as ImaginaryFormClassMapEntry,
     IdealRepresentative as ImaginaryIdealRepresentative, ImaginaryClassGroupError,
     PublicImaginaryQuadraticInput,
     ReducedFormCompletenessCertificate as ImaginaryReducedFormCompletenessCertificate,
     compose_reduced_forms, compute_imaginary_class_group,
     compute_imaginary_class_group_from_coefficients,
-    compute_imaginary_class_number_from_coefficients, verify_imaginary_class_group,
+    compute_imaginary_class_number_from_coefficients,
+    try_compute_imaginary_presentation_from_coefficients, verify_imaginary_class_group,
     verify_imaginary_generator_presentation,
 };
 pub use numerical_preparation::{NumericalPreparationError, PreparedCubicEmbedding};

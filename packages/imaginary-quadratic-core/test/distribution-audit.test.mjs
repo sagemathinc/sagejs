@@ -11,7 +11,7 @@ const packageRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "
 const repositoryRoot = path.resolve(packageRoot, "../..");
 const script = path.join(packageRoot, "scripts/audit-distribution.mjs");
 const recordedInventory = path.join(
-  packageRoot, "development-distribution-inventory-2026-09-27.json",
+  packageRoot, "development-distribution-inventory-2026-09-28.json",
 );
 const artifact = path.join(
   packageRoot,
@@ -42,9 +42,9 @@ test("the saved development inventory remains bound to its source inputs", () =>
   const recorded = JSON.parse(fs.readFileSync(recordedInventory, "utf8"));
   assert.equal(recorded.schema,
     "sagejs.imaginary-quadratic/development-distribution-inventory-v1");
-  assert.equal(recorded.artifact.bytes, 346869);
+  assert.equal(recorded.artifact.bytes, 346136);
   assert.equal(recorded.artifact.sha256,
-    "5aad704d7d6f9af61301431f1f76807e54a614d5132b9b5066626e7aff51915e");
+    "e28a3e01b0da2580f8bb4bcd8c654e6c98918ac1311e653f17e6b4950462cb91");
   assert.equal(recorded.inputs.length, 12);
   for (const input of recorded.inputs) {
     assert.equal(input.sha256, sha256(fs.readFileSync(
