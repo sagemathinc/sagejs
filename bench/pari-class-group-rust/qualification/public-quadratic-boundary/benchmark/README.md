@@ -774,16 +774,18 @@ literally. If there is no qualifying 5--100 ms field, the native target cannot
 pass.
 
 The source-current frozen v2 qualification is
-[`receipt-v2-current-2026-09-27.json`](receipt-v2-current-2026-09-27.json).
-It was generated from clean commit `04d0b3b0a` and committed separately;
-all 43 reachable-source hashes still match. Its two independent locked release
-builds are byte-identical, and all 330 exact samples on the unchanged
-11-field panel match. Four fields genuinely fall in PARI's 5--100 ms band.
-The native target passes: geometric-mean Rust/PARI median ratio 0.310,
-nearest-rank p90 1.685, every individual band ratio below 3, and all seven
-under-5 ms field limits. This is coefficient-to-complete-group native evidence;
-the separate public Sage.js evaluator remains slower than PARI, and this
-receipt does not clear the production Wasm review gate.
+[`receipt-v2-current-2026-09-28.json`](receipt-v2-current-2026-09-28.json).
+It was generated from clean commit `2ce9e552e` and committed separately;
+all reachable-source hashes match. Its two independent locked release builds
+are byte-identical, and all 330 exact samples on the unchanged 11-field panel
+match. Four fields genuinely fall in PARI's 5--100 ms band. The native target
+passes: geometric-mean Rust/PARI median ratio 0.301, nearest-rank p90 1.656,
+every individual band ratio below 3, and all seven under-5 ms field limits.
+The [previous source-frozen receipt](receipt-v2-current-2026-09-27.json)
+remains historical evidence for clean commit `04d0b3b0a`. The new result is
+coefficient-to-complete-group native evidence; the separate public Sage.js
+evaluator remains slower than PARI, and neither receipt clears the production
+Wasm review gate.
 
 ## Tiny batch throughput
 

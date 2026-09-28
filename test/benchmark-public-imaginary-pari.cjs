@@ -145,6 +145,24 @@ test("current map-free public diagnostics bind the panel and exact PARI control"
   }
 });
 
+test("current native qualification is a clean source-frozen evidence step", () => {
+  const receipt = require(path.join(directory, "receipt-v2-current-2026-09-28.json"));
+  assert.equal(receipt.promotionEligible, true);
+  assert.equal(receipt.evidenceStatus, "promotion-candidate-clean-frozen-source");
+  assert.equal(receipt.identity.gitCommit, "2ce9e552e4a7811c6c18c6dcefbae531147d61bf");
+  assert.equal(receipt.identity.gitDirty, false);
+  assert.equal(receipt.identity.sourceClosure.containsDirtyReachableSources, false);
+  assert.equal(receipt.identity.sourceClosure.reachableSourceStatusPorcelain, "");
+  assert.equal(receipt.identity.independentCleanTargetBinaryHashesMatch, true);
+  assert.equal(receipt.panelSha256, sha256(panelPath));
+  assert.deepEqual(receipt.fields.map((row) => row.fieldId),
+    panel.fields.map((field) => field.id));
+  assert.equal(receipt.samples.length, panel.fields.length * 15 * 2);
+  assert.ok(receipt.samples.every((sample) => sample.exactOutputChecked));
+  assert.equal(receipt.aggregate.nativeTargetPass, true);
+  assert.equal(receipt.aggregate.tinyFieldTargetPass, true);
+});
+
 test("scalar public diagnostics bind exact answers, method, panel, and recorded runner", () => {
   for (const [boundary, phase] of [
     ["polynomial", "exact-backend"],
