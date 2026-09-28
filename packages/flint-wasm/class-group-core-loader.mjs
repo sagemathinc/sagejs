@@ -150,9 +150,12 @@ function emptyEnvironmentImports(imports, memoryProvider) {
 }
 
 /** Instantiate the authenticated class-group reactor inside its owning worker. */
-export async function instantiateClassGroupCore(bytes) {
+export async function instantiateClassGroupCore(bytes, { wasiHostFactory } = {}) {
   if (!(bytes instanceof Uint8Array) || bytes.byteLength === 0) {
     throw new TypeError("class-group artifact must be nonempty bytes");
+  }
+  if (wasiHostFactory !== undefined && typeof wasiHostFactory !== "function") {
+    throw new TypeError("wasiHostFactory must be a function");
   }
   const memoryContract = validateMemoryContract(bytes);
   const compileStarted = performance.now();
@@ -174,7 +177,7 @@ export async function instantiateClassGroupCore(bytes) {
   }
   const { createWasiHost } = runtime;
   let instance;
-  const wasi = createWasiHost({ stdout() {}, stderr() {} });
+  const wasi = (wasiHostFactory ?? createWasiHost)({ stdout() {}, stderr() {} });
   const wasiImports = {
     ...wasi.imports,
     ...emptyEnvironmentImports(imports, () => instance?.exports?.memory),
@@ -186,34 +189,54 @@ export async function instantiateClassGroupCore(bytes) {
     }
   }
   const instantiateStarted = performance.now();
-  instance = await WebAssembly.instantiate(module, {
-    wasi_snapshot_preview1: wasiImports,
-  });
+  try {
+    instance = await WebAssembly.instantiate(module, {
+      wasi_snapshot_preview1: wasiImports,
+    });
+  } catch (error) {
+    wasi.dispose();
+    throw error;
+  }
   const instantiateMilliseconds = performance.now() - instantiateStarted;
   if (typeof instance.exports._start === "function") {
     wasi.dispose();
     throw new TypeError("class-group core must be a reactor, not a command");
   }
-  wasi.initialize(instance);
+  try {
+    wasi.initialize(instance);
+  } catch (error) {
+    wasi.dispose();
+    throw error;
+  }
 
   const exports = instance.exports;
   if (!(exports.memory instanceof WebAssembly.Memory)) {
     wasi.dispose();
     throw new TypeError("class-group core does not export memory");
   }
-  const abiVersion = requiredFunction(exports, "sagejs_class_group_abi_version");
-  const alloc = requiredFunction(exports, "sagejs_class_group_alloc");
-  const dealloc = requiredFunction(exports, "sagejs_class_group_dealloc");
-  const runJson = requiredFunction(exports, "sagejs_class_group_run_json");
-  const reactorAbiVersion = abiVersion();
+  let alloc;
+  let dealloc;
+  let runJson;
+  let reactorAbiVersion;
+  let allocationLength;
+  try {
+    const abiVersion = requiredFunction(exports, "sagejs_class_group_abi_version");
+    alloc = requiredFunction(exports, "sagejs_class_group_alloc");
+    dealloc = requiredFunction(exports, "sagejs_class_group_dealloc");
+    runJson = requiredFunction(exports, "sagejs_class_group_run_json");
+    reactorAbiVersion = abiVersion();
+    if (reactorAbiVersion === 2) {
+      allocationLength = requiredFunction(exports, "sagejs_class_group_allocation_length");
+    }
+  } catch (error) {
+    wasi.dispose();
+    throw error;
+  }
   if (reactorAbiVersion !== 1 && reactorAbiVersion !== 2) {
     wasi.dispose();
     throw new TypeError(`unsupported class-group ABI version ${reactorAbiVersion}`);
   }
   const taggedHandles = reactorAbiVersion === 2;
-  const allocationLength = taggedHandles
-    ? requiredFunction(exports, "sagejs_class_group_allocation_length")
-    : undefined;
   const pointerOf = (handle) => taggedHandles
     ? Number(BigInt.asUintN(64, handle) & 0xffff_ffffn)
     : handle >>> 0;

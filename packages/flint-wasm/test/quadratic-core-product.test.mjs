@@ -73,6 +73,51 @@ test("the isolated quadratic reactor retains complete ideal maps in Wasm", {
   }
 });
 
+test("a malformed reactor export fails without poisoning the next load", {
+  skip: !existsSync(artifact) && "build the standalone quadratic development reactor first",
+}, async () => {
+  const runtimeModule = existsSync(path.join(root,
+    "packages/flint-wasm/dist/wasi-runtime.mjs"))
+    ? "../dist/wasi-runtime.mjs" : "../src/wasi-runtime.mjs";
+  const { createWasiHost } = await import(runtimeModule);
+  let disposedHosts = 0;
+  const wasiHostFactory = (options) => {
+    const host = createWasiHost(options);
+    return {
+      ...host,
+      dispose() {
+        disposedHosts += 1;
+        host.dispose();
+      },
+    };
+  };
+  const bytes = new Uint8Array(await readFile(artifact));
+  const malformed = bytes.slice();
+  const exportName = new TextEncoder().encode("sagejs_class_group_alloc");
+  const offset = Buffer.from(malformed).indexOf(exportName);
+  assert.ok(offset > 0);
+  malformed[offset] = "x".charCodeAt(0);
+  assert.equal(WebAssembly.Module.exports(new WebAssembly.Module(malformed)).some(
+    ({ name }) => name === "sagejs_class_group_alloc"), false);
+  await assert.rejects(instantiateClassGroupCore(malformed, { wasiHostFactory }),
+    /class-group core does not export sagejs_class_group_alloc/);
+  assert.equal(disposedHosts, 1, "the rejected reactor must release its WASI host");
+
+  const valid = await instantiateClassGroupCore(bytes, { wasiHostFactory });
+  try {
+    const response = valid.invoke({
+      schema: "sagejs.class-groups/service-request-v1",
+      abi: 1,
+      id: "valid-after-malformed-export",
+      operation: "capability",
+    });
+    assert.equal(response.ok, true);
+  } finally {
+    valid.close();
+  }
+  assert.equal(disposedHosts, 2);
+});
+
 test("the quadratic reactor rejects forged and stale guest pointers", {
   skip: !existsSync(artifact) && "build the standalone quadratic development reactor first",
 }, async () => {
