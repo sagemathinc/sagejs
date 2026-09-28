@@ -1,0 +1,268 @@
+{
+  "schema": "sagejs.imaginary-quadratic/hash-equal-link-map-inventory-v1",
+  "scope": "linked-object evidence from a byte-identical development rebuild; not an artifact-derived SBOM, complete source inventory, or distribution approval",
+  "artifact": {
+    "bytes": 346869,
+    "sha256": "5aad704d7d6f9af61301431f1f76807e54a614d5132b9b5066626e7aff51915e"
+  },
+  "linkMap": {
+    "rawSha256": "2532f758daa4e6e9566c4af73111fc6827d74f6ae4cb2010b22eaa0bee29e1de",
+    "normalizedSha256": "55879f6c9da53d9664e5c33a4c5dc0710d3f8c842f737aee66d6dbb682ccbb15",
+    "linkedInputCount": 40,
+    "linkedContributionCount": 1127,
+    "internalContributions": 6
+  },
+  "wasiLibc": {
+    "linkedArchiveSha256": "5d8ba34d8c6fd0ac59e0efe37241143887f8f232864bbeacc4181ae739f63371",
+    "sdkArchiveSha256": "5d8ba34d8c6fd0ac59e0efe37241143887f8f232864bbeacc4181ae739f63371",
+    "byteIdentical": true,
+    "linkedMemberCount": 23
+  },
+  "inputs": [
+    {
+      "input": "cargo-target/wasm32-wasip1/release/deps/libitoa-1c3d9e4495d73de8.rlib(itoa-1c3d9e4495d73de8.itoa.1ef311d5a178ac51-cgu.0.rcgu.o)",
+      "archiveSha256": "f3e7587ba2fe8674af7de095a17eae15d725e23a76749929217d655d298fb815",
+      "memberSha256": "14e7e17ec57d15b799c52f98cd4d02df9a647534420be15a58c221754ee4bae6",
+      "contributions": 5
+    },
+    {
+      "input": "cargo-target/wasm32-wasip1/release/deps/libserde_core-e2837a3d1063f53d.rlib(serde_core-e2837a3d1063f53d.serde_core.8cb1457bf566527a-cgu.0.rcgu.o)",
+      "archiveSha256": "0b6cf0aed30af5d1d62cd95c88fceccbaa27df80b602bc20737e4663453918ed",
+      "memberSha256": "548197c91862e10aa38493b50f166c4ca4e5986a24047e163f2021af81d3d1b5",
+      "contributions": 32
+    },
+    {
+      "input": "cargo-target/wasm32-wasip1/release/deps/libserde_json-1724943384f108eb.rlib(serde_json-1724943384f108eb.serde_json.8bceedf4b9df52d0-cgu.0.rcgu.o)",
+      "archiveSha256": "92bef54905c3937d501476abb0abed08fde6d0f1f2f3af1375ca58e6713ec26b",
+      "memberSha256": "78e114c341932d2c4800043d955ee4d982912e1069dcaf9be9695dab4d906a9a",
+      "contributions": 105
+    },
+    {
+      "input": "cargo-target/wasm32-wasip1/release/deps/libzmij-feaa30cf50a2eb6f.rlib(zmij-feaa30cf50a2eb6f.zmij.ee83300467b97445-cgu.0.rcgu.o)",
+      "archiveSha256": "58a775bbd0e525259866ef46e2e9eef875fa7e57f027271d59fc1e096b1386d8",
+      "memberSha256": "bf27e3f3101a86491cf3934f89769186b0e4e2aa9c8bdee7d0d9ef3d71ba2cdd",
+      "contributions": 2
+    },
+    {
+      "input": "cargo-target/wasm32-wasip1/release/deps/sagejs_imaginary_quadratic_core.dxuf075ca10yqtslnpn6buzef.rcgu.o",
+      "archiveSha256": null,
+      "memberSha256": "b6bd289bbf962340b9fc0e8cc0064af321e20c3023fe4866863629455ec4e8ae",
+      "contributions": 5
+    },
+    {
+      "input": "cargo-target/wasm32-wasip1/release/deps/sagejs_imaginary_quadratic_core.sagejs_imaginary_quadratic_core.42d5cc941363e777-cgu.0.rcgu.o",
+      "archiveSha256": null,
+      "memberSha256": "5c4bf249bb17f524bb774f0c851a03fa71c566aa8799bc113e29314089d7b509",
+      "contributions": 459
+    },
+    {
+      "input": "rust-sysroot/lib/rustlib/wasm32-wasip1/lib/liballoc-0965a86479b73a2f.rlib(alloc-0965a86479b73a2f.alloc.1a096bf48401f5d5-cgu.0.rcgu.o)",
+      "archiveSha256": "61163c0a9c90c3ff624ab62e1236126d429bd87b7674d6004d97362f8ab93ebf",
+      "memberSha256": "4e2f1277c816c254b718f78e93f3e93805670c1b4b8332e2816b71a087a0068a",
+      "contributions": 22
+    },
+    {
+      "input": "rust-sysroot/lib/rustlib/wasm32-wasip1/lib/libcompiler_builtins-e46ed6eb898c7f18.rlib(compiler_builtins-e46ed6eb898c7f18.compiler_builtins.ede1965dc845e29c-cgu.014.rcgu.o)",
+      "archiveSha256": "ff7378a1f6502b4e14dbbbfe70c53f9ee7689a33d22b6fde5216c51a0726029b",
+      "memberSha256": "811195724391a8d680eaf71e67508effe07d02d29c67d8deffa45ccf58693da0",
+      "contributions": 1
+    },
+    {
+      "input": "rust-sysroot/lib/rustlib/wasm32-wasip1/lib/libcompiler_builtins-e46ed6eb898c7f18.rlib(compiler_builtins-e46ed6eb898c7f18.compiler_builtins.ede1965dc845e29c-cgu.101.rcgu.o)",
+      "archiveSha256": "ff7378a1f6502b4e14dbbbfe70c53f9ee7689a33d22b6fde5216c51a0726029b",
+      "memberSha256": "786fb181a92cd27efe8a0687a9cc4cd73f1c86400e7e665b552d4df93f50eea3",
+      "contributions": 1
+    },
+    {
+      "input": "rust-sysroot/lib/rustlib/wasm32-wasip1/lib/libcompiler_builtins-e46ed6eb898c7f18.rlib(compiler_builtins-e46ed6eb898c7f18.compiler_builtins.ede1965dc845e29c-cgu.129.rcgu.o)",
+      "archiveSha256": "ff7378a1f6502b4e14dbbbfe70c53f9ee7689a33d22b6fde5216c51a0726029b",
+      "memberSha256": "f94b9736e2bd7c78131b7082ad510e02af89a765e3fa05899ea8009d4b006c66",
+      "contributions": 1
+    },
+    {
+      "input": "rust-sysroot/lib/rustlib/wasm32-wasip1/lib/libcompiler_builtins-e46ed6eb898c7f18.rlib(compiler_builtins-e46ed6eb898c7f18.compiler_builtins.ede1965dc845e29c-cgu.164.rcgu.o)",
+      "archiveSha256": "ff7378a1f6502b4e14dbbbfe70c53f9ee7689a33d22b6fde5216c51a0726029b",
+      "memberSha256": "96b1947053b935ae32c6b5bd8e6f5bc93b234a9acd0d65af305c7a79446cd203",
+      "contributions": 1
+    },
+    {
+      "input": "rust-sysroot/lib/rustlib/wasm32-wasip1/lib/libcompiler_builtins-e46ed6eb898c7f18.rlib(compiler_builtins-e46ed6eb898c7f18.compiler_builtins.ede1965dc845e29c-cgu.212.rcgu.o)",
+      "archiveSha256": "ff7378a1f6502b4e14dbbbfe70c53f9ee7689a33d22b6fde5216c51a0726029b",
+      "memberSha256": "084358688b6dfcd9df5700b69f30b224d801dfeaca91141a9b0f32457e82bcd3",
+      "contributions": 1
+    },
+    {
+      "input": "rust-sysroot/lib/rustlib/wasm32-wasip1/lib/libcompiler_builtins-e46ed6eb898c7f18.rlib(compiler_builtins-e46ed6eb898c7f18.compiler_builtins.ede1965dc845e29c-cgu.222.rcgu.o)",
+      "archiveSha256": "ff7378a1f6502b4e14dbbbfe70c53f9ee7689a33d22b6fde5216c51a0726029b",
+      "memberSha256": "6890056205c3608b0ebd1894fa7fd8d10cb07f71bd6fe863b7d518bda518a338",
+      "contributions": 1
+    },
+    {
+      "input": "rust-sysroot/lib/rustlib/wasm32-wasip1/lib/libcompiler_builtins-e46ed6eb898c7f18.rlib(compiler_builtins-e46ed6eb898c7f18.compiler_builtins.ede1965dc845e29c-cgu.241.rcgu.o)",
+      "archiveSha256": "ff7378a1f6502b4e14dbbbfe70c53f9ee7689a33d22b6fde5216c51a0726029b",
+      "memberSha256": "f0c614de9a32ca20253d5c815a436c5ba471fd278fbcd9d110767e4905df46ef",
+      "contributions": 1
+    },
+    {
+      "input": "rust-sysroot/lib/rustlib/wasm32-wasip1/lib/libcore-026fdd85a47f987d.rlib(core-026fdd85a47f987d.core.20f923910834e392-cgu.0.rcgu.o)",
+      "archiveSha256": "5f2f00102b74902a9ced3e778623b3134bcbb6f4f516a77b4560fdce85092a5e",
+      "memberSha256": "5860bb825089e4f755f4492856eb838517ae39930d10e04aa0144be4ee676f9a",
+      "contributions": 277
+    },
+    {
+      "input": "rust-sysroot/lib/rustlib/wasm32-wasip1/lib/libpanic_abort-a5a22ee639fac8da.rlib(panic_abort-a5a22ee639fac8da.panic_abort.19726bf54d354d5f-cgu.0.rcgu.o)",
+      "archiveSha256": "72d1bb873823c957060e80f7c1149cb0b4ad548f23ba9629497b26e4167357eb",
+      "memberSha256": "4344eff598e307c4b01f99d4b63b39c99b8d7f69069f39015f87cddd2aa366a6",
+      "contributions": 1
+    },
+    {
+      "input": "rust-sysroot/lib/rustlib/wasm32-wasip1/lib/libstd-47f21431a7756d70.rlib(std-47f21431a7756d70.std.20022bcccacc018b-cgu.0.rcgu.o)",
+      "archiveSha256": "0dc11124b5f15c4443c5410b71c88c4be11a5590bc41798d73236b5e7a53c9a0",
+      "memberSha256": "e08bc3f778a093537632c7a9a026afed625a9df651ceba81f67c80759c273ff9",
+      "contributions": 167
+    },
+    {
+      "input": "rust-sysroot/lib/rustlib/wasm32-wasip1/lib/self-contained/libc.a(__lctrans.c.obj)",
+      "archiveSha256": "5d8ba34d8c6fd0ac59e0efe37241143887f8f232864bbeacc4181ae739f63371",
+      "memberSha256": "8313292c411eaad519119f4e06aa92a7aaef006ad6b93442f3d0ebe1d202c1ad",
+      "contributions": 2
+    },
+    {
+      "input": "rust-sysroot/lib/rustlib/wasm32-wasip1/lib/self-contained/libc.a(__wasilibc_initialize_environ.c.obj)",
+      "archiveSha256": "5d8ba34d8c6fd0ac59e0efe37241143887f8f232864bbeacc4181ae739f63371",
+      "memberSha256": "3f5add9236ee03a9ecd65dab780408d5a694cd9a01394de946ffc03a6687d991",
+      "contributions": 4
+    },
+    {
+      "input": "rust-sysroot/lib/rustlib/wasm32-wasip1/lib/self-contained/libc.a(__wasilibc_real.c.obj)",
+      "archiveSha256": "5d8ba34d8c6fd0ac59e0efe37241143887f8f232864bbeacc4181ae739f63371",
+      "memberSha256": "51d7850d59a998fd85d018fcbb5e7e1e1bab5998a7a02bd5ea479ff2b1363662",
+      "contributions": 4
+    },
+    {
+      "input": "rust-sysroot/lib/rustlib/wasm32-wasip1/lib/self-contained/libc.a(_Exit.c.obj)",
+      "archiveSha256": "5d8ba34d8c6fd0ac59e0efe37241143887f8f232864bbeacc4181ae739f63371",
+      "memberSha256": "4bb6f1c2dc510b249dd2cf136c83e47bc5967de7e58e104d282e75dc67b0cd5e",
+      "contributions": 1
+    },
+    {
+      "input": "rust-sysroot/lib/rustlib/wasm32-wasip1/lib/self-contained/libc.a(abort.c.obj)",
+      "archiveSha256": "5d8ba34d8c6fd0ac59e0efe37241143887f8f232864bbeacc4181ae739f63371",
+      "memberSha256": "bb095d892e70bd52b9a95b9d66fc438ab06506ff06f31f7b7f18d7778f5b751c",
+      "contributions": 1
+    },
+    {
+      "input": "rust-sysroot/lib/rustlib/wasm32-wasip1/lib/self-contained/libc.a(dlmalloc.c.obj)",
+      "archiveSha256": "5d8ba34d8c6fd0ac59e0efe37241143887f8f232864bbeacc4181ae739f63371",
+      "memberSha256": "74e1c68db84ba84954b26e7ddae431d3ac10257ff75261863dea12c6ba5ce558",
+      "contributions": 12
+    },
+    {
+      "input": "rust-sysroot/lib/rustlib/wasm32-wasip1/lib/self-contained/libc.a(errno.c.obj)",
+      "archiveSha256": "5d8ba34d8c6fd0ac59e0efe37241143887f8f232864bbeacc4181ae739f63371",
+      "memberSha256": "1d37b896ffb52099259e35165d73adfba5cd11adf6dc53545c997841c79c5324",
+      "contributions": 1
+    },
+    {
+      "input": "rust-sysroot/lib/rustlib/wasm32-wasip1/lib/self-contained/libc.a(exit.c.obj)",
+      "archiveSha256": "5d8ba34d8c6fd0ac59e0efe37241143887f8f232864bbeacc4181ae739f63371",
+      "memberSha256": "07236fd945d113ea1a058c3dae8190ad0d244238eeca6bbc365b79dcefd9e5d2",
+      "contributions": 2
+    },
+    {
+      "input": "rust-sysroot/lib/rustlib/wasm32-wasip1/lib/self-contained/libc.a(getcwd.c.obj)",
+      "archiveSha256": "5d8ba34d8c6fd0ac59e0efe37241143887f8f232864bbeacc4181ae739f63371",
+      "memberSha256": "acc26fd0eedb81164eeac15305a311cd467c128f791474a43eb7188f5865088d",
+      "contributions": 2
+    },
+    {
+      "input": "rust-sysroot/lib/rustlib/wasm32-wasip1/lib/self-contained/libc.a(getenv.c.obj)",
+      "archiveSha256": "5d8ba34d8c6fd0ac59e0efe37241143887f8f232864bbeacc4181ae739f63371",
+      "memberSha256": "be88205f47712dcb142490b69a3fd1b568a3f50569c572f5608a7e2fad6205d0",
+      "contributions": 1
+    },
+    {
+      "input": "rust-sysroot/lib/rustlib/wasm32-wasip1/lib/self-contained/libc.a(libc.c.obj)",
+      "archiveSha256": "5d8ba34d8c6fd0ac59e0efe37241143887f8f232864bbeacc4181ae739f63371",
+      "memberSha256": "88cb62d0e965c8aba20b5c98e42a0d48bfa2674adc0332bee479577dc315a1c0",
+      "contributions": 1
+    },
+    {
+      "input": "rust-sysroot/lib/rustlib/wasm32-wasip1/lib/self-contained/libc.a(memcmp.c.obj)",
+      "archiveSha256": "5d8ba34d8c6fd0ac59e0efe37241143887f8f232864bbeacc4181ae739f63371",
+      "memberSha256": "977d4f793d4b18863570982bafc070cd8ecfcefcd144bf7cc707766b8b87c7c7",
+      "contributions": 1
+    },
+    {
+      "input": "rust-sysroot/lib/rustlib/wasm32-wasip1/lib/self-contained/libc.a(sbrk.c.obj)",
+      "archiveSha256": "5d8ba34d8c6fd0ac59e0efe37241143887f8f232864bbeacc4181ae739f63371",
+      "memberSha256": "25d99e872558f90a8e8b460cf8093b86c2aeb468742a416f520ddab0b0ca44e8",
+      "contributions": 1
+    },
+    {
+      "input": "rust-sysroot/lib/rustlib/wasm32-wasip1/lib/self-contained/libc.a(stpcpy.c.obj)",
+      "archiveSha256": "5d8ba34d8c6fd0ac59e0efe37241143887f8f232864bbeacc4181ae739f63371",
+      "memberSha256": "e7d9eadff6f53a9f7670ce4dfa4f9f6dc3038f127db8ef405508557d1ab72bc9",
+      "contributions": 1
+    },
+    {
+      "input": "rust-sysroot/lib/rustlib/wasm32-wasip1/lib/self-contained/libc.a(strchrnul.c.obj)",
+      "archiveSha256": "5d8ba34d8c6fd0ac59e0efe37241143887f8f232864bbeacc4181ae739f63371",
+      "memberSha256": "f6fb5f41f38e26a504fa6af3d81c5055d9ec06adeb868b98836a41a159710b8a",
+      "contributions": 1
+    },
+    {
+      "input": "rust-sysroot/lib/rustlib/wasm32-wasip1/lib/self-contained/libc.a(strcpy.c.obj)",
+      "archiveSha256": "5d8ba34d8c6fd0ac59e0efe37241143887f8f232864bbeacc4181ae739f63371",
+      "memberSha256": "74a79c167c77e65b0cac02c3e8255eb2dd216a9bd5e0cdb34a3bb40b38337a1e",
+      "contributions": 1
+    },
+    {
+      "input": "rust-sysroot/lib/rustlib/wasm32-wasip1/lib/self-contained/libc.a(strdup.c.obj)",
+      "archiveSha256": "5d8ba34d8c6fd0ac59e0efe37241143887f8f232864bbeacc4181ae739f63371",
+      "memberSha256": "66cbf58546d38722e46cb052fa6288d381f4e10ad585d8ba937103cfa4487936",
+      "contributions": 1
+    },
+    {
+      "input": "rust-sysroot/lib/rustlib/wasm32-wasip1/lib/self-contained/libc.a(strerror_r.c.obj)",
+      "archiveSha256": "5d8ba34d8c6fd0ac59e0efe37241143887f8f232864bbeacc4181ae739f63371",
+      "memberSha256": "74ef53e7035301b975fc21e09c3cf01770857cf410202d47bd9324b621a0f6ae",
+      "contributions": 1
+    },
+    {
+      "input": "rust-sysroot/lib/rustlib/wasm32-wasip1/lib/self-contained/libc.a(strerror.c.obj)",
+      "archiveSha256": "5d8ba34d8c6fd0ac59e0efe37241143887f8f232864bbeacc4181ae739f63371",
+      "memberSha256": "773917cf4aee4ffd63067e8ded5c5c215cc79341f9e7435ceca4da1e14e6e51c",
+      "contributions": 3
+    },
+    {
+      "input": "rust-sysroot/lib/rustlib/wasm32-wasip1/lib/self-contained/libc.a(strlen.c.obj)",
+      "archiveSha256": "5d8ba34d8c6fd0ac59e0efe37241143887f8f232864bbeacc4181ae739f63371",
+      "memberSha256": "624e9deb2e966e02c28586c286fb173817988aaaa2049d23e35575487a596fd4",
+      "contributions": 1
+    },
+    {
+      "input": "rust-sysroot/lib/rustlib/wasm32-wasip1/lib/self-contained/libc.a(strncmp.c.obj)",
+      "archiveSha256": "5d8ba34d8c6fd0ac59e0efe37241143887f8f232864bbeacc4181ae739f63371",
+      "memberSha256": "d148ced156cc44d89c0d8233ce9a764ffa673ef84b137fc5335df2a188ae9f4e",
+      "contributions": 1
+    },
+    {
+      "input": "rust-sysroot/lib/rustlib/wasm32-wasip1/lib/self-contained/libc.a(write.c.obj)",
+      "archiveSha256": "5d8ba34d8c6fd0ac59e0efe37241143887f8f232864bbeacc4181ae739f63371",
+      "memberSha256": "79755d0210181de1ac350909d7e28fdebc66cc12ab5a263cd11706e1fd6e1d04",
+      "contributions": 1
+    },
+    {
+      "input": "rust-sysroot/lib/rustlib/wasm32-wasip1/lib/self-contained/libc.a(writev.c.obj)",
+      "archiveSha256": "5d8ba34d8c6fd0ac59e0efe37241143887f8f232864bbeacc4181ae739f63371",
+      "memberSha256": "48a90d707b71c9b9374066293d67ba25e51f733629f6973bd8ada2f666b7ce5d",
+      "contributions": 1
+    }
+  ],
+  "limitations": [
+    "Inlined dependency code may reside in another crate's object and not appear as a separate linked member.",
+    "The build graph, source closure, licenses, and notices require separate review.",
+    "A linker map does not replace an independent safety or legal distribution decision."
+  ]
+}

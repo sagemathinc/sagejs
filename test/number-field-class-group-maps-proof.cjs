@@ -658,6 +658,12 @@ from sagejs.number_fields.class_group_maps import (
     _conditional_factor_base_plan,
     class_group_from_engine_result,
 )
+from sagejs.number_fields import rust_class_group_runtime as rust_runtime
+
+# This fixture authenticates the Python conditional-evidence replay format.
+# Keep the public calls on that producer; Rust dispatch has separate coverage.
+rust_runtime.rust_class_group = lambda *args, **kwargs: None
+rust_runtime.rust_class_unit_context = lambda *args, **kwargs: None
 
 def seal(payload):
     body = copy.deepcopy(payload)
@@ -1074,6 +1080,12 @@ import copy
 
 from sagejs.number_fields.class_group_maps import class_group_from_engine_result
 from sagejs.number_fields.class_unit_groups import class_unit_context
+from sagejs.number_fields import rust_class_group_runtime as rust_runtime
+
+# Compare the Python conditional/absolute proof regimes without switching
+# producers at the public entry point. Rust dispatch is tested separately.
+rust_runtime.rust_class_group = lambda *args, **kwargs: None
+rust_runtime.rust_class_unit_context = lambda *args, **kwargs: None
 
 R = PolynomialRing(QQ, "x")
 x = R.gen()

@@ -11,10 +11,11 @@ The current `wasm32-wasip1` candidate is
 bytes, SHA-256
 `5aad704d7d6f9af61301431f1f76807e54a614d5132b9b5066626e7aff51915e`.
 This digest identifies one development build, not a production release. Rebuild
-and review any changed digest. The independent same-host, cross-Linux-host,
-and linked-object receipts below concern the earlier
+and review any changed digest. The cross-Linux-host and macOS receipts below
+concern the earlier
 `7344622aa162561860fef387e2133d59d1908b1aec71c8c1c15c57b7c98cd201`
-artifact; they do not certify these new bytes. Run:
+artifact; they do not certify these new bytes. A same-host byte-identical
+linked-object rebuild of the current digest is recorded below. Run:
 
 ```sh
 sh packages/imaginary-quadratic-core/scripts/build-wasm.sh
@@ -123,12 +124,16 @@ artifact, and `verify-wasm.mjs` passed its structural memory check. This
 establishes reproducibility across two independent Linux hosts with the same
 toolchain inputs. It does not explain the Mac/Linux byte difference or replace
 the independent review and public production benchmarks below.
+The earlier artifact's linked-object receipt remains in
+[`link-map-inventory-2026-09-27.json`](link-map-inventory-2026-09-27.json).
 
-An additional fresh Linux target directory was built with the same compiler,
-linker, dependencies, and optimization flags plus `-C save-temps` and the
-linker's `--Map` output. Its final Wasm bytes still matched the canonical
-SHA-256 above. The resulting
-[`link-map-inventory-2026-09-27.json`](link-map-inventory-2026-09-27.json)
+On 2026-09-28, an additional fresh Linux target directory was built with the
+same compiler, linker, dependencies, and optimization flags plus
+`-C save-temps` and the linker's `--Map` output. Its final Wasm bytes matched
+the **current** 346,869-byte candidate SHA-256
+`5aad704d7d6f9af61301431f1f76807e54a614d5132b9b5066626e7aff51915e`.
+The refreshed
+[`link-map-inventory-2026-09-28.json`](link-map-inventory-2026-09-28.json)
 records hashes of the 40 selected linked object/archive members and their
 containing archives. In particular, the map identifies 23 members of the Rust
 sysroot's self-contained WASI `libc.a`, including allocator and I/O objects;
@@ -138,8 +143,9 @@ candidate and fails closed on unrecognized linked-input forms. The linked Rust
 sysroot `libc.a` is byte-for-byte identical to the archive in the pinned
 WASI SDK 33.0 Linux x64 sysroot (both SHA-256
 `5d8ba34d8c6fd0ac59e0efe37241143887f8f232864bbeacc4181ae739f63371`).
-The inventory now requires and records that archive equality when given the
-SDK path. The official
+The inventory requires and records that archive equality when given the SDK
+path. This current-artifact receipt is same-host linked-object evidence, not
+cross-host reproducibility or distribution approval. The official
 [`wasi-sdk-33` source tag](https://github.com/WebAssembly/wasi-sdk/tree/wasi-sdk-33/src)
 points its `src/wasi-libc` submodule at
 [`161b3195fc2558d2b1ba3eb9ffae3b2b47407623`](https://github.com/WebAssembly/wasi-libc/tree/161b3195fc2558d2b1ba3eb9ffae3b2b47407623).
