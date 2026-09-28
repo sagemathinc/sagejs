@@ -365,8 +365,13 @@ export class ClassGroupCoreService {
     this.rejectPending(error);
     const worker = this.worker;
     this.worker = undefined;
-    worker?.postMessage({ type: "close" });
-    worker?.terminate();
+    try {
+      worker?.postMessage({ type: "close" });
+    } catch {
+      // A worker that has already failed may reject even the courtesy close
+      // message.  Its termination is still required to release the reactor.
+    }
+    await worker?.terminate();
   }
 }
 

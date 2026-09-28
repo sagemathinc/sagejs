@@ -214,6 +214,28 @@ test("session close is idempotent and service close rejects later work", async (
   await assert.rejects(service.invoke({}), ClassGroupCoreClosedError);
 });
 
+test("service close terminates a worker even if its close message throws", async () => {
+  const { FakeWorker, workers } = fakeWorkers();
+  class FailedCloseWorker extends FakeWorker {
+    postMessage(message) {
+      if (message.type === "close") throw new Error("worker is unavailable");
+      super.postMessage(message);
+    }
+  }
+  const service = new ClassGroupCoreService({
+    receipt,
+    WorkerConstructor: FailedCloseWorker,
+  });
+  await service.ready();
+  const inFlight = service.invoke({ hang: true });
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  await service.close();
+  await assert.rejects(inFlight, ClassGroupCoreClosedError);
+  assert.equal(workers[0].terminated, true);
+  await service.close();
+  await assert.rejects(service.invoke({}), ClassGroupCoreClosedError);
+});
+
 test("invalid artifact receipts fail before a worker is created", () => {
   const { FakeWorker, workers } = fakeWorkers();
   assert.throws(

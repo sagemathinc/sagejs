@@ -62,6 +62,16 @@ test("the isolated quadratic reactor serves Sage-mode ideal classes in Wasm", {
       ...resources,
       classGroup: { artifact: pathToFileURL(artifact), receipt },
     });
+    const symbolic = await evaluator.evaluate([
+      "z = var('z')",
+      "S = NumberField(z**2-z+12, 'b')",
+      "H = S.class_group(algorithm='rust')",
+      "[S.discriminant(), H.order(), H.invariants(), H.proof_status,",
+      " H(H.gen().ideal()).coordinates()]",
+    ].join("\n"));
+    assert.equal(symbolic.repr,
+      "[-47, 5, (5,), 'exact-unconditional', (1,)]");
+
     const tiny = await evaluator.evaluate([
       "from sagejs.number_fields import rust_class_group_runtime as rust_runtime",
       "from sagejs.kernels.matrix.imaginary_map import verify_packed_imaginary_map",

@@ -609,11 +609,7 @@ def _number_field_polynomial(value: Any) -> Any:
         raise TypeError("symbolic defining expression is not a rational polynomial")
     polynomial_ring = runtime.reflect.get(runtime.global_object, "PolynomialRing")
     ring = polynomial_ring(sage.QQ, variable)
-    generator = ring.gen()
-    polynomial = ring(0)
-    for coefficient in reversed(coefficients):
-        polynomial = polynomial * generator + coefficient
-    return polynomial
+    return ring(coefficients)
 
 
 def _integer_is_square(value: Any) -> bool:
