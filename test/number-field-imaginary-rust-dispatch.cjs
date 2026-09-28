@@ -772,6 +772,41 @@ test("the native service keeps a large public group compact until its map is req
   assert.equal(answer.repr, "[True, 33768, (2, 16884), 3, 4, (1, 1), 33768, 33768]");
 });
 
+test("midrange cyclic summaries retain exact on-demand ideal-class coordinates", {
+  skip: !process.env.SAGEJS_CLASS_GROUP_SERVICE,
+}, async () => {
+  const answer = await evaluate([
+    "import sagejs.runtime as runtime",
+    "R.<x> = QQ[]",
+    "results = []",
+    "for constant, expected in ((2499998, 1715), (2043354, 4378)):",
+    "    K = NumberField(x^2 - x + constant, 'a')",
+    "    G = K.class_group(algorithm='rust')",
+    "    deferred = runtime.reflect.get(K, '_quadratic_backend_cache') is runtime.undefined",
+    "    I = G.gen().ideal()",
+    "    square = G(I*I).coordinates()",
+    "    complete = len(G.certificate['reducedForms'])",
+    "    results.append((deferred, G.order(), G.invariants(), square, complete == expected))",
+    "results",
+  ]);
+  assert.equal(answer.repr,
+    "[(True, 1715, (1715,), (2,), True), (True, 4378, (4378,), (2,), True)]");
+});
+
+test("a midrange noncyclic field retains the eager exact-map fallback", {
+  skip: !process.env.SAGEJS_CLASS_GROUP_SERVICE,
+}, async () => {
+  const answer = await evaluate([
+    "R.<x> = QQ[]",
+    "K.<a> = NumberField(x^2 - x + 25000067)",
+    "G = K.class_group(algorithm='rust')",
+    "I, J = [generator.ideal() for generator in G.gens()]",
+    "[G.order(), G.invariants(), G(I*J).coordinates(),",
+    " len(G.certificate['reducedForms'])]",
+  ]);
+  assert.equal(answer.repr, "[1413, (3, 471), (1, 1), 1413]");
+});
+
 test("a forged on-demand Rust coordinate fails independent form composition", {
   skip: !process.env.SAGEJS_CLASS_GROUP_SERVICE,
 }, async () => {

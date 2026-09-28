@@ -7,16 +7,14 @@ license opinion, artifact-derived SBOM, or distribution approval.
 ## Exact candidate and reproducible checks
 
 The current `wasm32-wasip1` candidate is
-`target/wasm32-wasip1/release/sagejs_imaginary_quadratic_core.wasm`, 346,136
+`target/wasm32-wasip1/release/sagejs_imaginary_quadratic_core.wasm`, 346,982
 bytes, SHA-256
-`e28a3e01b0da2580f8bb4bcd8c654e6c98918ac1311e653f17e6b4950462cb91`.
+`2133f2b425c84580a15441b06810c1126839b80fdde0c3d15acd412f6d318eb3`.
 This digest identifies one development build, not a production release. Rebuild
-and review any changed digest. The earlier cross-Linux-host and macOS receipts
-below concern the
-`7344622aa162561860fef387e2133d59d1908b1aec71c8c1c15c57b7c98cd201`
-artifact; they do not certify these new bytes. The earlier same-host linked-object
-rebuild also concerns an older digest; a separate byte-matched link-map receipt
-for this candidate is recorded below. Run:
+and review any changed digest. The cross-Linux-host and macOS receipts below
+concern earlier `7344622a` and `e28a3e01` artifacts; they do not certify these
+new bytes. The byte-matched link-map receipt for this candidate is recorded
+below. Run:
 
 ```sh
 sh packages/imaginary-quadratic-core/scripts/build-wasm.sh
@@ -157,15 +155,13 @@ provenance input for review, **not** an artifact-derived SBOM:
 inlined dependency code may have no separately linked object, linker output
 can transform selected members, and the legal obligations for the bundled
 WASI libc and every other component remain to be established independently.
-The current `e28a3e01` candidate has passed the locked build-graph and ABI
+The earlier `e28a3e01` candidate passed the locked build-graph and ABI
 inventory above. A fresh same-host `-C save-temps`/link-map rebuild produced
-byte-identical Wasm and the
-[`link-map-inventory-2026-09-28-current.json`](link-map-inventory-2026-09-28-current.json)
-receipt: 40 linked inputs, including 23 Rust-sysroot WASI libc members whose
-archive bytes match the pinned SDK. This is linked-object evidence for the
-current digest, not an artifact-derived SBOM or distribution approval. The
-earlier cross-host receipts must not be reused for this digest; a separate
-current-digest Linux rebuild is recorded next.
+byte-identical Wasm with 40 linked inputs, including 23 Rust-sysroot WASI
+libc members whose archive bytes match the pinned SDK. This is historical
+linked-object evidence, not an artifact-derived SBOM or distribution approval.
+The earlier cross-host receipts must not be reused for the candidate at the
+top of this document.
 
 On 2026-09-28, the `opt` Linux x86-64 VM checked out clean commit
 `f056a01281681ca91af87e331fb60a3b2877b3d3` and built the standalone
@@ -178,12 +174,12 @@ its LLD version is 22.1.0. The linked Rust-sysroot WASI libc archive has the
 same SHA-256 as the pinned SDK archive above. The independent build produced
 346,136 bytes with SHA-256
 `e28a3e01b0da2580f8bb4bcd8c654e6c98918ac1311e653f17e6b4950462cb91`,
-byte-identical to the current candidate. This establishes reproducibility
-between two Linux hosts for these exact source and toolchain inputs. It does
+byte-identical to that earlier candidate. This establishes reproducibility
+between two Linux hosts for those exact source and toolchain inputs. It does
 not resolve the previously observed macOS byte difference, establish a
 complete source/license inventory, or approve production distribution.
 
-On 2026-09-28, `m1` rebuilt the **current** reactor source from clean detached
+On 2026-09-28, `m1` rebuilt the **earlier** reactor source from clean detached
 commit `1aa8366a79f06a5c2c7b1fc861a4085ade14d4b9`. The isolated reactor
 source and lockfile are unchanged from the Linux candidate above; intervening
 changes in that package only update this review document. The official WASI
@@ -216,8 +212,23 @@ initialization. The Mac artifact also passed the exact-ideal-map and tamper
 browser test in Chromium, Firefox, and WebKit on Linux, both with and without
 cross-origin isolation. This is Mac-local reproducibility and cross-host
 functional evidence, **not** cross-host byte identity, independent safety
-review, or distribution approval. The Linux digest remains the sole candidate
-under review; do not silently substitute the Mac bytes.
+review, or distribution approval. Do not silently substitute the Mac bytes
+for the current candidate.
+
+On 2026-09-28, the new 346,982-byte candidate above passed `verify-wasm.mjs`,
+the locked source/build/ABI inventory, and a fresh same-host `-C save-temps`
+link-map rebuild that matched its SHA-256 byte for byte. The updated
+[`link-map-inventory-2026-09-28-current.json`](link-map-inventory-2026-09-28-current.json)
+records 40 linked inputs, including 23 Rust-sysroot WASI libc members whose
+archive matches the pinned SDK byte for byte. The standalone Rust suite passed
+34 unit and four service-contract tests; the Node product/evaluator suite
+passed five tests. The development-injected Sage-mode evaluator also passed
+Chromium, Firefox, and WebKit with and without cross-origin isolation, using
+the commands below. This evidence is for the current digest, but it does not
+replace a new independent cross-host rebuild, source or license review, or
+production distribution approval. The medium-range cyclic
+presentation change is also covered by native Rust and Sage-mode exact-map
+regressions, including a noncyclic fallback.
 
 To reproduce the linked-object inventory for the current candidate after
 preparing the pinned Wasm toolchain, run from the repository root:
@@ -238,7 +249,7 @@ node packages/imaginary-quadratic-core/scripts/link-map-inventory.mjs \
 ```
 
 On 2026-09-28, the development-injected Sage-mode browser evaluator ran the
-current `e28a3e01b0da2580f8bb4bcd8c654e6c98918ac1311e653f17e6b4950462cb91`
+earlier `e28a3e01b0da2580f8bb4bcd8c654e6c98918ac1311e653f17e6b4950462cb91`
 reactor in Chromium 151.0.7922.34, Firefox 153.0, and WebKit 26.5. Each
 engine passed both the normal cross-origin-isolated test server and an
 unisolated mode that asserts `crossOriginIsolated === false` and the absence

@@ -42,9 +42,9 @@ test("the saved development inventory remains bound to its source inputs", () =>
   const recorded = JSON.parse(fs.readFileSync(recordedInventory, "utf8"));
   assert.equal(recorded.schema,
     "sagejs.imaginary-quadratic/development-distribution-inventory-v1");
-  assert.equal(recorded.artifact.bytes, 346136);
+  assert.equal(recorded.artifact.bytes, 346982);
   assert.equal(recorded.artifact.sha256,
-    "e28a3e01b0da2580f8bb4bcd8c654e6c98918ac1311e653f17e6b4950462cb91");
+    "2133f2b425c84580a15441b06810c1126839b80fdde0c3d15acd412f6d318eb3");
   assert.equal(recorded.inputs.length, 12);
   for (const input of recorded.inputs) {
     assert.equal(input.sha256, sha256(fs.readFileSync(

@@ -13,7 +13,7 @@
 //! forms; all other inputs fail closed.
 
 use serde::Serialize;
-use smallvec::{SmallVec, smallvec};
+use smallvec::{smallvec, SmallVec};
 use std::{
     collections::{BTreeSet, VecDeque},
     fmt,
@@ -21,6 +21,11 @@ use std::{
 
 const MAXIMUM_ABSOLUTE_DISCRIMINANT: u64 = 200_000_000_000;
 const MAXIMUM_REDUCED_FORMS: usize = 50_000;
+const MIDRANGE_PRESENTATION_MINIMUM_DISCRIMINANT: u64 = 1_000_000;
+const LARGE_PRESENTATION_MINIMUM_DISCRIMINANT: u64 = 1_000_000_000;
+const MIDRANGE_PRESENTATION_MINIMUM_CLASSES: usize = 1_000;
+const LARGE_PRESENTATION_MINIMUM_CLASSES: usize = 10_000;
+const MIDRANGE_CYCLIC_PRIME_NORM_PROBES: usize = 2;
 const RESULT_SCHEMA: &str = "sagejs.rust-class-group/complete-imaginary-quadratic-v2";
 const CERTIFICATE_THEOREM: &str = "primitive reduced positive-definite forms uniquely enumerate proper ideal classes of a negative fundamental discriminant";
 
@@ -298,21 +303,23 @@ pub fn compute_imaginary_class_number_from_coefficients(
     })
 }
 
-/// Try the large-group presentation route without enumerating an orbit or
-/// materializing a class map. The exact reduced-form count is the group order;
-/// exact order tests prove a cyclic generator, or a cyclic index-two subgroup
-/// with an independent involution. Other structures use the complete route.
+/// Try a bounded presentation without enumerating an orbit or materializing a
+/// class map. The exact reduced-form count is the group order; exact order
+/// tests prove a cyclic generator, or a cyclic index-two subgroup with an
+/// independent involution. Midrange cyclic groups get a cheap two-prime probe;
+/// other structures retain the complete route.
 pub fn try_compute_imaginary_presentation_from_coefficients(
     polynomial_ascending: [i64; 3],
 ) -> Result<Option<CompactImaginaryPresentation>, ImaginaryClassGroupError> {
     let (discriminant, squarefree_core, prime_factors) =
         validated_imaginary_discriminant(polynomial_ascending)?;
-    if discriminant.unsigned_abs() < 1_000_000_000 {
+    if discriminant.unsigned_abs() < MIDRANGE_PRESENTATION_MINIMUM_DISCRIMINANT {
         return Ok(None);
     }
+    let midrange = discriminant.unsigned_abs() < LARGE_PRESENTATION_MINIMUM_DISCRIMINANT;
     let cyclic_candidate = matches!(prime_factors.len(), 1 | 2);
     let rank_two_candidate = prime_factors.len() == 3 && discriminant.rem_euclid(4) == 1;
-    if !cyclic_candidate && !rank_two_candidate {
+    if !cyclic_candidate && (!rank_two_candidate || midrange) {
         return Ok(None);
     }
     let class_number = count_reduced_forms(discriminant);
@@ -322,12 +329,27 @@ pub fn try_compute_imaginary_presentation_from_coefficients(
             maximum: MAXIMUM_REDUCED_FORMS,
         });
     }
-    if class_number < 10_000 {
+    let minimum_classes = if midrange {
+        MIDRANGE_PRESENTATION_MINIMUM_CLASSES
+    } else {
+        LARGE_PRESENTATION_MINIMUM_CLASSES
+    };
+    if class_number < minimum_classes {
         return Ok(None);
     }
     let linear = polynomial_ascending[1];
     let (invariant_factors, generators) = if cyclic_candidate {
-        let Some(generator) = find_cyclic_generator(discriminant, class_number)? else {
+        // The medium range often admits a quick cyclic proof, but an
+        // unproductive exhaustive generator search can cost more than the
+        // established complete-map route. Probe only the first few prime
+        // norms there; retain the full search for large groups.
+        let probe_norms = if midrange {
+            MIDRANGE_CYCLIC_PRIME_NORM_PROBES
+        } else {
+            usize::MAX
+        };
+        let Some(generator) = find_cyclic_generator(discriminant, class_number, probe_norms)?
+        else {
             return Ok(None);
         };
         (
@@ -490,10 +512,26 @@ pub fn compute_imaginary_class_group(
     let (discriminant, squarefree_core, prime_factors) =
         validated_imaginary_discriminant(input.polynomial_ascending)?;
 
-    let proved_orbit = if discriminant.unsigned_abs() >= 1_000_000_000 {
+    let absolute_discriminant = discriminant.unsigned_abs();
+    let midrange = absolute_discriminant >= MIDRANGE_PRESENTATION_MINIMUM_DISCRIMINANT
+        && absolute_discriminant < LARGE_PRESENTATION_MINIMUM_DISCRIMINANT;
+    let proved_orbit = if absolute_discriminant >= MIDRANGE_PRESENTATION_MINIMUM_DISCRIMINANT {
         match prime_factors.len() {
-            1 | 2 => cyclic_orbit_from_class_number(discriminant, linear)?,
-            3 if discriminant.rem_euclid(4) == 1 => {
+            1 | 2 => cyclic_orbit_from_class_number(
+                discriminant,
+                linear,
+                if midrange {
+                    MIDRANGE_PRESENTATION_MINIMUM_CLASSES
+                } else {
+                    LARGE_PRESENTATION_MINIMUM_CLASSES
+                },
+                if midrange {
+                    MIDRANGE_CYCLIC_PRIME_NORM_PROBES
+                } else {
+                    usize::MAX
+                },
+            )?,
+            3 if !midrange && discriminant.rem_euclid(4) == 1 => {
                 rank_two_orbit_from_class_number(discriminant, linear, &prime_factors)?
                     .map(|(bound, forms, structure, map)| (bound, forms, structure, Some(map)))
             }
@@ -646,6 +684,8 @@ fn orbit_candidate_norms() -> impl Iterator<Item = i64> {
 fn cyclic_orbit_from_class_number(
     discriminant: i64,
     linear: i64,
+    minimum_classes: usize,
+    maximum_prime_norms: usize,
 ) -> Result<
     Option<(
         i64,
@@ -662,11 +702,12 @@ fn cyclic_orbit_from_class_number(
             maximum: MAXIMUM_REDUCED_FORMS,
         });
     }
-    if class_number < 10_000 {
+    if class_number < minimum_classes {
         return Ok(None);
     }
     let bound = integer_square_root(discriminant.unsigned_abs() / 3) as i64;
-    let Some(generator) = find_cyclic_generator(discriminant, class_number)? else {
+    let Some(generator) = find_cyclic_generator(discriminant, class_number, maximum_prime_norms)?
+    else {
         return Ok(None);
     };
     let mut tagged = collect_cyclic_orbit(generator, class_number, discriminant)?;
@@ -717,16 +758,17 @@ fn cyclic_orbit_from_class_number(
 fn find_cyclic_generator(
     discriminant: i64,
     class_number: usize,
+    maximum_prime_norms: usize,
 ) -> Result<Option<BinaryQuadraticForm>, ImaginaryClassGroupError> {
     let principal = principal_form(discriminant);
     let factors = factor_usize(class_number);
     // Prefer larger split-prime norms for the long orbit: multiplying by a
     // norm-2, -3, or -5 form repeatedly hits the general lattice product
     // more often. Keep those three primes as a complete-search fallback.
-    for norm in orbit_candidate_norms() {
-        if !is_prime(norm as u64) {
-            continue;
-        }
+    for norm in orbit_candidate_norms()
+        .filter(|&norm| is_prime(norm as u64))
+        .take(maximum_prime_norms)
+    {
         for middle in -norm..=norm {
             let numerator = i128::from(middle) * i128::from(middle) - i128::from(discriminant);
             let denominator = 4 * i128::from(norm);
@@ -3440,6 +3482,49 @@ mod tests {
     }
 
     #[test]
+    fn midrange_cyclic_presentations_retain_the_same_complete_ideal_map() {
+        for (polynomial, expected_order) in
+            [([2_499_998, -1, 1], 1_715), ([2_043_354, -1, 1], 4_378)]
+        {
+            let presentation = try_compute_imaginary_presentation_from_coefficients(polynomial)
+                .unwrap()
+                .expect("a bounded prime-norm probe proves this cyclic group");
+            assert_eq!(presentation.class_number, expected_order);
+            assert_eq!(presentation.invariant_factors, vec![expected_order as u64]);
+            let generator_forms = presentation
+                .generators
+                .iter()
+                .map(|generator| generator.form)
+                .collect::<Vec<_>>();
+            assert_eq!(
+                verify_imaginary_generator_presentation(
+                    polynomial,
+                    expected_order,
+                    &presentation.invariant_factors,
+                    &generator_forms,
+                ),
+                Ok(())
+            );
+            let full = compute_imaginary_class_group_from_coefficients(polynomial).unwrap();
+            assert_eq!(full.invariant_factors, presentation.invariant_factors);
+            assert_eq!(full.generators, presentation.generators);
+            assert_eq!(full.complete_class_map.len(), expected_order);
+        }
+
+        // A prime discriminant need not have a cyclic class group. Failure
+        // of the cheap probe must retain the exact complete-map fallback.
+        let noncyclic = [25_000_067, -1, 1];
+        assert_eq!(
+            try_compute_imaginary_presentation_from_coefficients(noncyclic).unwrap(),
+            None
+        );
+        let full = compute_imaginary_class_group_from_coefficients(noncyclic).unwrap();
+        assert_eq!(full.class_number, 1_413);
+        assert_eq!(full.invariant_factors, vec![3, 471]);
+        assert_eq!(full.complete_class_map.len(), full.class_number);
+    }
+
+    #[test]
     fn computes_a_medium_band_field_with_a_complete_map() {
         let input = PublicImaginaryQuadraticInput {
             id: "imaginary-d100000000003-c31057",
@@ -3486,10 +3571,14 @@ mod tests {
             } else {
                 0
             };
-            let (bound, forms, orbit_structure, prepared_map) =
-                cyclic_orbit_from_class_number(discriminant, linear)
-                    .unwrap()
-                    .expect("frozen cyclic field has a small prime-form generator");
+            let (bound, forms, orbit_structure, prepared_map) = cyclic_orbit_from_class_number(
+                discriminant,
+                linear,
+                LARGE_PRESENTATION_MINIMUM_CLASSES,
+                usize::MAX,
+            )
+            .unwrap()
+            .expect("frozen cyclic field has a small prime-form generator");
             let prepared_map = prepared_map.unwrap();
             let (reference_bound, reference_forms) = enumerate_reduced_forms(discriminant);
             assert_eq!(bound, reference_bound);

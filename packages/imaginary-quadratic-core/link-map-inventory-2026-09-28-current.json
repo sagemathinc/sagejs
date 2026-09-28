@@ -2,14 +2,14 @@
   "schema": "sagejs.imaginary-quadratic/hash-equal-link-map-inventory-v1",
   "scope": "linked-object evidence from a byte-identical development rebuild; not an artifact-derived SBOM, complete source inventory, or distribution approval",
   "artifact": {
-    "bytes": 346136,
-    "sha256": "e28a3e01b0da2580f8bb4bcd8c654e6c98918ac1311e653f17e6b4950462cb91"
+    "bytes": 346982,
+    "sha256": "2133f2b425c84580a15441b06810c1126839b80fdde0c3d15acd412f6d318eb3"
   },
   "linkMap": {
-    "rawSha256": "a28447f59ee96d00ebbcb3a7ce6e599e083acabc22b3cfe19bb51ef8bd357d27",
-    "normalizedSha256": "96a9a504c444dcdc90d2f7b42a6defac44f1fc68cf2e64b3372ba7b791dad716",
+    "rawSha256": "35dd6a13d5732f42cd65f87bb43b4709c158aed5657e175d6c4ba62f0aa6f57a",
+    "normalizedSha256": "a7decdc54361088ed6c2b4418a12fd3230ea54cebece1b79c7d305b067ffe5ba",
     "linkedInputCount": 40,
-    "linkedContributionCount": 1126,
+    "linkedContributionCount": 1127,
     "internalContributions": 6
   },
   "wasiLibc": {
@@ -20,26 +20,26 @@
   },
   "inputs": [
     {
-      "input": "cargo-target/wasm32-wasip1/release/deps/libitoa-e051b6d3a308fd9e.rlib(itoa-e051b6d3a308fd9e.itoa.1ef311d5a178ac51-cgu.0.rcgu.o)",
-      "archiveSha256": "048355d6d26905db3c4fb3ea3a429f1a86cbd27f855776efe2ef5a9d77244e43",
+      "input": "cargo-target/wasm32-wasip1/release/deps/libitoa-755f3af3363ce344.rlib(itoa-755f3af3363ce344.itoa.1ef311d5a178ac51-cgu.0.rcgu.o)",
+      "archiveSha256": "1d9e8f4f65fddf0740f92ada49c00599e666c21e4483f4a16755028aed4c6b00",
       "memberSha256": "14e7e17ec57d15b799c52f98cd4d02df9a647534420be15a58c221754ee4bae6",
       "contributions": 5
     },
     {
-      "input": "cargo-target/wasm32-wasip1/release/deps/libserde_core-1ad47e5407a52472.rlib(serde_core-1ad47e5407a52472.serde_core.8cb1457bf566527a-cgu.0.rcgu.o)",
-      "archiveSha256": "e437bf7b48f2640b6b147dd2e1a3b65067a07265f574198814d9c3ec24e97dbb",
+      "input": "cargo-target/wasm32-wasip1/release/deps/libserde_core-79eb9ee3957cce6e.rlib(serde_core-79eb9ee3957cce6e.serde_core.8cb1457bf566527a-cgu.0.rcgu.o)",
+      "archiveSha256": "cc9071061cd050e9200f09415e5acccc40b66cd5456d7e53e77a1c8e292212a8",
       "memberSha256": "548197c91862e10aa38493b50f166c4ca4e5986a24047e163f2021af81d3d1b5",
       "contributions": 32
     },
     {
-      "input": "cargo-target/wasm32-wasip1/release/deps/libserde_json-c27ef514d685528e.rlib(serde_json-c27ef514d685528e.serde_json.8bceedf4b9df52d0-cgu.0.rcgu.o)",
-      "archiveSha256": "a638180889b9b2803f3497d25e954e84ac3b47ca26a298a36bd0e423c88203f2",
+      "input": "cargo-target/wasm32-wasip1/release/deps/libserde_json-81e250f381800c2e.rlib(serde_json-81e250f381800c2e.serde_json.8bceedf4b9df52d0-cgu.0.rcgu.o)",
+      "archiveSha256": "983e754582b37ebfa5d74c029db6992ca6fc2b3923148a331df7e2cfe4927b9d",
       "memberSha256": "78e114c341932d2c4800043d955ee4d982912e1069dcaf9be9695dab4d906a9a",
       "contributions": 105
     },
     {
-      "input": "cargo-target/wasm32-wasip1/release/deps/libzmij-f749915fad8f168f.rlib(zmij-f749915fad8f168f.zmij.ee83300467b97445-cgu.0.rcgu.o)",
-      "archiveSha256": "7f5f2078caddd2ad7f150097b3d97b4804ea2e64e65010c045aaa06a970a3629",
+      "input": "cargo-target/wasm32-wasip1/release/deps/libzmij-ad53c1e8ccb963a4.rlib(zmij-ad53c1e8ccb963a4.zmij.ee83300467b97445-cgu.0.rcgu.o)",
+      "archiveSha256": "abeea3a98255f1b9c783125eb20204ab9f9f9bbe200ebc3e94c424f340b0a087",
       "memberSha256": "bf27e3f3101a86491cf3934f89769186b0e4e2aa9c8bdee7d0d9ef3d71ba2cdd",
       "contributions": 2
     },
@@ -52,8 +52,8 @@
     {
       "input": "cargo-target/wasm32-wasip1/release/deps/sagejs_imaginary_quadratic_core.sagejs_imaginary_quadratic_core.42d5cc941363e777-cgu.0.rcgu.o",
       "archiveSha256": null,
-      "memberSha256": "8b0372f7e48ac3ceb093eb3786ad02c764709b56e24b8ef9328ec4f919407c1e",
-      "contributions": 458
+      "memberSha256": "4424d8e7765e8815c01ed8de8c06070f225456e0a0229825f70d8948f3cd7cca",
+      "contributions": 459
     },
     {
       "input": "rust-sysroot/lib/rustlib/wasm32-wasip1/lib/liballoc-0965a86479b73a2f.rlib(alloc-0965a86479b73a2f.alloc.1a096bf48401f5d5-cgu.0.rcgu.o)",
