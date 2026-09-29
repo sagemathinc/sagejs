@@ -9,6 +9,7 @@ from __future__ import annotations
 from typing import Any, Callable, Iterable, Iterator
 
 import sagejs.runtime as runtime
+from bootstrap_shared import ρσ_native_map_iterator
 
 
 def _sum_exact_integer_range(iterable: Any, start: Any) -> Any:
@@ -111,53 +112,15 @@ def sum(
     return result
 
 
-@runtime.native_method
-def _map_next(self: Any) -> Any:
-    try:
-        return runtime.reflect.apply(self.__map_native_next__, self, [])
-    except StopIteration as error:
-        result = runtime.object.create(None)
-        runtime.reflect.set(result, "value", error.value)
-        runtime.reflect.set(result, "done", True)
-        return result
-
-
-def _map_generator(
-    func: Any,
-    iterators: list[Iterator[Any]],
-) -> Iterator[Any]:
-    if len(iterators) == 1:
-        for value in iterators[0]:
-            yield func(value)
-    else:
-        exhausted = object()
-        done = False
-        while not done:
-            values = []
-            for iterator in iterators:
-                value = next(iterator, exhausted)
-                if value is exhausted:
-                    done = True
-                    break
-                values.append(value)
-            if not done:
-                yield func(*values)
-
-
 def map(
     func: Any,
     *iterables: Iterable[Any],
 ) -> Iterator[Any]:
     if not iterables:
         raise TypeError("map() must have at least two arguments.")
-    iterator = _map_generator(func, [iter(iterable) for iterable in iterables])
-    runtime.reflect.set(
-        iterator,
-        "__map_native_next__",
-        runtime.reflect.get(iterator, "next"),
+    return ρσ_native_map_iterator(  # pyright: ignore[reportReturnType]
+        func, [iter(iterable) for iterable in iterables]
     )
-    runtime.reflect.set(iterator, "next", _map_next)
-    return iterator
 
 
 def filter(
